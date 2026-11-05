@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # windows-2022 guarantees a VS2022 MSBuild with the C++ tools (for msvfw32.dll); see A2G-Trainer's
+    # release.yml for why windows-latest is not used.
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # all tags, for the release notes
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[17.0,18.0)"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # First: the exe embeds it, and a test checks the embedded copy.
+      - name: Build msvfw32 proxy
+        shell: cmd
+        run: dll\build.cmd
+
+      # Restore and build in separate calls: in one call the xUnit adapter from the freshly restored
+      # packages is not picked up and "dotnet test" finds no tests.
+      - name: Restore tests
+        run: msbuild A2G-Patch.Tests/A2G-Patch.Tests.csproj /t:Restore
+
+      - name: Build tests
+        run: msbuild A2G-Patch.Tests/A2G-Patch.Tests.csproj /t:Build /p:Configuration=Release
+
+      - name: Run tests
+        run: dotnet test A2G-Patch.Tests/A2G-Patch.Tests.csproj --configuration Release --no-build --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults --blame-hang-timeout 5m
+
+      - name: Require full coverage
+        shell: pwsh
+        run: tools/CheckCoverage.ps1 TestResults
+
+      - name: Inject version from tag
+        shell: pwsh
+        run: |
+          $versionPart = "${{ github.ref_name }}" -replace '^v', ''
+          $segments = @((($versionPart -split '-')[0]) -split '\.')
+          while ($segments.Count -lt 4) { $segments += '0' }
+          $assemblyVersion = ($segments[0..3] -join '.')
+
+          $content = @"
+          using System.Reflection;
+
+          [assembly: AssemblyVersion("$assemblyVersion")]
+          [assembly: AssemblyFileVersion("$assemblyVersion")]
+          [assembly: AssemblyInformationalVersion("$versionPart")]
+          "@
+          Set-Content -Path Properties/VersionInfo.cs -Value $content -Encoding utf8
+
+      - name: Build A2G-Patch
+        run: msbuild A2G-Patch.csproj /restore /t:Rebuild /p:Configuration=Release /p:Platform=x86
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Force -Path dist/bundle | Out-Null
+          Copy-Item "bin\x86\Release\A2G-Patch.exe" "dist\A2G-Patch-$tag.exe"
+          Copy-Item "bin\x86\Release\A2G-Patch.exe" "dist\bundle\A2G-Patch.exe"
+          # German on purpose: it is read by players, like the program's UI. utf8BOM so Notepad on
+          # older Windows shows the umlauts correctly.
+          $readme = @"
+          A2G-Patch $tag
+          =================
+
+          Patches für Anstoss 2 Gold (Original, GOG und 2007er-CD):
+
+          - Pfeile zählen beim Gedrückthalten weiter: Behebt den Fehler, dass die Pfeilknöpfe bei
+            Zahlenwerten unter aktuellem Windows beim Gedrückthalten nicht weiterzählen. Der
+            Kompatibilitätsmodus "Windows 98" ist dafür nicht mehr nötig.
+          - Torgrenzen aufheben: Bis zu 15 Tore pro Mannschaft statt 6 bis zur Halbzeit und 10 bis
+            zum Schluss, keine halbierten Torchancen ab 7 Toren.
+          - Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen: Ohne den
+            Indeo-Codec stürzt das Spiel bei WM.AVI, EM.AVI und FINALE.AVI ab (etwa nach dem
+            WM-Titel). Mit dem Patch werden diese Videos übersprungen; mit Indeo-Codec laufen sie
+            weiterhin.
+          - Kein Einfrieren nach über 24 Tagen Windows-Laufzeit: Eine Wartezeit von 3 Sekunden wird
+            sonst zu Wochen (der Schnellstart von Windows zählt die Laufzeit weiter).
+          - Ton über das Standard-Audiogerät von Windows: Das Spiel nimmt sonst das zuletzt gefundene
+            Gerät, bei mehreren Ausgängen (Monitor, Headset) also womöglich das falsche.
+          - Keine falsche Warnung "Festplatte fast voll" beim Speichern: Auf großen Platten kam die
+            Warnung sonst ab und zu ohne Grund.
+          - Kader nicht über 30 Spieler wachsen lassen: Ein Verein mit verliehenen Spielern kann
+            sonst einen 31. Spieler bekommen, der Daten hinter dem Kader überschreibt.
+          - Desktop-Auflösung auch nach einem Absturz zurückholen: Nach einem Absturz blieb der
+            Desktop sonst auf 640x480. In der GOG-Version ist das schon behoben, dort ist der
+            Schalter ausgegraut.
+
+          So geht's
+          ---------
+          1. Spiel beenden.
+          2. A2G-Patch.exe starten (egal von wo). Es schlägt den eigenen Ordner sowie die
+             installierte CD- und GOG-Version vor; "Durchsuchen ..." wählt einen anderen Spielordner.
+          3. Gewünschte Patches anhaken, nicht mehr gewünschte abhaken, "Übernehmen".
+
+          Gut zu wissen
+          -------------
+          - Original und GOG: Die Spieldatei wird geändert, vorher legt A2G-Patch eine Sicherung
+            daneben (*.vor-a2g-patch). Sind alle Patches wieder abgehakt, ist die Datei wieder im
+            Originalzustand und die Sicherung verschwindet.
+          - 2007er-CD: Deren run.exe ist gepackt. A2G-Patch legt stattdessen eine msvfw32.dll in den
+            Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Manche
+            Virenscanner schlagen bei dieser DLL an, weil sie eine System-DLL ersetzt.
+          - Liegt das Spiel unter "Programme", fragt A2G-Patch nach Administratorrechten.
+          - Voraussetzungen: Windows XP (SP3) oder neuer, .NET Framework 4.0 oder neuer.
+
+          Quellcode: https://github.com/transfairs/A2G-Patcher
+          "@
+          Set-Content -Path "dist\bundle\LIESMICH.txt" -Value $readme -Encoding utf8BOM
+
+          $zip = "dist\A2G-Patch-Latest.zip"
+          Compress-Archive -Path "dist\bundle\*" -DestinationPath $zip -Force
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
+          "$hash  A2G-Patch-Latest.zip" | Set-Content "$zip.sha256" -Encoding ascii
+
+      - name: Release notes from commits
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          # Fails (exit 128) for the very first tag: then the notes cover all commits.
+          $previous = git describe --tags --abbrev=0 "$tag^" 2>$null
+          if ($LASTEXITCODE -ne 0) { $previous = $null }
+          $range = if ($previous) { "$previous..$tag" } else { $tag }
+          $lines = @(git log $range --no-merges --pretty=format:"- %s")
+          $header = if ($previous) { "Änderungen seit $previous" } else { "Erste Version" }
+          if ($lines.Count -eq 0) { $lines = @("- Keine Änderungen an Code oder Doku.") }
+          (@("## $header", "") + $lines) -join "`n" | Set-Content dist/notes.md -Encoding utf8
+          # GitHub fails a pwsh step on a leftover non-zero exit code (here from git describe).
+          $global:LASTEXITCODE = 0
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/A2G-Patch-${{ github.ref_name }}.exe
+            dist/A2G-Patch-Latest.zip
+            dist/A2G-Patch-Latest.zip.sha256
+          body_path: dist/notes.md

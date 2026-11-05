@@ -1,0 +1,53 @@
+name: Tests
+
+# Runs the tests (with full coverage) on every push and pull request. Releases are built only from a
+# version tag (release.yml).
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # windows-2022 guarantees a VS2022 MSBuild with the C++ tools (for msvfw32.dll); see release.yml.
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[17.0,18.0)"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # First: the exe embeds it, and a test checks the embedded copy.
+      - name: Build msvfw32 proxy
+        shell: cmd
+        run: dll\build.cmd
+
+      # Restore and build in separate calls: in one call the xUnit adapter from the freshly restored
+      # packages is not picked up and "dotnet test" finds no tests.
+      - name: Restore tests
+        run: msbuild A2G-Patch.Tests/A2G-Patch.Tests.csproj /t:Restore
+
+      - name: Build tests
+        run: msbuild A2G-Patch.Tests/A2G-Patch.Tests.csproj /t:Build /p:Configuration=Release
+
+      # Some tests answer real dialogs; if one is never answered, the hang timeout ends the run.
+      - name: Run tests
+        run: dotnet test A2G-Patch.Tests/A2G-Patch.Tests.csproj --configuration Release --no-build --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults --blame-hang-timeout 5m
+
+      - name: Require full coverage
+        shell: pwsh
+        run: tools/CheckCoverage.ps1 TestResults

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A2G-Patch – Fehlerbehebungen für Anstoss 2 Gold</title>
+<meta name="description" content="Kleine Patches für Anstoss 2 Gold: Pfeilknöpfe zählen wieder weiter, kein Absturz bei den WM-, EM- und Finalvideos, kein Einfrieren, Ton aufs richtige Gerät, Torgrenzen aufheben und mehr. Für Original, GOG und 2007er-CD.">
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top"><img class="brand-logo" src="logo.png" width="28" height="28" alt="">A2G-Patch</a>
+    <nav>
+      <a href="#patches">Patches</a>
+      <a href="#anleitung">Anleitung</a>
+      <a href="#technik">Technik</a>
+      <a class="nav-gh" href="https://github.com/transfairs/A2G-Patcher">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="pitch" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">Für Anstoss 2 Gold · Original, GOG &amp; 2007er-CD</p>
+      <h1>Anstoss 2 Gold,<br><span class="grad">wie es sein sollte.</span></h1>
+      <p class="lead">Ein kleines Fenster, acht Haken: Die Pfeilknöpfe zählen wieder weiter, die Videos zu WM, EM und Finale lassen das Spiel nicht mehr abstürzen, nichts friert nach langer Windows-Laufzeit ein, der Ton kommt aus dem richtigen Gerät, und wer mag, hebt die Torgrenzen auf. Ohne Kompatibilitätsmodus, jederzeit rückgängig zu machen.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/transfairs/A2G-Patcher/releases/latest/download/A2G-Patch-Latest.zip">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+          Herunterladen
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/transfairs/A2G-Patcher/releases">Alle Versionen</a>
+      </div>
+      <p class="fine">Windows XP (SP3) bis 11 · .NET Framework 4.0 oder neuer · GPL-3.0</p>
+    </div>
+    <figure class="shot">
+      <div class="shot-glow" aria-hidden="true"></div>
+      <img src="patch.png" width="542" height="369" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und acht Haken für die Patches">
+    </figure>
+  </div>
+</section>
+
+<section id="patches" class="section">
+  <div class="wrap">
+    <h2 class="section-title"><span>01</span>Die Patches</h2>
+    <div class="cards">
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 15l4-4 4 4M8 9l4-4 4 4"/></svg>
+        </div>
+        <h3>Pfeile zählen beim Gedrückthalten weiter</h3>
+        <p>Unter aktuellem Windows zählen die Pfeilknöpfe bei Zahlenwerten nur ein, zwei Schritte und bleiben dann stehen. Bisher half nur der Kompatibilitätsmodus „Windows&nbsp;98“. Mit dem Patch zählen sie einfach weiter.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
+        </div>
+        <h3>Kein Absturz bei den Videos zu WM, EM und Finale</h3>
+        <p>Nach dem WM-Titel stürzt das Spiel ab, weil Windows das Videoformat von <code>WM.AVI</code>, <code>EM.AVI</code> und <code>FINALE.AVI</code> nicht mehr kennt. Der Patch überspringt das Video, das Spiel läuft weiter. Mit installiertem Indeo-Codec laufen die Videos wie gewohnt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        </div>
+        <h3>Kein Einfrieren nach über 24 Tagen Windows-Laufzeit</h3>
+        <p>Eine Wartepause von 3&nbsp;Sekunden wird zu Wochen, sobald Windows länger als 2<sup>31</sup>&nbsp;ms läuft. Das kommt schneller als gedacht: Der Schnellstart von Windows setzt die Laufzeit beim Herunterfahren nicht zurück.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+        </div>
+        <h3>Ton über das Standard-Audiogerät von Windows</h3>
+        <p>Das Spiel nimmt das zuletzt gefundene Soundgerät statt des eingestellten. Mit Monitor-Lautsprechern und Headset landet der Ton so leicht auf dem falschen. Mit dem Patch kommt er dort heraus, wo Windows ihn hinschickt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h6M17 12h.01"/></svg>
+        </div>
+        <h3>Keine falsche Warnung „Festplatte fast voll“</h3>
+        <p>Den freien Platz rechnet das Spiel mit 32&nbsp;Bit aus. Auf großen Platten läuft die Rechnung über, und beim Speichern erscheint ab und zu grundlos die Warnung, die Festplatte sei fast voll.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5M17.5 14a5.5 5.5 0 0 1 3 5"/></svg>
+        </div>
+        <h3>Kader nicht über 30 Spieler wachsen lassen</h3>
+        <p>Ein Verein mit ausgeliehenen Spielern kann einen 31.&nbsp;Spieler bekommen, der Daten hinter dem Kader überschreibt. Der Patch zählt bei der Prüfung „Kader voll?“ auch die tatsächlichen Spieler.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        </div>
+        <h3>Desktop-Auflösung auch nach einem Absturz zurückholen</h3>
+        <p>Das Spiel stellt den Bildschirm so auf 640×480 um, dass die Umstellung einen Absturz überdauert. Mit dem Patch stellt Windows die Auflösung selbst wieder her, sobald das Spiel endet. Die GOG-Version macht das schon richtig, dort ist der Haken ausgegraut.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Optional</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>
+        </div>
+        <h3>Torgrenzen aufheben</h3>
+        <p>Das Spiel lässt eine Mannschaft nur treffen, solange sie bis zur Halbzeit unter 6 und danach unter 10 Toren liegt, und halbiert ab 7 Toren ihre Chancen. Der Patch hebt die Grenze auf 15 an und streicht die Bremse.</p>
+        <div class="score" aria-label="Grenze von 10 auf 15 Tore">
+          <span class="old">10</span><span class="arrow">→</span><span class="new">15</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="anleitung" class="section">
+  <div class="wrap">
+    <h2 class="section-title"><span>02</span>So geht’s</h2>
+    <ol class="steps">
+      <li><b>Spiel beenden.</b><span>A2G-Patch ändert nichts, während Anstoss 2 läuft.</span></li>
+      <li><b><code>A2G-Patch.exe</code> starten.</b><span>Von wo auch immer. Es schlägt den eigenen Ordner und die installierte CD- und GOG-Version vor, „Durchsuchen …“ wählt einen anderen Spielordner.</span></li>
+      <li><b>Haken setzen, „Übernehmen“.</b><span>Gewünschte Patches anhaken, nicht mehr gewünschte abhaken. Fertig.</span></li>
+    </ol>
+
+    <h3 class="sub">Was dabei passiert</h3>
+    <div class="releases">
+      <div class="rel">
+        <div class="rel-head"><b>Original (1999)</b><code>anstoss2.exe</code></div>
+        <p>Die Spieldatei wird direkt geändert. Vorher legt A2G-Patch eine Sicherung <code>anstoss2.exe.vor-a2g-patch</code> daneben. Sind alle Patches wieder abgehakt, ist die Datei Byte für Byte wie vorher und die Sicherung verschwindet.</p>
+      </div>
+      <div class="rel">
+        <div class="rel-head"><b>GOG</b><code>run.exe</code></div>
+        <p>Genauso, mit <code>run.exe.vor-a2g-patch</code>. Eine Dateiprüfung in GOG Galaxy stellt das Original wieder her; dann einfach noch einmal übernehmen.</p>
+      </div>
+      <div class="rel">
+        <div class="rel-head"><b>2007er-CD</b><code>run.exe</code> (gepackt)</div>
+        <p>Der Programmcode liegt nur verschlüsselt auf der Platte. A2G-Patch legt deshalb eine <code>msvfw32.dll</code> in den Spielordner, die bei jedem Spielstart den Code im Speicher ändert. Alle Patches abhaken löscht sie wieder.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2 class="section-title"><span>03</span>Gut zu wissen</h2>
+    <div class="faq">
+      <details>
+        <summary>Warum fragt A2G-Patch nach Administratorrechten?</summary>
+        <p>Liegt das Spiel unter „Programme“, darf dort nur ein Administrator schreiben. A2G-Patch bietet dann an, sich selbst als Administrator neu zu starten.</p>
+      </details>
+      <details>
+        <summary>Mein Virenscanner meldet die msvfw32.dll.</summary>
+        <p>Manche Scanner schlagen bei einer unsignierten DLL im Spielordner an, die so heißt wie eine System-DLL; Schadsoftware nutzt denselben Trick. Die DLL reicht alle Aufrufe an die echte <code>msvfw32.dll</code> von Windows weiter und ändert nur den Code des Spiels. Der Quellcode liegt offen in <a href="https://github.com/transfairs/A2G-Patcher/tree/main/dll"><code>dll/msvfw32.c</code></a>.</p>
+      </details>
+      <details>
+        <summary>Ein Haken ist ausgegraut.</summary>
+        <p>Jeder Patch sucht seine Stellen anhand der Befehle drumherum. Findet er sie nicht genau einmal, im Original- oder im gepatchten Zustand, bietet A2G-Patch ihn nicht an, statt blind etwas zu überschreiben.</p>
+      </details>
+      <details>
+        <summary>Liegt schon eine andere msvfw32.dll im Spielordner?</summary>
+        <p>Eine DLL, die nicht von A2G-Patch stammt, wird nie angefasst. Eine aus einer anderen Version von A2G-Patch wird beim „Übernehmen“ ersetzt.</p>
+      </details>
+      <details>
+        <summary>Verträgt sich das mit A2G-Trainer?</summary>
+        <p>Ja. Der Schalter „Spielmechaniken“ im <a href="https://github.com/transfairs/A2G-Trainer">A2G-Trainer</a> hebt die Torgrenzen auf, solange der Trainer läuft, und erkennt, wenn A2G-Patch das schon dauerhaft erledigt hat.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section id="technik" class="section">
+  <div class="wrap">
+    <h2 class="section-title"><span>04</span>Unter der Haube</h2>
+    <p class="intro">Für Neugierige: Was genau im Maschinencode passiert. Dieselben Muster gelten auf der Platte (<code>Patches.cs</code>) und im Speicher (<code>dll/msvfw32.c</code>).</p>
+    <div class="tech">
+      <details class="tech-item">
+        <summary><b>Pfeile</b><span>Ein Wettlauf zwischen zwei Threads</span></summary>
+        <p>Beim Gedrückthalten schickt ein Thread alle 60&nbsp;ms einen Schritt ans Fenster, aber nur, solange keiner aussteht (<code>+0xF4 == 0</code>). Als ausstehend markiert er den Schritt erst <em>nach</em> <code>PostMessageA</code>. Unter Windows NT ist das Fenster oft schneller, findet beim Abarbeiten noch eine 0, und danach schreibt der Thread eine 1, die nie wieder abgebaut wird. Der Patch markiert den Schritt vor dem Senden, in denselben 41&nbsp;Bytes:</p>
+<pre><code><i>; vorher</i>
+mov eax,[msg] / mov ecx,[esi+1C] / push 0 / push 0 / push eax / push ecx / call ebx
+mov eax,[esi+F4] / mov [esi+F0],60 / inc eax / mov [esi+F4],eax
+<i>; nachher</i>
+mov [esi+F4],1 / mov [esi+F0],60
+mov eax,[msg] / mov ecx,[esi+1C] / push 0 / push 0 / push eax / push ecx / call ebx
+nop / nop / nop / jmp next</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Videos</b><span>Ein fehlender NULL-Check</span></summary>
+        <p>Die Videos sind Indeo&nbsp;3.2, das aktuelles Windows nicht mehr dekodiert. Der Videospieler des Spiels prüft das Ergebnis von <code>AVIStreamGetFrameOpen</code> nicht und liest dann durch einen NULL-Zeiger. Der Patch ergänzt die Prüfung und nimmt bei NULL den Weg, den das Spiel ohnehin bei einer fehlenden Datei geht. Den Platz dafür schafft eine kompaktere Kodierung der Befehle davor, in denselben 75&nbsp;Bytes:</p>
+<pre><code>push [edi] / call AVIStreamGetFrameOpen / test eax,eax / jnz ok
+mov [edi],eax / jmp release   <i>; Video überspringen</i>
+ok: mov [edi-8],eax</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Torgrenzen</b><span>Zwei Bremsen in der Spiel-Engine</span></summary>
+        <p>Die Grenze wird zu einem festen Wert, die Halbierung wird übersprungen. Mehr als 15 geht nicht: Ergebnis und Halbzeitstand speichert das Spiel als 4-Bit-Wert pro Mannschaft.</p>
+<pre><code>limit:  setg r8 / dec r32 / and r,-4 / add r,10  →  setg r8 / mov r32,15 / nop …
+brakes: jle (7E)                                  →  jmp (EB)</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Einfrieren</b><span>Ein Vergleich mit Vorzeichen</span></summary>
+        <p>Eine Antwortsequenz wartet bis zu 3&nbsp;Sekunden und vergleicht dazu die Differenz zweier <code>timeGetTime</code>-Werte mit Vorzeichen. Läuft Windows länger als 2<sup>31</sup>&nbsp;ms, wird die Differenz negativ, und <code>Sleep</code> bekommt eine riesige Wartezeit. Der Patch vergleicht ohne Vorzeichen, an beiden Stellen:</p>
+<pre><code>sub eax,[ebp+17C] / cmp eax,0BB8 / mov [ebp+17C],eax / jge (7D)  →  jae (73)</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Soundgerät</b><span>Die falsche GUID</span></summary>
+        <p>Beim Aufzählen merkt sich das Spiel das Gerät mit den meisten 3D-Puffern. Seit Vista melden alle dort 0, bei Gleichstand gewinnt das letzte, und dessen GUID geht an <code>DirectSoundCreate</code>. Mit NULL nimmt DirectSound das Standardgerät von Windows:</p>
+<pre><code>push &amp;guid (68 xx xx xx xx)  →  push esi / nop ×4   <i>; esi ist hier 0</i></code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Platz-Warnung</b><span>Ein 32-Bit-Überlauf</span></summary>
+        <p>Das Spiel multipliziert die Werte von <code>GetDiskFreeSpaceA</code> in 32&nbsp;Bit. Auf großen Platten ist das Ergebnis der freie Platz modulo 4&nbsp;GB und liegt ab und zu unter der Schwelle von 1,5&nbsp;MB. Der Patch überspringt die Warnung, gespeichert wird ohnehin:</p>
+<pre><code>cmp eax,177000 / jae (73)  →  jmp (EB)</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Kader</b><span>Leihen zählen als Abgang</span></summary>
+        <p>Ob ein Kader voll ist, prüft das Spiel vielerorts nur anhand einer Prognose, in der ein ausgeliehener Spieler als Abgang zählt. So passt ein 31.&nbsp;Spieler hinein, der hinter die 30 Plätze geschrieben wird. Der Patch prüft zusätzlich die tatsächliche Kadergröße, in denselben 32&nbsp;Bytes der Funktion:</p>
+<pre><code>voll = Prognose &gt;= 30  →  voll = Prognose &gt;= 30 oder Kader &gt;= 30</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Auflösung</b><span>Ein fehlendes Flag</span></summary>
+        <p>Das Spiel ruft <code>ChangeDisplaySettingsA</code> mit Flag 0 auf, die Umstellung ist dann nicht an den Prozess gebunden. Mit <code>CDS_FULLSCREEN</code> gilt sie nur fürs Spiel, und Windows stellt die Auflösung zurück, wenn es endet, auch nach einem Absturz:</p>
+<pre><code>mov [esi+1C8],ebx (Feld ist schon 0)  →  mov byte [esp+4],4 / nop</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>msvfw32.dll</b><span>Ein Proxy für die 2007er-CD</span></summary>
+        <p><code>msvfw32</code> ist keine KnownDLL, also gewinnt die Kopie im Spielordner. Alle 47 Exporte springen an die echte DLL weiter, die erst beim ersten Aufruf geladen wird. Ein Thread wartet, bis der entpackte Code im Speicher liegt, und schreibt dann nur die aktivierten Patches. Ohne C-Laufzeit gebaut, damit sie auch unter Windows XP lädt.</p>
+      </details>
+    </div>
+    <p class="more"><a href="https://github.com/transfairs/A2G-Patcher#readme">Ganze Beschreibung im README →</a></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="family">
+      <h2>Mehr für Anstoss 2 Gold</h2>
+      <div class="family-grid">
+        <a class="fam" href="https://transfairs.github.io/A2G-Trainer/">
+          <b>A2G-Trainer</b>
+          <span>Spieler, Vereine, Finanzen und mehr bearbeiten, während das Spiel läuft.</span>
+        </a>
+        <a class="fam" href="https://transfairs.github.io/A2G-Scaler/">
+          <b>A2G-Scaler</b>
+          <span>Das Spiel statt in 640×480 in jeder Fenster- oder Bildschirmgröße spielen.</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <span>A2G-Patch · freie Software unter <a href="https://github.com/transfairs/A2G-Patcher/blob/main/LICENSE">GPL-3.0</a></span>
+    <span>Kein offizielles Produkt der Rechteinhaber von Anstoss 2 Gold.</span>
+  </div>
+</footer>
+
+</body>
+</html>

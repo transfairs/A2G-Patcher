@@ -1,0 +1,33 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+*.pdb
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Test and coverage output
+TestResults/
+coveragereport/
+
+# Release packaging
+dist/
+
+# Local Claude Code instructions, settings and skills
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+.mcp.json
+
+# Local notes
+docs/
+
+# Built by dll/build.cmd (and by the release workflow); A2G-Patch.exe embeds it
+dll/*.dll
+dll/*.obj
+dll/*.exp
+dll/*.lib
