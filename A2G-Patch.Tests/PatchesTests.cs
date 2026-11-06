@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Xunit;
 
 namespace A2GPatch.Tests
@@ -40,6 +41,102 @@ namespace A2GPatch.Tests
             Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(2 * i, 2), 16)).ToArray();
     }
 
+    /// <summary>
+    /// Minimal 32-bit exes for the patches that read the headers: an import section at 0x1000 (file
+    /// 0x200, 0x200 bytes) and a code section at 0x2000 (file 0x400), headers listing the imports first.
+    /// In GOG's layout the import section is executable and listed last, as in GOG's run.exe.
+    /// </summary>
+    internal static class TestExe
+    {
+        internal const uint Base = 0x400000, ImportRva = 0x1000, CodeRva = 0x2000, CodeAt = 0x400;
+        internal const int ImportDirectoryAt = 0xC0, SectionsAt = 0x138;
+        internal static readonly string[][] GameImports =
+        {
+            new[] { "USER32.dll", "GetDC", "ReleaseDC" },
+            new[] { "GDI32.dll", "#5", "GetBitmapBits", "GetDIBits" },   // #5: by ordinal
+        };
+
+        /// <summary>The exe with the code <paramref name="code"/> builds from the import entries' addresses.</summary>
+        internal static byte[] Build(Func<Dictionary<string, uint>, byte[]> code, bool gog = false, string[][] imports = null,
+            bool emptyCodeSectionLast = false, byte[] overlay = null)
+        {
+            Dictionary<string, uint> entries = new Dictionary<string, uint>();
+            byte[] importSection = Imports(imports ?? GameImports, entries);
+            byte[] text = code(entries);
+            byte[] image = new byte[CodeAt + text.Length];
+            image[0] = 0x4D;
+            image[1] = 0x5A;
+            Put(image, 0x3C, 0x40);
+            Put(image, 0x40, 0x4550);
+            Put(image, 0x44, 0x14C);
+            List<uint[]> sections = new List<uint[]>                     // va, raw size, raw, characteristics
+            {
+                new uint[] { ImportRva, 0x200, 0x200, gog ? 0xE0000020u : 0x40000040u },
+                new uint[] { CodeRva, (uint)text.Length, CodeAt, 0x60000020 },
+            };
+            if (gog)
+                sections.Reverse();
+            if (emptyCodeSectionLast)
+                sections.Add(new uint[] { 0x8000, 0, 0, 0x60000020 });
+            image[0x46] = (byte)sections.Count;
+            image[0x54] = 0xE0;                                          // size of the optional header
+            Put(image, 0x58, 0x10B);
+            Put(image, 0x58 + 28, Base);
+            Put(image, ImportDirectoryAt, ImportRva);
+            for (int i = 0; i < sections.Count; i++)
+            {
+                Put(image, SectionsAt + 40 * i + 12, sections[i][0]);
+                Put(image, SectionsAt + 40 * i + 16, sections[i][1]);
+                Put(image, SectionsAt + 40 * i + 20, sections[i][2]);
+                Put(image, SectionsAt + 40 * i + 36, sections[i][3]);
+            }
+            importSection.CopyTo(image, 0x200);
+            text.CopyTo(image, CodeAt);
+            return overlay == null ? image : image.Concat(overlay).ToArray();
+        }
+
+        // The import section: descriptors, then per DLL its lookup table, address table, name and the functions' names.
+        private static byte[] Imports(string[][] dlls, Dictionary<string, uint> entries)
+        {
+            byte[] data = new byte[0x200];
+            int next = (dlls.Length + 1) * 20;
+            for (int d = 0; d < dlls.Length; d++)
+            {
+                string[] dll = dlls[d];
+                int count = dll.Length - 1, lookup = next, table = lookup + 4 * (count + 1), name = table + 4 * (count + 1);
+                Put(data, 20 * d, ImportRva + (uint)lookup);
+                Put(data, 20 * d + 12, ImportRva + (uint)name);
+                Put(data, 20 * d + 16, ImportRva + (uint)table);
+                Encoding.ASCII.GetBytes(dll[0]).CopyTo(data, name);
+                next = name + dll[0].Length + 1;
+                for (int i = 0; i < count; i++)
+                {
+                    string function = dll[i + 1];
+                    uint entry = function.StartsWith("#") ? 0x80000000 | uint.Parse(function.Substring(1)) : ImportRva + (uint)next;
+                    if (!function.StartsWith("#"))
+                    {
+                        Encoding.ASCII.GetBytes(function).CopyTo(data, next + 2);
+                        next += 2 + function.Length + 1;
+                        entries[function] = Base + ImportRva + (uint)(table + 4 * i);
+                    }
+                    Put(data, lookup + 4 * i, entry);
+                    Put(data, table + 4 * i, entry);
+                }
+            }
+            return data;
+        }
+
+        internal static void Put(byte[] image, int at, uint value) => BitConverter.GetBytes(value).CopyTo(image, at);
+
+        /// <summary>A copy of <paramref name="image"/> with <paramref name="value"/> at <paramref name="at"/>.</summary>
+        internal static byte[] With(this byte[] image, int at, uint value)
+        {
+            byte[] copy = (byte[])image.Clone();
+            Put(copy, at, value);
+            return copy;
+        }
+    }
+
     /// <summary>Tests for the patches: finding their places in original and patched code, and refusing what they don't know.</summary>
     public class PatchesTests
     {
@@ -64,9 +161,98 @@ namespace A2GPatch.Tests
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit", "Ton über das Standard-Audiogerät von Windows",
                 "Keine falsche Warnung „Festplatte fast voll“ beim Speichern", "Kader nicht über 30 Spieler wachsen lassen",
-                "Desktop-Auflösung auch nach einem Absturz zurückholen",
+                "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
             }, Patch.All.Select(p => p.Name));
-            Assert.Equal(new byte[] { 1, 2, 4, 8, 16, 32, 64, 128 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256 }, Patch.All.Select(p => p.Flag));
+        }
+
+        private static readonly Patch Cup = Patch.All[8];
+
+        // The original exe from 0x419ED1: ReleaseDC(NULL, dc), then GetBitmapBits(bitmap, 2000, this+C).
+        internal static byte[] CupCall(Dictionary<string, uint> imports, uint? bits = null) =>
+            new byte[] { 0x53, 0x6A, 0x00, 0xFF, 0x15 }.Concat(BitConverter.GetBytes(imports["ReleaseDC"]))
+                .Concat("8B96108000008D4E0C51680020000052FF15".Hex()).Concat(BitConverter.GetBytes(bits ?? imports["GetBitmapBits"])).ToArray();
+
+        // The code section: the call at 0x400 + 300, then zeros up to 603 bytes.
+        internal static byte[] CupCode(Dictionary<string, uint> imports) => GameCode.Exe(CupCall(imports)).Concat(new byte[256]).ToArray();
+
+        private const int CupCallAt = 0x400 + 300 + 25;
+
+        [Theory]
+        [InlineData(false, 0x5A0, 0x4021A0)]   // the code section's end
+        [InlineData(true, 0x340, 0x401140)]    // GOG: the import section's end
+        public void CupDraw_CallsAddedCode_AtTheEndOfTheLastExecutableSection(bool gog, long helper, long helperVa)
+        {
+            Dictionary<string, uint> imports = null;
+            byte[] image = TestExe.Build(i => CupCode(imports = i), gog);
+            Site[] sites = Cup.Find(image);
+
+            Assert.Equal(new[] { helper, CupCallAt }, sites.Select(s => s.Offset));
+            Assert.All(sites, s => Assert.False(s.IsPatched));
+            Assert.Equal(new byte[177], sites[0].Original);
+            Assert.Equal(CupDraw.HelperBytes(imports["GetDC"], imports["GetDIBits"], imports["ReleaseDC"]), sites[0].Patched);
+            Assert.Equal(image.Skip(CupCallAt).Take(6), sites[1].Original);
+            // call helper / nop, from the call's address 0x402000 + 300 + 25.
+            Assert.Equal(new byte[] { 0xE8 }, sites[1].Patched.Take(1));
+            Assert.Equal(0x90, sites[1].Patched[5]);
+            Assert.Equal(helperVa, 0x402000 + 325 + 5 + BitConverter.ToInt32(sites[1].Patched, 1));
+
+            Site[] again = Cup.Find(Apply(image, sites));
+            Assert.All(again, s => Assert.True(s.IsPatched));
+            Assert.Equal(sites.Select(s => s.Original), again.Select(s => s.Original));
+            Assert.Equal(sites.Select(s => s.Patched), again.Select(s => s.Patched));
+        }
+
+        [Fact]
+        public void CupDraw_Helper_CallsTheGivenImportEntries()
+        {
+            // The original exe's GetDC, GetDIBits and ReleaseDC entries.
+            byte[] code = CupDraw.HelperBytes(0x6775F8, 0x6770F0, 0x6775E8);
+
+            Assert.Equal(177, code.Length);
+            Assert.Equal("6A00FF15F8756700".Hex(), code.Skip(62).Take(8));        // push 0 / call [GetDC]
+            Assert.Equal("53FF15F0706700".Hex(), code.Skip(89).Take(7));          // push dc / call [GetDIBits]
+            Assert.Equal("536A00FF15E8756700".Hex(), code.Skip(98).Take(9));      // ReleaseDC(NULL, dc)
+            Assert.Equal("5B5DC20C00".Hex(), code.Skip(172));                     // pop ebx / pop ebp / ret C
+        }
+
+        public static IEnumerable<object[]> UnknownCupCode()
+        {
+            byte[] exe = TestExe.Build(CupCode);
+            Site[] sites = Cup.Find(exe);
+            byte[] withHelper = Apply(exe, sites.Take(1).ToArray());
+            int textCharacteristics = TestExe.SectionsAt + 40 + 36;
+            return new[]
+            {
+                TestExe.Build(i => GameCode.Exe(CupCall(i), CupCall(i)).Concat(new byte[256]).ToArray()), // ambiguous
+                GameCode.Exe(CupCall(new Dictionary<string, uint> { ["ReleaseDC"] = 1, ["GetBitmapBits"] = 2 })), // no exe headers
+                exe.With(0x40, 0),                                                         // no PE signature
+                exe.With(0x3C, 0x7FFFFF00),                                                // headers beyond the end
+                exe.With(TestExe.ImportDirectoryAt, 0x9000),                               // imports outside every section
+                TestExe.Build(CupCode, imports: new[] { TestExe.GameImports[0], new[] { "GDI32.dll", "GetBitmapBits" } }), // no GetDIBits
+                exe.With(textCharacteristics, 0x40000040),                                 // no executable section
+                TestExe.Build(CupCode, emptyCodeSectionLast: true),                        // no room in the last one
+                TestExe.Build(i => new byte[600], overlay: CupCall(Imports())),           // call outside the sections
+                TestExe.Build(i => GameCode.Exe(CupCall(i, 0x12345678)).Concat(new byte[256]).ToArray()), // not GetBitmapBits
+                exe.With(0x5A0, 1),                                                        // the room isn't free
+                Apply(exe, sites.Skip(1).ToArray()),                                       // calls into zeros
+                withHelper.With(CupCallAt, 0xE8).With(CupCallAt + 2, 0x90000000),          // calls elsewhere (E8 0 / nop)
+            }.Select(image => new object[] { image });
+        }
+
+        // The import entries as TestExe lays them out.
+        private static Dictionary<string, uint> Imports()
+        {
+            Dictionary<string, uint> imports = null;
+            TestExe.Build(i => { imports = i; return new byte[0]; });
+            return imports;
+        }
+
+        [Theory]
+        [MemberData(nameof(UnknownCupCode))]
+        public void CupDraw_InUnknownCode_FindsNothing(byte[] image)
+        {
+            Assert.Null(Cup.Find(image));
         }
 
         [Fact]

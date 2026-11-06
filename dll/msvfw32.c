@@ -18,6 +18,7 @@
 //  32 disk warning: jae after the 32-bit free space product    ->  jmp (no warning)
 //  64 squad limit:  "full?" by forecast only                   ->  also full at 30 actual players
 // 128 display mode: ChangeDisplaySettingsA(&640x480, 0)        ->  flags CDS_FULLSCREEN (undone at exit)
+// 256 cup draw:     GetBitmapBits of the names' bitmap         ->  GetDIBits as 16-bit DIB
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
 // deleting this msvfw32.dll.
@@ -103,8 +104,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 // ---- configuration --------------------------------------------------------------------------------
 
 // The marker lets A2G-Patch.exe recognize its own msvfw32.dll (it never deletes or overwrites someone
-// else's) and find the flags byte right after it, which it sets on installing. volatile and not const,
-// so the compiler keeps it in .data and reads the byte the exe wrote.
+// else's) and find the two flags bytes right after it (low byte first), which it sets on installing.
+// volatile and not const, so the compiler keeps it in .data and reads the bytes the exe wrote.
 #define FLAG_GOAL_LIMITS  1
 #define FLAG_ARROW_REPEAT 2
 #define FLAG_VIDEO_CRASH  4
@@ -112,9 +113,10 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_DEFAULT_SOUND 16
 #define FLAG_DISK_WARNING 32
 #define FLAG_SQUAD_LIMIT  64
-#define FLAG_DISPLAY_MODE 128   // the last bit of the flags byte
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF";
-#define CONFIG_FLAGS (g_config[14])
+#define FLAG_DISPLAY_MODE 128
+#define FLAG_CUP_DRAW     256   // the first bit of the second flags byte
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x01";   // all on
+#define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
 
@@ -422,6 +424,66 @@ static int PatchRewrite(BYTE *base, SIZE_T size, const WORD *original, const WOR
     return DONE;
 }
 
+// ---- 256: cup draw --------------------------------------------------------------------------------
+
+// As in Patches.cs (CupDraw): the names on the cup draw sign come out of GetBitmapBits, which on current
+// Windows and under Wine delivers 32 bits per pixel. The call goes to added code that fetches them with GetDIBits as a 16-bit
+// top-down DIB (5-5-5, converted to 5-6-5 if the game's surface has green mask 7E0 at [esi+8040]).
+// push ebx / push 0 / call [ReleaseDC] / mov edx,[esi+8010] / lea ecx,[esi+C] / push ecx / push 2000 /
+// push edx / call [GetBitmapBits] (-> call helper / nop)
+#define CUP_HEAD 0x53, 0x6A, 0x00, 0xFF, 0x15, ANY, ANY, ANY, ANY, \
+    0x8B, 0x96, 0x10, 0x80, 0x00, 0x00, 0x8D, 0x4E, 0x0C, 0x51, 0x68, 0x00, 0x20, 0x00, 0x00, 0x52
+#define CUP_CALL 25
+static const WORD kCup[] = { CUP_HEAD, 0xFF, 0x15, ANY, ANY, ANY, ANY };
+static const WORD kCupPatched[] = { CUP_HEAD, 0xE8, ANY, ANY, ANY, ANY, 0x90 };
+// The helper as in Patches.cs; the operands of its three indirect calls (bytes 66, 92, 103) point to
+// GetDC, GetDIBits and ReleaseDC. On disk those are the game's import entries; here, cells behind the code.
+static const BYTE kCupHelper[177] = {
+    0x55, 0x53, 0x83, 0xEC, 0x34, 0xC7, 0x04, 0x24, 0x28, 0x00, 0x00, 0x00, 0xC7, 0x44, 0x24, 0x04,
+    0x80, 0x00, 0x00, 0x00, 0xC7, 0x44, 0x24, 0x08, 0xE0, 0xFF, 0xFF, 0xFF, 0xC7, 0x44, 0x24, 0x0C,
+    0x01, 0x00, 0x10, 0x00, 0x33, 0xC0, 0x89, 0x44, 0x24, 0x10, 0x89, 0x44, 0x24, 0x14, 0x89, 0x44,
+    0x24, 0x18, 0x89, 0x44, 0x24, 0x1C, 0x89, 0x44, 0x24, 0x20, 0x89, 0x44, 0x24, 0x24, 0x6A, 0x00,
+    0xFF, 0x15, 0x00, 0x00, 0x00, 0x00, 0x8B, 0xD8, 0x8B, 0xCC, 0x6A, 0x00, 0x51, 0xFF, 0x74, 0x24,
+    0x50, 0x6A, 0x20, 0x6A, 0x00, 0xFF, 0x74, 0x24, 0x54, 0x53, 0xFF, 0x15, 0x00, 0x00, 0x00, 0x00,
+    0x8B, 0xE8, 0x53, 0x6A, 0x00, 0xFF, 0x15, 0x00, 0x00, 0x00, 0x00, 0x81, 0xBE, 0x40, 0x80, 0x00,
+    0x00, 0xE0, 0x07, 0x00, 0x00, 0x75, 0x30, 0x8B, 0x54, 0x24, 0x48, 0xB9, 0x00, 0x10, 0x00, 0x00,
+    0x0F, 0xB7, 0x02, 0x8B, 0xD8, 0x81, 0xE3, 0x1F, 0x00, 0x00, 0x00, 0x25, 0xE0, 0x7F, 0x00, 0x00,
+    0xD1, 0xE0, 0x0B, 0xD8, 0x25, 0x00, 0x04, 0x00, 0x00, 0xC1, 0xE8, 0x05, 0x0B, 0xC3, 0x66, 0x89,
+    0x02, 0x83, 0xC2, 0x02, 0x49, 0x75, 0xD9, 0x8B, 0xC5, 0x83, 0xC4, 0x34, 0x5B, 0x5D, 0xC2, 0x0C,
+    0x00 };
+static const SIZE_T kCupOperands[3] = { 66, 92, 103 };
+
+static int PatchCupDraw(BYTE *base, SIZE_T size)
+{
+    BYTE *site, *patchedSite;
+    int count = Count(base, size, kCup, ARRAYSIZE(kCup), &site);
+    int countPatched = Count(base, size, kCupPatched, ARRAYSIZE(kCupPatched), &patchedSite);
+    if (count + countPatched == 0) return NOT_YET;
+    if (count != 1 || countPatched != 0) return DONE;
+
+    HMODULE user = GetModuleHandleW(L"user32.dll"), gdi = GetModuleHandleW(L"gdi32.dll");
+    if (!user || !gdi) return DONE;
+    FARPROC functions[3] = { GetProcAddress(user, "GetDC"), GetProcAddress(gdi, "GetDIBits"), GetProcAddress(user, "ReleaseDC") };
+    if (!functions[0] || !functions[1] || !functions[2]) return DONE;
+    BYTE *helper = (BYTE *)VirtualAlloc(NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!helper) return DONE;
+    FARPROC *cells = (FARPROC *)(helper + 192);
+    Copy(helper, kCupHelper, sizeof kCupHelper);
+    for (int i = 0; i < 3; i++)
+    {
+        DWORD cell = (DWORD)(ULONG_PTR)&cells[i];
+        cells[i] = functions[i];
+        Copy(helper + kCupOperands[i], (const BYTE *)&cell, 4);
+    }
+    FlushInstructionCache(GetCurrentProcess(), helper, sizeof kCupHelper);
+
+    BYTE call[6] = { 0xE8, 0, 0, 0, 0, 0x90 };
+    LONG rel = (LONG)(helper - (site + CUP_CALL + 5));
+    Copy(call + 1, (const BYTE *)&rel, 4);
+    Write(site + CUP_CALL, call, sizeof call);
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 static DWORD WINAPI PatchThread(LPVOID param)
@@ -431,12 +493,13 @@ static DWORD WINAPI PatchThread(LPVOID param)
     IMAGE_DOS_HEADER *dos = (IMAGE_DOS_HEADER *)base;
     IMAGE_NT_HEADERS32 *nt = (IMAGE_NT_HEADERS32 *)(base + dos->e_lfanew);
     SIZE_T size = nt->OptionalHeader.SizeOfImage;
-    BYTE flags = CONFIG_FLAGS;
+    WORD flags = CONFIG_FLAGS;
     BOOL goalsDone = !(flags & FLAG_GOAL_LIMITS), arrowDone = !(flags & FLAG_ARROW_REPEAT);
     BOOL videoDone = !(flags & FLAG_VIDEO_CRASH), sleepDone = !(flags & FLAG_SLEEP_FREEZE);
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone)
+    BOOL cupDone = !(flags & FLAG_CUP_DRAW);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -447,6 +510,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!diskDone) diskDone = PatchOpcode(base, size, kDisk, ARRAYSIZE(kDisk), 10, 0xEB, 1) == DONE;
         if (!squadDone) squadDone = PatchRewrite(base, size, kSquad, kSquadPatched, ARRAYSIZE(kSquad)) == DONE;
         if (!displayDone) displayDone = PatchRewrite(base, size, kDisplay, kDisplayPatched, ARRAYSIZE(kDisplay)) == DONE;
+        if (!cupDone) cupDone = PatchCupDraw(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

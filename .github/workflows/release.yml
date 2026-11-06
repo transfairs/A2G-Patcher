@@ -105,6 +105,9 @@ jobs:
           - Desktop-Auflösung auch nach einem Absturz zurückholen: Nach einem Absturz blieb der
             Desktop sonst auf 640x480. In der GOG-Version ist das schon behoben, dort ist der
             Schalter ausgegraut.
+          - Vereinsnamen bei der Pokalauslosung richtig darstellen: Unter aktuellem Windows und
+            unter Wine erscheinen die Vereinsnamen im Video der Pokalauslosung sonst doppelt so
+            breit, halb so hoch und gepunktet.
 
           So geht's
           ---------

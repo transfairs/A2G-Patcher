@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace A2GPatch
 {
@@ -24,14 +25,14 @@ namespace A2GPatch
         public static readonly Patch[] All =
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
-            new SquadLimit(), new DisplayModeRestore(),
+            new SquadLimit(), new DisplayModeRestore(), new CupDraw(),
         };
 
         /// <summary>What the window's switch says.</summary>
         public abstract string Name { get; }
 
-        /// <summary>Its bit in the flags of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c).</summary>
-        public abstract byte Flag { get; }
+        /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c).</summary>
+        public abstract ushort Flag { get; }
 
         /// <summary>The patterns that locate the patch; none of them in an exe means its code isn't readable there (packed).</summary>
         public abstract IEnumerable<byte?[]> Patterns { get; }
@@ -87,7 +88,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Torgrenzen aufheben";
         /// <inheritdoc/>
-        public override byte Flag => 1;
+        public override ushort Flag => 1;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { Exact(LimitPattern), Exact(HomeBrakePattern), Exact(AwayBrakePattern) };
 
@@ -200,7 +201,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Pfeile zählen beim Gedrückthalten weiter";
         /// <inheritdoc/>
-        public override byte Flag => 2;
+        public override ushort Flag => 2;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -312,7 +313,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen";
         /// <inheritdoc/>
-        public override byte Flag => 4;
+        public override ushort Flag => 4;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -393,7 +394,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit";
         /// <inheritdoc/>
-        public override byte Flag => 8;
+        public override ushort Flag => 8;
     }
 
     /// <summary>
@@ -417,7 +418,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Keine falsche Warnung „Festplatte fast voll“ beim Speichern";
         /// <inheritdoc/>
-        public override byte Flag => 32;
+        public override ushort Flag => 32;
     }
 
     /// <summary>
@@ -456,7 +457,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Kader nicht über 30 Spieler wachsen lassen";
         /// <inheritdoc/>
-        public override byte Flag => 64;
+        public override ushort Flag => 64;
     }
 
     /// <summary>
@@ -497,7 +498,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Desktop-Auflösung auch nach einem Absturz zurückholen";
         /// <inheritdoc/>
-        public override byte Flag => 128;
+        public override ushort Flag => 128;
     }
 
     /// <summary>
@@ -560,7 +561,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Ton über das Standard-Audiogerät von Windows";
         /// <inheritdoc/>
-        public override byte Flag => 16;
+        public override ushort Flag => 16;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -583,6 +584,204 @@ namespace A2GPatch
             if (!isPatched && !image.Skip(at + Guid).Take(push.Length).SequenceEqual(push))
                 return null;
             return new[] { new Site { Offset = at + Guid, Original = push, Patched = (byte[])Patched.Clone(), IsPatched = isPatched } };
+        }
+    }
+
+    /// <summary>
+    /// Makes the club names on the sign in the cup draw video readable again. The video's player
+    /// (FUN_00419e10 in the original) draws the names with GDI into CreateCompatibleBitmap(screen, 128, 32)
+    /// and copies them out with GetBitmapBits(bitmap, 0x2000, this+C), expecting 16 bits per pixel. On
+    /// current Windows and under Wine the bitmap has 32 bits per pixel even in the game's 16-bit mode,
+    /// so the game gets the upper half of the picture with each pixel split in two: names twice as wide,
+    /// half as high and dotted. The patch sends the call to added code that fetches the picture with
+    /// GetDIBits as a top-down 16-bit DIB.
+    /// Wine ignores the masks of a BI_BITFIELDS request, so the code asks for BI_RGB (5-5-5) and converts
+    /// the pixels to 5-6-5 itself if the game's surface uses that (green mask this+8040 = 7E0; esi is
+    /// the player there). Black stays 0, the game's transparent color.
+    /// <code>
+    ///   call [GetBitmapBits]   ->   call helper / nop
+    ///   helper: GetDC(NULL) / GetDIBits(dc, bitmap, 0, 32, bits, &amp;16-bit top-down 128x32, DIB_RGB_COLORS) /
+    ///           ReleaseDC / if 5-6-5: each pixel (p &amp; 1F) | (p &amp; 7FE0) &lt;&lt; 1 | (p &amp; 200) &gt;&gt; 4 / ret C
+    /// </code>
+    /// The helper (177 bytes, through the game's own imports of GetDC, GetDIBits and ReleaseDC) goes at
+    /// the end of the exe's last executable section, which is zero there: past the end of the original's
+    /// code (the loader maps a section's whole raw data), at the end of GOG's import section. Taking the
+    /// patch back zeroes it again.
+    /// </summary>
+    internal sealed class CupDraw : Patch
+    {
+        // push ebx / push 0 / call [ReleaseDC] / mov edx,[esi+8010] / lea ecx,[esi+C] / push ecx / push 2000 / push edx
+        private static readonly byte?[] Head =
+        {
+            0x53, 0x6A, 0x00, 0xFF, 0x15, null, null, null, null,
+            0x8B, 0x96, 0x10, 0x80, 0x00, 0x00, 0x8D, 0x4E, 0x0C, 0x51, 0x68, 0x00, 0x20, 0x00, 0x00, 0x52,
+        };
+        private static readonly byte?[] OriginalPattern = Head.Concat(new byte?[] { 0xFF, 0x15, null, null, null, null }).ToArray();
+        private static readonly byte?[] PatchedPattern = Head.Concat(new byte?[] { 0xE8, null, null, null, null, 0x90 }).ToArray();
+        private const uint Executable = 0x20000000;   // IMAGE_SCN_MEM_EXECUTE
+
+        // stdcall like GetBitmapBits(bitmap, size, bits); the three imports' addresses are left 0.
+        private static readonly byte[] Helper =
+        {
+            0x55, 0x53, 0x83, 0xEC, 0x34,                                       // push ebp / push ebx / sub esp,34 (BITMAPINFO)
+            0xC7, 0x04, 0x24, 0x28, 0x00, 0x00, 0x00,                           // biSize 40
+            0xC7, 0x44, 0x24, 0x04, 0x80, 0x00, 0x00, 0x00,                     // biWidth 128
+            0xC7, 0x44, 0x24, 0x08, 0xE0, 0xFF, 0xFF, 0xFF,                     // biHeight -32 (top-down)
+            0xC7, 0x44, 0x24, 0x0C, 0x01, 0x00, 0x10, 0x00,                     // biPlanes 1, biBitCount 16
+            0x33, 0xC0, 0x89, 0x44, 0x24, 0x10, 0x89, 0x44, 0x24, 0x14, 0x89, 0x44, 0x24, 0x18,
+            0x89, 0x44, 0x24, 0x1C, 0x89, 0x44, 0x24, 0x20, 0x89, 0x44, 0x24, 0x24, // BI_RGB, the rest 0
+            0x6A, 0x00, 0xFF, 0x15, 0x00, 0x00, 0x00, 0x00,                     // GetDC(NULL)
+            0x8B, 0xD8, 0x8B, 0xCC,                                             // mov ebx,eax / mov ecx,esp
+            0x6A, 0x00, 0x51, 0xFF, 0x74, 0x24, 0x50, 0x6A, 0x20, 0x6A, 0x00,   // DIB_RGB_COLORS, &info, bits, 32 lines, from 0
+            0xFF, 0x74, 0x24, 0x54, 0x53, 0xFF, 0x15, 0x00, 0x00, 0x00, 0x00,   // bitmap, dc / GetDIBits
+            0x8B, 0xE8, 0x53, 0x6A, 0x00, 0xFF, 0x15, 0x00, 0x00, 0x00, 0x00,   // mov ebp,eax / ReleaseDC(NULL, dc)
+            0x81, 0xBE, 0x40, 0x80, 0x00, 0x00, 0xE0, 0x07, 0x00, 0x00,         // cmp dword [esi+8040],7E0 (5-6-5?)
+            0x75, 0x30,                                                         // jne done
+            0x8B, 0x54, 0x24, 0x48, 0xB9, 0x00, 0x10, 0x00, 0x00,               // mov edx,bits / mov ecx,4096
+            0x0F, 0xB7, 0x02, 0x8B, 0xD8, 0x81, 0xE3, 0x1F, 0x00, 0x00, 0x00,   // next: movzx eax,word [edx] / blue
+            0x25, 0xE0, 0x7F, 0x00, 0x00, 0xD1, 0xE0, 0x0B, 0xD8,               // red and green one bit up
+            0x25, 0x00, 0x04, 0x00, 0x00, 0xC1, 0xE8, 0x05, 0x0B, 0xC3,         // top green bit also as the lowest
+            0x66, 0x89, 0x02, 0x83, 0xC2, 0x02, 0x49, 0x75, 0xD9,               // store / add edx,2 / dec ecx / jne next
+            0x8B, 0xC5, 0x83, 0xC4, 0x34, 0x5B, 0x5D, 0xC2, 0x0C, 0x00,         // done: return GetDIBits' result
+        };
+        private const int GetDCAt = 66, GetDIBitsAt = 92, ReleaseDCAt = 103;
+
+        /// <inheritdoc/>
+        public override string Name => "Vereinsnamen bei der Pokalauslosung richtig darstellen";
+        /// <inheritdoc/>
+        public override ushort Flag => 256;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
+
+        /// <summary>The added code for the import address table entries of GetDC, GetDIBits and ReleaseDC.</summary>
+        internal static byte[] HelperBytes(uint getDC, uint getDIBits, uint releaseDC)
+        {
+            byte[] code = (byte[])Helper.Clone();
+            BitConverter.GetBytes(getDC).CopyTo(code, GetDCAt);
+            BitConverter.GetBytes(getDIBits).CopyTo(code, GetDIBitsAt);
+            BitConverter.GetBytes(releaseDC).CopyTo(code, ReleaseDCAt);
+            return code;
+        }
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            List<long> original = FindAll(image, OriginalPattern), patched = FindAll(image, PatchedPattern);
+            if (original.Count + patched.Count != 1)
+                return null;
+            PeFile pe = PeFile.Read(image);
+            uint[] imports = new[] { "GetBitmapBits", "GetDC", "GetDIBits", "ReleaseDC" }
+                .Select(name => pe != null && pe.Imports.TryGetValue(name, out uint entry) ? entry : 0).ToArray();
+            PeFile.Section last = pe?.Sections.LastOrDefault(s => (s.Characteristics & Executable) != 0);
+            if (imports.Contains(0u) || last == null)
+                return null;
+            bool isPatched = patched.Count == 1;
+            long call = (isPatched ? patched[0] : original[0]) + Head.Length;
+            long helper = (last.Raw + last.RawSize - Helper.Length) & ~15L;
+            long callVa = pe.VaAt(call), helperVa = pe.VaAt(helper);
+            if (callVa < 0 || helperVa < 0)
+                return null;
+
+            byte[] code = HelperBytes(imports[1], imports[2], imports[3]);
+            byte[] originalCall = new byte[] { 0xFF, 0x15 }.Concat(BitConverter.GetBytes(imports[0])).ToArray();
+            byte[] patchedCall = new byte[] { 0xE8 }.Concat(BitConverter.GetBytes((int)(helperVa - (callVa + 5)))).Concat(new byte[] { 0x90 }).ToArray();
+            if (!image.Skip((int)call).Take(6).SequenceEqual(isPatched ? patchedCall : originalCall)
+                || !image.Skip((int)helper).Take(code.Length).SequenceEqual(isPatched ? code : new byte[code.Length]))
+                return null;
+            // The helper first, so the call never leads to zeros.
+            return new[]
+            {
+                new Site { Offset = helper, Original = new byte[code.Length], Patched = code, IsPatched = isPatched },
+                new Site { Offset = call, Original = originalCall, Patched = patchedCall, IsPatched = isPatched },
+            };
+        }
+    }
+
+    /// <summary>What <see cref="CupDraw"/> needs of a 32-bit exe's headers: its sections and the imports by name.</summary>
+    internal sealed class PeFile
+    {
+        /// <summary>A section header.</summary>
+        internal sealed class Section
+        {
+            public uint Va, Raw, RawSize, Characteristics;
+        }
+
+        private readonly byte[] image;
+        /// <summary>Where the exe is loaded.</summary>
+        public uint ImageBase { get; private set; }
+        /// <summary>The sections in the order of the headers.</summary>
+        public List<Section> Sections { get; } = new List<Section>();
+        /// <summary>Each imported function's import address table entry (an address in the loaded exe).</summary>
+        public Dictionary<string, uint> Imports { get; } = new Dictionary<string, uint>();
+
+        private PeFile(byte[] image) => this.image = image;
+
+        /// <summary>The exe's headers and imports, or null if <paramref name="image"/> isn't a readable PE file.</summary>
+        public static PeFile Read(byte[] image)
+        {
+            try
+            {
+                PeFile pe = new PeFile(image);
+                return pe.Parse() ? pe : null;
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
+
+        private bool Parse()
+        {
+            if (this.U16(0) != 0x5A4D)                         // MZ
+                return false;
+            long header = this.U32(0x3C);
+            if (this.U32(header) != 0x4550)                    // PE\0\0
+                return false;
+            long optional = header + 24, sections = optional + this.U16(header + 20);
+            this.ImageBase = this.U32(optional + 28);
+            for (int i = 0; i < this.U16(header + 6); i++)
+            {
+                long at = sections + 40 * i;
+                this.Sections.Add(new Section { Va = this.U32(at + 12), RawSize = this.U32(at + 16), Raw = this.U32(at + 20), Characteristics = this.U32(at + 36) });
+            }
+            // The import descriptors up to the empty one: names by the import lookup table, entries in the address table.
+            for (long descriptor = this.Offset(this.U32(optional + 104)); this.U32(descriptor + 12) != 0; descriptor += 20)
+            {
+                long lookup = this.Offset(this.U32(descriptor)), table = this.U32(descriptor + 16);
+                for (int i = 0; this.U32(lookup + 4 * i) != 0; i++)
+                {
+                    uint entry = this.U32(lookup + 4 * i);
+                    if ((entry & 0x80000000) == 0)             // not by ordinal
+                        this.Imports[this.Name(this.Offset(entry) + 2)] = (uint)(this.ImageBase + table + 4 * i);
+                }
+            }
+            return true;
+        }
+
+        /// <summary>The address <paramref name="offset"/> in the file is loaded at, or -1 outside every section.</summary>
+        public long VaAt(long offset)
+        {
+            Section section = this.Sections.FirstOrDefault(s => offset >= s.Raw && offset < s.Raw + s.RawSize);
+            return section == null ? -1 : this.ImageBase + section.Va + (offset - section.Raw);
+        }
+
+        // Where the address rva (relative to the image base) lies in the file.
+        private long Offset(uint rva)
+        {
+            Section section = this.Sections.FirstOrDefault(s => rva >= s.Va && rva < s.Va + s.RawSize);
+            return section != null ? section.Raw + (rva - section.Va) : throw new FormatException();
+        }
+
+        private byte Byte(long at) => at < this.image.Length ? this.image[at] : throw new FormatException();
+        private int U16(long at) => this.Byte(at) | this.Byte(at + 1) << 8;
+        private uint U32(long at) => (uint)(this.U16(at) | this.U16(at + 2) << 16);
+
+        private string Name(long at)
+        {
+            StringBuilder name = new StringBuilder();
+            for (byte c = this.Byte(at); c != 0; c = this.Byte(++at))
+                name.Append((char)c);
+            return name.ToString();
         }
     }
 }

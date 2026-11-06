@@ -25,6 +25,8 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window:
   640x480 in a way that outlives it; after a crash the desktop stayed at 640x480. With the patch Windows
   restores the resolution itself when the game ends. The GOG release already does this; there the switch
   is greyed out.
+- **Vereinsnamen bei der Pokalauslosung richtig darstellen** (bug fix): on current Windows and under
+  Wine, the club names on the sign in the cup draw video come out twice as wide, half as high and dotted.
 
 Works with the original release (1999), the GOG release and the 2007 CD release. Like the game, the
 user interface is in German.
@@ -148,6 +150,27 @@ The sound patch rebuilds the original instruction from the patched code: the kep
 bytes before the DirectSound pointer, which the code mentions twice. The squad check keeps its call in
 place, so the new code fits the function's 32 bytes.
 
+**Cup draw.** The cup draw video (`FUN_00419e10` in the original exe) draws the club names with GDI into
+`CreateCompatibleBitmap(screen, 128, 32)` and copies them out with `GetBitmapBits(bitmap, 0x2000, ...)`,
+expecting 16 bits per pixel. On current Windows and under Wine that bitmap has 32 bits per pixel even in
+the game's 16-bit mode, so the game gets the upper half of the picture with each pixel split in two. The
+patch sends the call to added code that fetches the picture with `GetDIBits` as a top-down 16-bit DIB:
+
+```
+call [GetBitmapBits]   ->   call helper / nop
+helper: GetDC(NULL) / GetDIBits(dc, bitmap, 0, 32, bits, 128x-32 16 bit BI_RGB) / ReleaseDC
+        if the game's surface is 5-6-5 (green mask [esi+8040] = 7E0): convert each 5-5-5 pixel
+        ret C                                                          ; stdcall, like GetBitmapBits
+```
+
+Wine ignores the color masks of a `BI_BITFIELDS` request, hence `BI_RGB` (5-5-5) and the conversion;
+black stays 0, the game's transparent color. The helper (177 bytes) is the only patch that needs room of
+its own. On disk it goes to the end of the exe's last executable section, which is zero there: behind the
+original's code in `.text` (the loader maps a section's whole raw data, also past `VirtualSize`), and at
+the end of GOG's `.idata`. It calls `GetDC`, `GetDIBits` and `ReleaseDC` through the game's own import
+entries, read from the exe's headers. Taking the patch back zeroes it again. In memory, `msvfw32.dll`
+puts the same code into a `VirtualAlloc` block with the three addresses from `GetProcAddress`.
+
 ## msvfw32.dll (`dll/`)
 
 A proxy like A2G-Scaler's `dsound.dll`: `msvfw32` is not a KnownDLL, so the copy in the program folder
@@ -156,11 +179,11 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 
 - All 47 exports of the real `msvfw32.dll` are `jmp` stubs (ordinals kept in `msvfw32.def`). The real
   DLL is loaded lazily on the first call, never in `DllMain` (loader lock).
-- Which patches it applies is a flags byte after the marker `A2GPatchFlags` in its `.data`; A2G-Patch
-  sets it when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze, 16 sound device,
-  32 disk warning, 64 squad limit, 128 display mode; the build has all on). An
-  installed copy that differs from the embedded one in more than this byte is from another version
-  and gets replaced.
+- Which patches it applies are two flags bytes (low byte first) after the marker `A2GPatchFlags` in its
+  `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
+  16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw; the build has all
+  on). An installed copy that differs from the embedded one in more than these bytes is from another
+  version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled
   patch's code is in memory, then rewrites it (`VirtualProtect`, `FlushInstructionCache`). Code that
   is ambiguous or not as expected is left alone; in other programs (Editor.exe) nothing turns up.
