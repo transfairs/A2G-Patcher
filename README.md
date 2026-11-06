@@ -30,6 +30,9 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window:
 - **Kein Hänger beim Öffnen der Kalkulation in der Vorsaison** (bug fix): the calculation screen sets up
   one of its two selections from memory it never cleared. With a large value there it stays hidden and
   the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.
+- **Patch 1.01 (Änderungen an Programm und Daten)**: the GOG release and the 2007 CD release are built
+  from the 1.00 source. The patch brings program and data to the official patch 1.01, which the 1999
+  release contains already. Greyed out for the 1999 release.
 
 Only for the GOG release, under their own heading and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -39,8 +42,6 @@ releases don't need):
   protection fails in GOG's `run.exe`: 11 CD checks (from the second season all teams are called
   "Raubkopie", players drop to strength 1) and ten integrity checks (functions skip their work or double
   negative values). The patch lets all of them pass.
-- **Patch 1.01 (Änderungen an Programm und Daten)**: GOG's `run.exe` is built from the 1.00 source. The
-  patch brings program and data to the official patch 1.01, which the 1999 release contains already.
 - **Dialoge mit Titelleiste und Rahmen wie im Original von 1999**: GOG's `RESDLL.dll` lacks the title bar
   of 342 dialogs, the sunken frame around 68 controls (e.g. the choices that look like buttons) and a
   few other styles. The patch gives them back.
@@ -68,7 +69,7 @@ What happens depends on the release:
 |---|---|---|
 | Original (1999) | `anstoss2.exe` | Patched on disk. A backup `anstoss2.exe.vor-a2g-patch` is written first; once all patches are taken back, the exe is byte-identical again and the backup goes. |
 | GOG | `run.exe` | Same, `run.exe.vor-a2g-patch`. A GOG Galaxy file check restores the original; then apply again. The GOG patches also change other files: `RESDLL.dll` (backup `RESDLL.dll.vor-a2g-patch`) and the data files of patch 1.01 (taken back without a backup, see below). |
-| 2007 CD | `run.exe` (packed) | The code only exists decrypted in memory, so `msvfw32.dll` is put into the game folder. The game loads it instead of the Windows DLL; it forwards everything to the real one and patches the code at every game start. Taking all patches back deletes it. A `msvfw32.dll` from another version of A2G-Patch is replaced on *Übernehmen*, even with the same patches ticked. |
+| 2007 CD | `run.exe` (packed) | The code only exists decrypted in memory, so `msvfw32.dll` is put into the game folder. The game loads it instead of the Windows DLL; it forwards everything to the real one and patches the code at every game start. Taking all patches back deletes it. Patch 1.01's data files are changed on disk as for GOG. A `msvfw32.dll` from another version of A2G-Patch is replaced on *Übernehmen*, even with the same patches ticked. |
 
 Under *Program Files*, writing needs administrator rights; A2G-Patch then offers to restart itself
 as administrator. A `msvfw32.dll` in the game folder that isn't A2G-Patch's is never touched.
@@ -202,7 +203,8 @@ mov word [esi+10D48],0 / mov eax,esi   ->   mov eax,esi / and dword [esi+10D46],
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
-exe is patched on disk and where the files are GOG's (1.0 fix2, recognized by their patterns or SHA-256).
+exe is patched on disk and where the files are GOG's (1.0 fix2, recognized by their patterns or SHA-256);
+patch 1.01 also on the 2007 CD release, see below.
 The changes of all switches are made in memory first and then written together, `run.exe` first. They come
 from porting the game to Linux (A2G-Linux: `a2patch.py`, `a2data101.py`, `a2movelist.py`, `a2resdll.py`).
 
@@ -228,13 +230,16 @@ all sit on the failure paths of these checks.
 **Patch 1.01.** Found by comparing GOG's `run.exe` with the 1.01 program and the 1999 release; differences
 that only concern the copy protection, GOG's own changes or the compiler were left out. The program
 changes are written anew in `gog/a2v101.S` (GNU assembler); `tools/make_v101.py` assembles it at
-`0xcbd000`, where GOG's image ends, into `V101Code.cs`. The patch adds a section `.a2v101` behind
+`0xcbd000`, where GOG's image ends, into `V101Code.cs` and `dll/v101code.h`. The patch adds a section `.a2v101` behind
 everything in the file (GOG's signature included, which no longer matches after any patch anyway) and
-makes 12 places jump there or change in place:
+makes 13 places jump there or change in place:
 
 - player lists with a count per position (`0x412dd0`): players are stored one after the other with
   their real count instead of at their list index
 - message 0xC7 only if a value of the object is above 47 (`0x415da0`, two places)
+- the cup draw loads `archives/movelist.dat` (the sign with the club names) from the install path, not
+  from the CD root, where the videos are (`0x468a4e`). In GOG's `run.exe` both are the game folder, but
+  the 2007 CD has no `MoveList.dat`: without this the sign never shows up there
 - message 0xA41 is gone (`0x501dcf`)
 - a block of counters is cleared, and a counter grows by one instead of by another value (`0x557e30`)
 - five counters of an entry stay below 1,000,000, negative amounts are ignored (`0x568ca0`)
@@ -265,6 +270,15 @@ Taking the patch back reverses these changes (the event texts and `LAENDER.SAV` 
 their SHA-256) and deletes the two new files. A data file that is neither GOG's nor 1.01's (e.g. from
 another data set) is left as it is.
 
+The 2007 CD release needs the patch as well: its `run.exe`, read from the running game, holds all 13
+places at the same addresses with the bytes of 1.00, and its three data files are GOG's. There
+`msvfw32.dll` (flag 1024) puts the code into a `VirtualAlloc` block and moves it there: 31 `call`/`jmp`
+into the game (relative, they change against the move) and two addresses inside the code (absolute, they
+change with it), listed in `V101Code.Relative` and `Absolute`. Then the 13 places jump to the block or change. It
+patches only once all 13 hold the bytes of 1.00. A2G-Patch changes the data files on disk, as for GOG. The
+copy protection and dialog patches aren't needed there: the CD passes the checks, and the 2007
+`RESDLL.dll` has the title bars of 1999.
+
 **Dialogs.** All dialogs are templates in `RESDLL.dll`, and GOG's file lacks styles the 1999 file has
 (found by comparing the two files; the tables in `DialogStyles` are own data): the title bar
 (`WS_CAPTION`) on 342 dialogs and `DS_MODALFRAME` on 65 of them (GOG's file uses `DS_CENTER` instead; the
@@ -287,8 +301,8 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 - Which patches it applies are two flags bytes (low byte first) after the marker `A2GPatchFlags` in its
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
-  calculation; the build has all on). The GOG patches have no flag: they change files on disk, which the
-  DLL doesn't. An installed copy that differs from the embedded one in more than these bytes is from another
+  calculation, 1024 patch 1.01; the build has all on). The other GOG patches have no flag: they change
+  files on disk, which the DLL doesn't. An installed copy that differs from the embedded one in more than these bytes is from another
   version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled
   patch's code is in memory, then rewrites it (`VirtualProtect`, `FlushInstructionCache`). Code that
@@ -311,9 +325,11 @@ without it can patch the original and GOG exes but not the 2007 CD release, and 
 The logo (`A2G-Patch.ico`, `site/favicon.ico`, `site/logo.png`) is drawn by `tools/MakeIcon.cs`; the
 file's header says how to run it. It is not part of the build.
 
-`V101Code.cs` (the code of patch 1.01) is generated from `gog/a2v101.S` and committed. After changing the
-source, run `python3 tools/make_v101.py`; it needs GNU binutils (`as`, `ld`, `objcopy`, `nm`), e.g. on
-Linux, in WSL or MSYS2.
+`V101Code.cs` and `dll/v101code.h` (the code of patch 1.01) are generated from `gog/a2v101.S` and
+committed. After changing the source, run `python3 tools/make_v101.py`; it needs GNU binutils (`as`,
+`ld`, `objcopy`, `nm`), e.g. on Linux, in WSL or MSYS2. It links the code twice, 0x1004 bytes apart, and
+takes the relocations from the differences. `python3 tools/make_v101.py --from-cs` rewrites both files
+from `V101Code.cs` without binutils.
 
 Tests (xUnit, net472, x86), restore and build in separate calls:
 

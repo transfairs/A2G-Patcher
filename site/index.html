@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A2G-Patch – Fehlerbehebungen für Anstoss 2 Gold</title>
-<meta name="description" content="Kleine Patches für Anstoss 2 Gold: Pfeilknöpfe zählen wieder weiter, kein Absturz bei den WM-, EM- und Finalvideos, kein Einfrieren, Ton aufs richtige Gerät, Torgrenzen aufheben und mehr. Für Original, GOG und 2007er-CD, für GOG außerdem Patch 1.01 und keine Kopierschutz-Strafen.">
+<meta name="description" content="Kleine Patches für Anstoss 2 Gold: Pfeilknöpfe zählen wieder weiter, kein Absturz bei den WM-, EM- und Finalvideos, kein Einfrieren, Ton aufs richtige Gerät, Torgrenzen aufheben und mehr. Für Original, GOG und 2007er-CD, für GOG und 2007er-CD außerdem Patch 1.01, für GOG keine Kopierschutz-Strafen.">
 <link rel="icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="stylesheet" href="style.css">
@@ -31,7 +31,7 @@
     <div class="hero-copy">
       <p class="eyebrow">Für Anstoss 2 Gold · Original, GOG &amp; 2007er-CD</p>
       <h1>Anstoss 2 Gold,<br><span class="grad">wie es sein sollte.</span></h1>
-      <p class="lead">Ein kleines Fenster, ein paar Haken: Die Pfeilknöpfe zählen wieder weiter, die Videos zu WM, EM und Finale lassen das Spiel nicht mehr abstürzen, nichts friert nach langer Windows-Laufzeit ein, der Ton kommt aus dem richtigen Gerät, und wer mag, hebt die Torgrenzen auf. Die GOG-Version bekommt dazu Patch 1.01 und ihre Dialoge zurück, und ihr Kopierschutz macht keine „Raubkopie“ mehr aus dem Spielstand. Ohne Kompatibilitätsmodus, jederzeit rückgängig zu machen.</p>
+      <p class="lead">Ein kleines Fenster, ein paar Haken: Die Pfeilknöpfe zählen wieder weiter, die Videos zu WM, EM und Finale lassen das Spiel nicht mehr abstürzen, nichts friert nach langer Windows-Laufzeit ein, der Ton kommt aus dem richtigen Gerät, und wer mag, hebt die Torgrenzen auf. GOG- und 2007er-Version bekommen dazu Patch 1.01, die GOG-Version ihre Dialoge zurück, und ihr Kopierschutz macht keine „Raubkopie“ mehr aus dem Spielstand. Ohne Kompatibilitätsmodus, jederzeit rückgängig zu machen.</p>
       <div class="cta">
         <a class="btn btn-primary" href="https://github.com/transfairs/A2G-Patcher/releases/latest/download/A2G-Patch-Latest.zip">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
@@ -134,11 +134,11 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-gog">Nur GOG</span>
+          <span class="tag tag-gog">GOG &amp; 2007er-CD</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.3 5.7M4 18v-6h6"/></svg>
         </div>
         <h3>Patch 1.01</h3>
-        <p>Die <code>run.exe</code> von GOG ist aus dem Stand 1.00 gebaut. Der Patch bringt Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999 schon hat: Spielerlisten, neue Spieler und Torhüter, Zähler, Ereignistexte und mehr.</p>
+        <p>Die <code>run.exe</code> von GOG und die der 2007er-CD sind aus dem Stand 1.00 gebaut. Der Patch bringt Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999 schon hat: Spielerlisten, neue Spieler und Torhüter, Zähler, Ereignistexte und mehr.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -184,7 +184,7 @@
       </div>
       <div class="rel">
         <div class="rel-head"><b>2007er-CD</b><code>run.exe</code> (gepackt)</div>
-        <p>Der Programmcode liegt nur verschlüsselt auf der Platte. A2G-Patch legt deshalb eine <code>msvfw32.dll</code> in den Spielordner, die bei jedem Spielstart den Code im Speicher ändert. Alle Patches abhaken löscht sie wieder.</p>
+        <p>Der Programmcode liegt nur verschlüsselt auf der Platte. A2G-Patch legt deshalb eine <code>msvfw32.dll</code> in den Spielordner, die bei jedem Spielstart den Code im Speicher ändert. Die Datendateien von Patch 1.01 ändert A2G-Patch direkt. Alle Patches abhaken löscht die DLL wieder.</p>
       </div>
     </div>
   </div>
@@ -283,8 +283,8 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
 <pre><code>call check / add esp,4 / nop ×5  →  call check / add esp,4 / xor eax,eax / nop ×3</code></pre>
       </details>
       <details class="tech-item">
-        <summary><b>Patch 1.01 (GOG)</b><span>Ein neuer Abschnitt in der run.exe</span></summary>
-        <p>Die Änderungen von 1.01 wurden durch Vergleich mit dem Programm von 1.01 und der Version von 1999 gefunden und in Assembler neu geschrieben (<code>gog/a2v101.S</code>). Der Code kommt in einen neuen Abschnitt <code>.a2v101</code> am Ende der <code>run.exe</code>, zwölf Stellen springen hinein. Die drei Datendateien von 1.01 entstehen aus denen von GOG und eigenem Code, ohne Dateien des Patches.</p>
+        <summary><b>Patch 1.01 (GOG, 2007er-CD)</b><span>Ein neuer Abschnitt in der run.exe</span></summary>
+        <p>Die Änderungen von 1.01 wurden durch Vergleich mit dem Programm von 1.01 und der Version von 1999 gefunden und in Assembler neu geschrieben (<code>gog/a2v101.S</code>). Der Code kommt in einen neuen Abschnitt <code>.a2v101</code> am Ende der <code>run.exe</code>, dreizehn Stellen springen hinein oder ändern sich, etwa lädt die Pokalauslosung ihre <code>MoveList.dat</code> aus dem Spielordner statt von der CD. Bei der 2007er-CD legt die <code>msvfw32.dll</code> denselben Code in einen eigenen Speicherblock und passt seine Sprünge an. Die drei Datendateien von 1.01 entstehen aus denen von GOG und eigenem Code, ohne Dateien des Patches.</p>
       </details>
       <details class="tech-item">
         <summary><b>Dialoge (GOG)</b><span>Fehlende Fensterstile</span></summary>

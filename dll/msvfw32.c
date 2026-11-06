@@ -20,7 +20,8 @@
 // 128 display mode: ChangeDisplaySettingsA(&640x480, 0)        ->  flags CDS_FULLSCREEN (undone at exit)
 // 256 cup draw:     GetBitmapBits of the names' bitmap         ->  GetDIBits as 16-bit DIB
 // 512 calculation:  only one of two selections cleared         ->  both cleared (no hang)
-// A2G-Patch's GOG patches change files on disk and are not offered with this DLL.
+// 1024 patch 1.01:   the program of 1.00                         ->  13 places jump to the code of 1.01
+// A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
 // deleting this msvfw32.dll.
@@ -118,7 +119,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_DISPLAY_MODE 128
 #define FLAG_CUP_DRAW     256   // the first bit of the second flags byte
 #define FLAG_CALC_INIT    512
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x03";   // all on
+#define FLAG_V101         1024
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x07";   // all on
 #define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -494,6 +496,86 @@ static int PatchCupDraw(BYTE *base, SIZE_T size)
 static const WORD kCalc[] = { 0x66, 0xC7, 0x86, 0x48, 0x0D, 0x01, 0x00, 0x00, 0x00, 0x8B, 0xC6 };           // mov word [esi+10D48],0 / mov eax,esi
 static const WORD kCalcPatched[] = { 0x8B, 0xC6, 0x83, 0xA6, 0x46, 0x0D, 0x01, 0x00, 0x00, 0x90, 0x90 };    // mov eax,esi / and dword [esi+10D46],0
 
+// ---- 1024: patch 1.01 ----------------------------------------------------------------------------
+
+// As in GogPatches.cs (Patch101): the code of gog/a2v101.S (v101code.h, generated together with
+// V101Code.cs) goes into a block of its own, moved there by its relocations, and 13 places of the 1.00
+// program jump there or change in place. They are the places of GOG's run.exe, which the 2007 CD's
+// run.exe holds at the same addresses once decrypted. Patched only once all 13 hold the bytes of 1.00;
+// until then (still encrypted, or another build) it waits, and gives up after two minutes.
+#include "v101code.h"
+#define IMAGE_BASE 0x400000    // the code calls the game at the addresses it has there
+#define V101_CHANGE 0xFFFF     // not a jump: the place gets bytes of its own
+typedef struct
+{
+    DWORD va;
+    BYTE length;
+    BYTE original[14];
+    WORD target;               // offset in kV101Code, or V101_CHANGE
+    BYTE changed[11];
+} V101Place;
+static const V101Place kV101Places[] = {
+    { 0x412DD0, 6, { 0x81, 0xEC, 0xF8, 0x09, 0x00, 0x00 }, V101_FIX_412DD0 },                       // player lists
+    { 0x415F96, 5, { 0x74, 0x33, 0x8A, 0x4E, 0x04 }, V101_FIX_415F96 },                             // message 0xC7
+    { 0x4160BD, 6, { 0x74, 0x32, 0x8A, 0x06, 0x6A, 0x01 }, V101_FIX_4160BD },                       // the same
+    { 0x468A4E, 5, { 0x68, 0x8C, 0x09, 0x70, 0x00 }, V101_CHANGE, { 0x68, 0x70, 0x09, 0x70, 0x00 } },   // MoveList.dat not from the CD
+    { 0x501DCF, 2, { 0x74, 0x54 }, V101_CHANGE, { 0xEB, 0x54 } },                                   // message 0xA41
+    { 0x557E3F, 7, { 0x80, 0x8E, 0xAE, 0x00, 0x00, 0x00, 0x01 }, V101_FIX_557E3F },                 // counters cleared
+    { 0x557E64, 11, { 0x66, 0x8B, 0x4E, 0x60, 0x83, 0xC4, 0x14, 0x66, 0x01, 0x4E, 0x5E }, V101_CHANGE,
+        { 0x83, 0xC4, 0x14, 0x66, 0xFF, 0x46, 0x5E, 0x90, 0x90, 0x90, 0x90 } },                      // counter grows by one
+    { 0x568CA0, 5, { 0x83, 0xEC, 0x08, 0x53, 0x55 }, V101_FIX_568CA0 },                             // counters below 1,000,000
+    { 0x5A0BF7, 9, { 0x6A, 0x00, 0x8D, 0x8C, 0x24, 0x78, 0x03, 0x00, 0x00 }, V101_FIX_5A0BF7 },     // a dialog's result
+    { 0x5A0F95, 5, { 0xE8, 0x16, 0xD0, 0x0C, 0x00 }, V101_FIX_5A0F95 },                             // the same, after DoModal
+    { 0x5A2836, 14, { 0x33, 0xC9, 0x8A, 0x4E, 0x20, 0x8A, 0x91, 0x58, 0x5A, 0x6C, 0x00, 0x88, 0x56, 0x21 }, V101_FIX_5A2836 },   // second positions
+    { 0x5A2FC0, 5, { 0x56, 0x8B, 0x74, 0x24, 0x08 }, V101_FIX_5A2FC0 },                             // goalkeepers' traits
+    { 0x5BD540, 5, { 0xB8, 0x6C, 0x9F, 0x00, 0x00 }, V101_FIX_5BD540 },                             // managers' data
+};
+
+// Whether the n bytes at p are committed and readable (within one region).
+static BOOL ReadableAt(const BYTE *p, SIZE_T n)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery(p, &mbi, sizeof mbi) == 0 || mbi.State != MEM_COMMIT || !Readable(mbi.Protect)) return FALSE;
+    return p + n <= (const BYTE *)mbi.BaseAddress + mbi.RegionSize;
+}
+
+static int PatchV101(BYTE *base, SIZE_T size)
+{
+    if (base != (BYTE *)IMAGE_BASE) return DONE;
+    for (int i = 0; i < ARRAYSIZE(kV101Places); i++)
+    {
+        const V101Place *place = &kV101Places[i];
+        BYTE *at = base + (place->va - IMAGE_BASE);
+        if (place->va - IMAGE_BASE + place->length > size || !ReadableAt(at, place->length)) return NOT_YET;
+        if (!Equal(at, place->original, place->length)) return NOT_YET;
+    }
+
+    BYTE *code = (BYTE *)VirtualAlloc(NULL, sizeof kV101Code, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!code) return DONE;
+    Copy(code, kV101Code, sizeof kV101Code);
+    DWORD moved = (DWORD)(ULONG_PTR)code - V101_ADDRESS;
+    for (int i = 0; i < ARRAYSIZE(kV101Relative); i++) *(DWORD *)(code + kV101Relative[i]) -= moved;
+    for (int i = 0; i < ARRAYSIZE(kV101Absolute); i++) *(DWORD *)(code + kV101Absolute[i]) += moved;
+    FlushInstructionCache(GetCurrentProcess(), code, sizeof kV101Code);
+
+    for (int i = 0; i < ARRAYSIZE(kV101Places); i++)
+    {
+        const V101Place *place = &kV101Places[i];
+        BYTE *at = base + (place->va - IMAGE_BASE), bytes[14];
+        if (place->target == V101_CHANGE)
+            Copy(bytes, place->changed, place->length);
+        else
+        {
+            LONG rel = (LONG)((code + place->target) - (at + 5));
+            bytes[0] = 0xE9;                                    // jmp code+target / nop...
+            Copy(bytes + 1, (const BYTE *)&rel, 4);
+            for (int j = 5; j < place->length; j++) bytes[j] = 0x90;
+        }
+        Write(at, bytes, place->length);
+    }
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 static DWORD WINAPI PatchThread(LPVOID param)
@@ -508,8 +590,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL videoDone = !(flags & FLAG_VIDEO_CRASH), sleepDone = !(flags & FLAG_SLEEP_FREEZE);
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
-    BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone)
+    BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT), v101Done = !(flags & FLAG_V101);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -522,6 +604,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!displayDone) displayDone = PatchRewrite(base, size, kDisplay, kDisplayPatched, ARRAYSIZE(kDisplay)) == DONE;
         if (!cupDone) cupDone = PatchCupDraw(base, size) == DONE;
         if (!calcDone) calcDone = PatchRewrite(base, size, kCalc, kCalcPatched, ARRAYSIZE(kCalc)) == DONE;
+        if (!v101Done) v101Done = PatchV101(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

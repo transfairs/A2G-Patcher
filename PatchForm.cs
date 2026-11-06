@@ -47,8 +47,8 @@ namespace A2GPatch
             bool gogHeading = false;
             foreach (Patch patch in Patch.All)
             {
-                // The GOG patches come last, under a heading of their own.
-                if (patch is FilePatch && !gogHeading)
+                // The GOG-only patches (no flag) come last, under a heading of their own.
+                if (patch is FilePatch && patch.Flag == 0 && !gogHeading)
                 {
                     gogHeading = true;
                     this.Controls.Add(new Label { Name = "GogLabel", Text = "Nur für die GOG-Version:", AutoSize = true, Location = new Point(12, y + 6) });

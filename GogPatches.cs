@@ -72,16 +72,16 @@ namespace A2GPatch
     }
 
     /// <summary>
-    /// A patch for the GOG release only. GOG sells the 2007 release by Kalypso, its run.exe taken out of
+    /// A patch for the GOG release. GOG sells the 2007 release by Kalypso, its run.exe taken out of
     /// the copy protection: that leaves things to fix the other releases don't need, and some of them
-    /// change more than places in the code (the exe grows, other files of the game change). msvfw32.dll
-    /// knows none of them, so they are offered only where the exe is patched on disk, and only where the
-    /// files are GOG's.
+    /// change more than places in the code (the exe grows, other files of the game change). They are
+    /// offered where the exe is patched on disk and the files are GOG's. msvfw32.dll knows only
+    /// <see cref="Patch101"/>, which the 2007 CD release needs as well; the others have no flag.
     /// </summary>
     internal abstract class FilePatch : Patch
     {
         /// <inheritdoc/>
-        public sealed override ushort Flag => 0;
+        public override ushort Flag => 0;
         /// <inheritdoc/>
         public sealed override IEnumerable<byte?[]> Patterns => Enumerable.Empty<byte?[]>();
         /// <inheritdoc/>
@@ -252,11 +252,15 @@ namespace A2GPatch
     /// 1999 release contains them already). Found by comparing it with the 1.01 program and the 1999
     /// release, written anew in gog/a2v101.S (see there and README.md). The program changes go to a new
     /// section ".a2v101" at the end of the exe (behind GOG's signature, which no longer matches after any
-    /// patch), and 12 places jump there or change in place. The data: two event texts end with "." instead
+    /// patch), and 13 places jump there or change in place. The data: two event texts end with "." instead
     /// of ":" (TEXTE\EreigGold.saq, also written as EreigGld.saq, the name 1.01 uses), one value in
     /// LAENDER.SAV changes from 3 to 4, and ARCHIVES\MoveList.dat (new in 1.01) is computed by
     /// <see cref="MoveList"/>. A data file that is neither GOG's nor 1.01's (e.g. from another data set)
     /// is left as it is. Taking the patch back removes the section and restores the files.
+    /// The 2007 CD release is built from the same source (its run.exe, decrypted in memory, holds the
+    /// 13 places at the same addresses) and has the same data files: there msvfw32.dll makes the program
+    /// changes in memory (flag 1024, the code moved by <see cref="V101Code.Relative"/> and
+    /// <see cref="V101Code.Absolute"/>), and A2G-Patch writes the data files (<see cref="SwitchData"/>).
     /// </summary>
     internal sealed class Patch101 : FilePatch
     {
@@ -289,12 +293,13 @@ namespace A2GPatch
         private static Hook Jump(uint va, string original, uint target) => new Hook { Va = va, Original = original.Hex(), Target = target };
         private static Hook Change(uint va, string original, string patched) => new Hook { Va = va, Original = original.Hex(), Bytes = patched.Hex() };
 
-        /// <summary>The 12 places, as in run.exe (see the functions in gog/a2v101.S).</summary>
+        /// <summary>The 13 places, as in run.exe (see the functions in gog/a2v101.S).</summary>
         internal static readonly Hook[] Hooks =
         {
             Jump(0x412DD0, "81ecf8090000", V101Code.Fix412dd0),                       // player lists (whole function)
             Jump(0x415F96, "74338a4e04", V101Code.Fix415f96),                         // message 0xC7 only above 47
             Jump(0x4160BD, "74328a066a01", V101Code.Fix4160bd),                       // the same, second place
+            Change(0x468A4E, "688c097000", "6870097000"),                             // MoveList.dat from the game folder, not the CD
             Change(0x501DCF, "7454", "eb54"),                                         // message 0xA41 is gone
             Jump(0x557E3F, "808eae00000001", V101Code.Fix557e3f),                     // a block of counters cleared
             Change(0x557E64, "668b4e6083c41466014e5e", "83c41466ff465e90909090"),     // the counter grows by one
@@ -308,6 +313,8 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Patch 1.01 (Änderungen an Programm und Daten)";
+        /// <inheritdoc/>
+        public override ushort Flag => 1024;
 
         /// <summary>Where the program changes stand in <paramref name="image"/>.</summary>
         internal static FileState ProgramState(byte[] image)
@@ -456,6 +463,12 @@ namespace A2GPatch
         {
             if (ProgramState(files.Exe) != (on ? FileState.On : FileState.Off))
                 files.Exe = on ? AddProgram(files.Exe) : RemoveProgram(files.Exe);
+            SwitchData(files, on);
+        }
+
+        /// <summary>Brings the data files to 1.01 (<paramref name="on"/>) or back; those that are neither GOG's nor 1.01's stay.</summary>
+        internal static void SwitchData(GameFiles files, bool on)
+        {
             foreach (DataFile file in Data(files).Where(d => d.State != (on ? FileState.On : FileState.Off)))
                 files.Write(file.Name, on ? file.On ?? MoveList.Build() : file.Off);
         }

@@ -71,13 +71,15 @@ namespace A2GPatch.Tests
                     // The GOG patches under their heading, greyed out for another release.
                     Label gog = Find<Label>(form, "GogLabel");
                     Assert.Equal("Nur für die GOG-Version:", gog.Text);
-                    Assert.All(new[] { "CopyProtectionInput", "Patch101Input", "DialogStylesInput" }, name =>
+                    Assert.All(new[] { "CopyProtectionInput", "DialogStylesInput" }, name =>
                     {
                         CheckBox box = Find<CheckBox>(form, name);
                         Assert.False(box.Enabled);
                         Assert.True(box.Top > gog.Top);
                     });
-                    Assert.True(Find<CheckBox>(form, "CalculationInitInput").Top < gog.Top);
+                    // Patch 1.01 is for the 2007 CD as well: above the heading, greyed out here too.
+                    Assert.False(Find<CheckBox>(form, "Patch101Input").Enabled);
+                    Assert.True(Find<CheckBox>(form, "Patch101Input").Top < gog.Top);
 
                     ArrowInput(form).Checked = true;
                     Assert.True(ApplyButton(form).Enabled);

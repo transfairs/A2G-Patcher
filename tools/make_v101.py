@@ -1,46 +1,106 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Assembles gog/a2v101.S (patch 1.01 for GOG's run.exe) into V101Code.cs.
+"""Assembles gog/a2v101.S (patch 1.01) into V101Code.cs and dll/v101code.h.
 
-    python3 tools/make_v101.py
+    python3 tools/make_v101.py              # assemble (needs GNU binutils)
+    python3 tools/make_v101.py --from-cs    # only rewrite both files from V101Code.cs
 
 The code is linked at 0xcbd000, where A2G-Patch puts the new section of GOG's run.exe (its image
-ends there). Needs GNU binutils (as, ld, objcopy, nm), e.g. on Linux, in WSL or MSYS2. Not part of
-the build: V101Code.cs is committed, run this after changing gog/a2v101.S.
+ends there). msvfw32.dll puts the same code anywhere in memory of the 2007 CD release's run.exe and
+moves it there with the relocations: the places holding a jump or call out of the code (relative,
+they change against the move) and those holding an address inside it (absolute, they change with
+it). They are found by linking twice, 0x1004 bytes apart, and comparing.
+
+Assembling needs GNU binutils (as, ld, objcopy, nm), e.g. on Linux, in WSL or MSYS2. --from-cs needs
+nothing but Python, e.g. after a change to the format of the generated files. Not part of the build:
+both files are committed, run this after changing gog/a2v101.S.
 """
 import base64
 import os
+import re
 import subprocess
+import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(ROOT, "gog", "a2v101.S")
 TARGET = os.path.join(ROOT, "V101Code.cs")
+HEADER = os.path.join(ROOT, "dll", "v101code.h")
 ADDRESS = 0xCBD000
+# The second link's distance: its low byte isn't 0, so the first differing byte of a 32-bit field
+# is its first byte, and it keeps the 4-byte alignment.
+MOVE = 0x1004
 
 
-def assemble():
+def link(address):
+    """The code linked at address and its entry points (fix_*)."""
     with tempfile.TemporaryDirectory() as tmp:
         obj, elf, raw = (os.path.join(tmp, n) for n in ("a.o", "a.elf", "a.bin"))
         subprocess.run(["as", "--32", "-o", obj, SOURCE], check=True)
-        subprocess.run(["ld", "-m", "elf_i386", "-Ttext", hex(ADDRESS), "-e", "_start", "-o", elf, obj], check=True)
+        subprocess.run(["ld", "-m", "elf_i386", "-Ttext", hex(address), "-e", "_start", "-o", elf, obj], check=True)
         subprocess.run(["objcopy", "-O", "binary", "-j", ".text", elf, raw], check=True)
         out = subprocess.run(["nm", elf], check=True, capture_output=True, text=True).stdout
-        symbols = {name: int(value, 16) for value, kind, name in (line.split() for line in out.splitlines())
+        symbols = {name: int(value, 16) - address for value, kind, name in (line.split() for line in out.splitlines())
                    if kind in "Tt" and name.startswith("fix_")}
         with open(raw, "rb") as f:
             return f.read(), symbols
 
 
-def main():
-    code, symbols = assemble()
+def relocations(code, moved):
+    """The offsets of the relative and the absolute 32-bit fields, from two links MOVE bytes apart."""
+    assert len(code) == len(moved)
+    relative, absolute = [], []
+    i = 0
+    while i < len(code):
+        if code[i] == moved[i]:
+            i += 1
+            continue
+        a = int.from_bytes(code[i:i + 4], "little")
+        b = int.from_bytes(moved[i:i + 4], "little")
+        if (b - a) & 0xFFFFFFFF == MOVE:
+            absolute.append(i)
+        elif (a - b) & 0xFFFFFFFF == MOVE:
+            relative.append(i)
+        else:
+            sys.exit(f"offset 0x{i:x}: neither relative nor absolute ({a:#x} -> {b:#x})")
+        i += 4
+    return relative, absolute
+
+
+def assemble():
+    code, symbols = link(ADDRESS)
+    moved, _ = link(ADDRESS + MOVE)
+    relative, absolute = relocations(code, moved)
+    return code, symbols, relative, absolute
+
+
+def from_cs():
+    """What V101Code.cs holds."""
+    with open(TARGET, encoding="utf-8") as f:
+        text = f.read()
+    code = base64.b64decode("".join(re.findall(r'"([A-Za-z0-9+/=]+)"', text.split("Code =")[1].split(";")[0])))
+    symbols = {name: int(value, 16) - ADDRESS for name, value in
+               re.findall(r"Address of (fix_\w+) in .*\n\s*internal const uint \w+ = 0x([0-9A-F]+);", text)}
+
+    def offsets(name):
+        return [int(v, 16) for v in re.findall(r"0x([0-9A-F]+)", text.split(f"ushort[] {name} =")[1].split(";")[0])]
+    return code, symbols, offsets("Relative"), offsets("Absolute")
+
+
+def lines_of(values, per_line, indent, digits=1):
+    items = [f"0x{v:0{digits}X}" for v in values]
+    return [indent + ", ".join(items[i:i + per_line]) + ("," if i + per_line < len(items) else "")
+            for i in range(0, len(items), per_line)]
+
+
+def write_cs(code, symbols, relative, absolute):
     text = base64.b64encode(code).decode()
     lines = [text[i:i + 100] for i in range(0, len(text), 100)]
     out = [
         "// Generated by tools/make_v101.py from gog/a2v101.S. Do not edit.",
         "namespace A2GPatch",
         "{",
-        "    /// <summary>The code of patch 1.01 for GOG's run.exe, linked at <see cref=\"Address\"/>.</summary>",
+        "    /// <summary>The code of patch 1.01, linked at <see cref=\"Address\"/>.</summary>",
         "    internal static class V101Code",
         "    {",
         "        /// <summary>Where the code is loaded: the end of GOG's run.exe image.</summary>",
@@ -53,11 +113,53 @@ def main():
     out.append("")
     for name, value in sorted(symbols.items(), key=lambda s: s[1]):
         out.append(f"        /// <summary>Address of {name} in gog/a2v101.S.</summary>")
-        out.append(f"        internal const uint {''.join(p.capitalize() for p in name.split('_'))} = 0x{value:X};")
-    out += ["    }", "}", ""]
-    with open(TARGET, "w", newline="\n") as f:
+        out.append(f"        internal const uint {''.join(p.capitalize() for p in name.split('_'))} = 0x{ADDRESS + value:X};")
+    out += [
+        "",
+        "        /// <summary>Where the code holds a jump or call out of it (rel32): moved by d, these change by -d.</summary>",
+        "        internal static readonly ushort[] Relative =",
+        "        {",
+    ]
+    out += lines_of(relative, 12, "            ")
+    out += [
+        "        };",
+        "",
+        "        /// <summary>Where the code holds an address inside it (abs32): moved by d, these change by d.</summary>",
+        "        internal static readonly ushort[] Absolute =",
+        "        {",
+    ]
+    out += lines_of(absolute, 12, "            ")
+    out += ["        };", "    }", "}", ""]
+    with open(TARGET, "w", newline="\n", encoding="utf-8") as f:
         f.write("\n".join(out))
-    print(f"{TARGET}: {len(code)} bytes, {len(symbols)} entry points")
+
+
+def write_header(code, symbols, relative, absolute):
+    out = [
+        "// Generated by tools/make_v101.py from gog/a2v101.S. Do not edit.",
+        "// The code of patch 1.01 as in V101Code.cs, linked at V101_ADDRESS; see PatchV101 in msvfw32.c.",
+        "",
+        f"#define V101_ADDRESS 0x{ADDRESS:X}",
+    ]
+    for name, value in sorted(symbols.items(), key=lambda s: s[1]):
+        out.append(f"#define V101_{name.upper()} 0x{value:X}   // offset of {name}")
+    out += ["", "static const BYTE kV101Code[] =", "{"]
+    out += lines_of(code, 16, "    ", 2)
+    out += ["};", "", "// Jumps and calls out of the code (rel32).", "static const WORD kV101Relative[] =", "{"]
+    out += lines_of(relative, 12, "    ")
+    out += ["};", "", "// Addresses inside the code (abs32).", "static const WORD kV101Absolute[] =", "{"]
+    out += lines_of(absolute, 12, "    ")
+    out += ["};", ""]
+    with open(HEADER, "w", newline="\n", encoding="utf-8") as f:
+        f.write("\n".join(out))
+
+
+def main():
+    code, symbols, relative, absolute = from_cs() if "--from-cs" in sys.argv[1:] else assemble()
+    write_cs(code, symbols, relative, absolute)
+    write_header(code, symbols, relative, absolute)
+    print(f"{TARGET}, {HEADER}: {len(code)} bytes, {len(symbols)} entry points, "
+          f"{len(relative)} relative and {len(absolute)} absolute relocations")
 
 
 if __name__ == "__main__":

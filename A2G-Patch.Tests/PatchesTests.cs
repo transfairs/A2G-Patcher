@@ -166,12 +166,12 @@ namespace A2GPatch.Tests
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit", "Ton über das Standard-Audiogerät von Windows",
                 "Keine falsche Warnung „Festplatte fast voll“ beim Speichern", "Kader nicht über 30 Spieler wachsen lassen",
                 "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
-                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison",
-                "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)", "Patch 1.01 (Änderungen an Programm und Daten)",
+                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Patch 1.01 (Änderungen an Programm und Daten)",
+                "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
             }, Patch.All.Select(p => p.Name));
-            // The GOG patches (0) last, as the window lists them under their own heading.
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            // The GOG-only patches (0) last, as the window lists them under their own heading.
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 0, 0 }, Patch.All.Select(p => p.Flag));
         }
 
         private static readonly Patch Cup = Patch.All[8];

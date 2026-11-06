@@ -34,8 +34,8 @@ namespace A2GPatch.Tests
         internal static readonly Patch Goals = Patch.All[0];
         internal static readonly Patch Arrow = Patch.All[1];
         internal static readonly Patch Cup = Patch.All[8];
-        internal static readonly Patch Protection = Patch.All[10];
-        internal static readonly Patch V101 = Patch.All[11];
+        internal static readonly Patch V101 = Patch.All[10];
+        internal static readonly Patch Protection = Patch.All[11];
         internal static readonly Patch Dialogs = Patch.All[12];
         internal static readonly Patch[] Gog = { Protection, V101, Dialogs };
         // Stands for A2G-Patch's msvfw32.dll: the marker with the two flags bytes after it.
@@ -222,8 +222,9 @@ namespace A2GPatch.Tests
                 Assert.Equal(folder.File("run.exe"), install.ExePath);
                 Assert.True(install.CanApply(Goals) && install.CanApply(Arrow));
                 Assert.False(install.ForeignDll);
-                // The DLL knows none of the GOG patches.
-                Assert.All(Gog, p => Assert.False(install.CanApply(p) || install.IsApplied(p)));
+                // Of the GOG patches, the DLL knows only patch 1.01.
+                Assert.All(new[] { Protection, Dialogs }, p => Assert.False(install.CanApply(p) || install.IsApplied(p)));
+                Assert.True(install.CanApply(V101) && !install.IsApplied(V101));
 
                 install.Apply(new[] { Arrow });
                 Assert.Equal(2, Flags(folder));
@@ -247,6 +248,44 @@ namespace A2GPatch.Tests
                 Assert.Equal(3, Flags(OwnDll));
             }
         });
+
+        // The 2007 CD with patch 1.01: the DLL gets its flag, A2G-Patch changes the data files, and taking
+        // it back restores them.
+        [Fact]
+        public void PackedRunExe_WithPatch101_ChangesTheDataFiles_AndTakesThemBack() => WithDll(OwnDll, () => GogPatchesTests.WithTestHashes(() =>
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                File.WriteAllBytes(folder.File("run.exe"), new byte[] { 0x4D, 0x5A, 0x90 });
+                GogPatchesTests.GogData(folder);
+                GameInstall install = GameInstall.Detect(folder.Path);
+                Assert.Equal(PatchKind.Dll, install.Kind);
+
+                install.Apply(new[] { Arrow, V101 });
+                Assert.Equal(0x402, Flags(folder));
+                Assert.True(GameInstall.Detect(folder.Path).IsApplied(V101));
+                Assert.Equal(GogPatchesTests.EventFile('.'), File.ReadAllBytes(folder.File(Patch101.Events)));
+                Assert.Equal(GogPatchesTests.EventFile('.'), File.ReadAllBytes(folder.File(Patch101.EventsShort)));
+                Assert.All(Patch101.Countries, name => Assert.Equal(GogPatchesTests.CountriesFile('4'), File.ReadAllBytes(folder.File(name))));
+                Assert.Equal(MoveList.Build(), File.ReadAllBytes(folder.File(Patch101.MoveListFile)));
+                // The same choice again changes nothing.
+                GameInstall.Detect(folder.Path).Apply(new[] { Arrow, V101 });
+                Assert.Equal(0x402, Flags(folder));
+
+                // Only patch 1.01 taken back: the DLL stays, the data files are GOG's again.
+                GameInstall.Detect(folder.Path).Apply(new[] { Arrow });
+                Assert.Equal(2, Flags(folder));
+                Assert.Equal(GogPatchesTests.EventFile(':'), File.ReadAllBytes(folder.File(Patch101.Events)));
+                Assert.All(Patch101.Countries, name => Assert.Equal(GogPatchesTests.CountriesFile('3'), File.ReadAllBytes(folder.File(name))));
+                Assert.False(File.Exists(folder.File(Patch101.EventsShort)) || File.Exists(folder.File(Patch101.MoveListFile)));
+
+                GameInstall.Detect(folder.Path).Apply(new[] { V101 });
+                GameInstall.Detect(folder.Path).Apply(new Patch[0]);
+                Assert.False(File.Exists(folder.File(GameInstall.DllName)));
+                Assert.Equal(GogPatchesTests.EventFile(':'), File.ReadAllBytes(folder.File(Patch101.Events)));
+                Assert.False(File.Exists(folder.File(Patch101.MoveListFile)));
+            }
+        }));
 
         [Fact]
         public void SomeoneElsesDll_IsNeitherOverwrittenNorDeleted()
@@ -330,6 +369,23 @@ namespace A2GPatch.Tests
             byte[] dll = GameInstall.DllBytes();
             if (dll != null)
                 Assert.Equal(Patch.All.Aggregate(0, (f, p) => f | p.Flag), Flags(dll));
+        }
+
+        // The DLL carries the code of patch 1.01 as linked (it moves it itself) and the 13 places as Patch101 has them.
+        [Fact]
+        public void EmbeddedDll_HoldsTheCodeAndThePlacesOfPatch101()
+        {
+            byte[] dll = GameInstall.DllBytes();
+            if (dll == null)
+                return;
+            Assert.Single(Patch.FindAll(dll, Patch.Exact(Convert.FromBase64String(V101Code.Code))));
+            Assert.All(Patch101.Hooks, hook =>
+            {
+                byte[] place = BitConverter.GetBytes(hook.Va).Concat(new[] { (byte)hook.Original.Length }).Concat(hook.Original).ToArray();
+                Assert.Single(Patch.FindAll(dll, Patch.Exact(place)));
+                if (hook.Bytes != null)
+                    Assert.NotEmpty(Patch.FindAll(dll, Patch.Exact(hook.Bytes)));
+            });
         }
 
         [Fact]

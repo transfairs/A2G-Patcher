@@ -204,6 +204,13 @@ namespace A2GPatch
                 if (File.ReadAllBytes(this.BackupPath).SequenceEqual(files.Exe))
                     File.Delete(this.BackupPath);
             }
+            this.WriteFiles(files);
+            this.Load(files.Exe);
+        }
+
+        // Writes the other files the patches changed, in the order they changed them.
+        private void WriteFiles(GameFiles files)
+        {
             foreach (KeyValuePair<string, byte[]> file in files.Changes)
             {
                 string path = Path.Combine(this.Folder, file.Key);
@@ -215,7 +222,6 @@ namespace A2GPatch
                     File.WriteAllBytes(path, file.Value);
                 }
             }
-            this.Load(files.Exe);
         }
 
         private void WriteDll(ICollection<Patch> wanted)
@@ -223,11 +229,9 @@ namespace A2GPatch
             if (this.ForeignDll)
                 throw new InvalidOperationException($"Die {DllName} in diesem Ordner gehört nicht zu A2G-Patch.");
             ushort flags = (ushort)wanted.Aggregate(0, (f, p) => f | p.Flag);
-            if (flags == this.flags && (!this.DllOutdated || flags == 0))
-                return;
             if (flags == 0)
                 File.Delete(this.DllPath);
-            else
+            else if (flags != this.flags || this.DllOutdated)
             {
                 byte[] dll = (byte[])DllBytes()?.Clone();
                 int marker = dll == null ? -1 : MarkerAt(dll);
@@ -238,6 +242,10 @@ namespace A2GPatch
             }
             this.flags = flags;
             this.DllOutdated = false;
+            // The DLL changes the program of patch 1.01 in memory, its data files are changed here.
+            GameFiles files = new GameFiles(this.Folder, null);
+            Patch101.SwitchData(files, wanted.Any(p => p is Patch101));
+            this.WriteFiles(files);
         }
 
         /// <summary>

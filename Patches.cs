@@ -25,14 +25,14 @@ namespace A2GPatch
         public static readonly Patch[] All =
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
-            new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(),
-            new CopyProtection(), new Patch101(), new DialogStyles(),
+            new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(), new Patch101(),
+            new CopyProtection(), new DialogStyles(),
         };
 
         /// <summary>What the window's switch says.</summary>
         public abstract string Name { get; }
 
-        /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches, which the DLL doesn't know.</summary>
+        /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract ushort Flag { get; }
 
         /// <summary>The patterns that locate the patch; none of them in an exe means its code isn't readable there (packed).</summary>

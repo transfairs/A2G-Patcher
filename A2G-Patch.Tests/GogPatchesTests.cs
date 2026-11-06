@@ -214,8 +214,8 @@ namespace A2GPatch.Tests
     [Collection("GameInstall statics")]
     public class GogPatchesTests
     {
-        private static readonly CopyProtection Protection = (CopyProtection)Patch.All[10];
-        private static readonly Patch101 V101 = (Patch101)Patch.All[11];
+        private static readonly Patch101 V101 = (Patch101)Patch.All[10];
+        private static readonly CopyProtection Protection = (CopyProtection)Patch.All[11];
         private static readonly DialogStyles Dialogs = (DialogStyles)Patch.All[12];
 
         private static GameFiles Files(byte[] exe, string folder = null) => new GameFiles(folder ?? Path.GetTempPath(), exe);
@@ -251,16 +251,32 @@ namespace A2GPatch.Tests
         }
 
         [Fact]
-        public void FilePatches_HaveNoCodePlaces_NorAFlag()
+        public void FilePatches_HaveNoCodePlaces_NorAFlagExceptPatch101()
         {
             foreach (FilePatch patch in Patch.All.OfType<FilePatch>())
             {
-                Assert.Equal(0, patch.Flag);
+                Assert.Equal(patch is Patch101 ? 1024 : 0, patch.Flag);
                 Assert.Empty(patch.Patterns);
                 Assert.Null(patch.Find(GameCode.Both()));
             }
             Assert.Equal(0x400u, FilePatch.Align(0x201, 0x200));
             Assert.Equal(0x400u, FilePatch.Align(0x400, 0x200));
+        }
+
+        // What msvfw32.dll moves when it puts the code of patch 1.01 elsewhere: calls and jumps into the
+        // game (relative, after E8 or E9) and addresses inside the code (absolute).
+        [Fact]
+        public void V101Code_Relocations_PointIntoTheGameOrIntoTheCode()
+        {
+            byte[] code = Convert.FromBase64String(V101Code.Code);
+            Assert.Equal(31, V101Code.Relative.Length);
+            Assert.All(V101Code.Relative, at =>
+            {
+                Assert.Contains(code[at - 1], new byte[] { 0xE8, 0xE9 });
+                Assert.InRange(V101Code.Address + at + 4 + BitConverter.ToInt32(code, at), (long)TestExe.Base, V101Code.Address - 1L);
+            });
+            Assert.Equal(new ushort[] { 0x475, 0x4B1 }, V101Code.Absolute);
+            Assert.All(V101Code.Absolute, at => Assert.InRange(BitConverter.ToUInt32(code, at), V101Code.Address, V101Code.Address + (uint)code.Length - 4));
         }
 
         [Fact]
@@ -405,9 +421,9 @@ namespace A2GPatch.Tests
             Assert.Equal(0xE0000020, section.Characteristics);
             // Behind everything, the signature included, at the file alignment.
             Assert.Equal(FilePatch.Align(original.Length, 0x200), section.Raw);
-            // Behind the headers, only the 12 places changed (the signature included).
+            // Behind the headers, only the 13 places changed (the signature included).
             int changed = Enumerable.Range(0x400, original.Length - 0x400).Count(i => image[i] != original[i]);
-            Assert.InRange(changed, 12, Patch101.Hooks.Sum(h => h.Original.Length));
+            Assert.InRange(changed, 13, Patch101.Hooks.Sum(h => h.Original.Length));
             Assert.Equal(code, image.Slice(section.Raw, code.Length));
             // The overwritten leftovers right behind the code.
             Assert.Equal(GogExe.Stale.Take(40), image.Slice(section.Raw + code.Length, 40));

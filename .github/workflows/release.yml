@@ -111,6 +111,9 @@ jobs:
           - Kein Hänger beim Öffnen der Kalkulation in der Vorsaison: Der Bildschirm übernimmt eine
             seiner zwei Auswahlen aus nicht gelöschtem Speicher. Steht dort ein großer Wert, bleibt
             er unsichtbar und das Spiel wartet auf ihn (unter Wine gesehen).
+          - Patch 1.01 (GOG und 2007er-CD): Beide sind aus dem Stand 1.00 gebaut. Der Patch bringt
+            Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999
+            schon hat.
 
           Nur für die GOG-Version (bei den anderen ausgegraut):
 
@@ -118,8 +121,6 @@ jobs:
             Kopierschutzes der 2007er-Version schlagen in GOGs run.exe an: Ab der zweiten Saison
             heißen alle Vereine "Raubkopie", Spieler fallen auf Stärke 1. Mit dem Patch bestehen
             alle Prüfungen.
-          - Patch 1.01: GOGs run.exe ist aus dem Stand 1.00 gebaut. Der Patch bringt Programm und
-            Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999 schon hat.
           - Dialoge mit Titelleiste und Rahmen wie im Original von 1999: In GOGs RESDLL.dll fehlen
             342 Dialogen die Titelleiste und 68 Feldern der eingelassene Rahmen.
 
@@ -138,7 +139,8 @@ jobs:
           - Die GOG-Patches ändern auch RESDLL.dll (Sicherung RESDLL.dll.vor-a2g-patch) und die
             Datendateien von Patch 1.01. Abhaken stellt auch sie wieder her.
           - 2007er-CD: Deren run.exe ist gepackt. A2G-Patch legt stattdessen eine msvfw32.dll in den
-            Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Manche
+            Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Die Datendateien
+            von Patch 1.01 ändert A2G-Patch direkt, Abhaken stellt sie wieder her. Manche
             Virenscanner schlagen bei dieser DLL an, weil sie eine System-DLL ersetzt.
           - Liegt das Spiel unter "Programme", fragt A2G-Patch nach Administratorrechten.
           - Voraussetzungen: Windows XP (SP3) oder neuer, .NET Framework 4.0 oder neuer.

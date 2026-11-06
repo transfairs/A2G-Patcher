@@ -6,6 +6,12 @@
  * address of a new section of run.exe (0xcbd000) into V101Code.cs; A2G-Patch adds the section and
  * makes the places listed in Patch101 (GogPatches.cs) jump here. All other addresses are those of
  * run.exe. rand(n) is 0x64ad00 (cdecl, 0 <= result < n).
+ *
+ * Changed in place, without code here (see Patch101.Hooks):
+ * - 0x501dcf: je -> jmp, message 0xa41 is gone.
+ * - 0x468a4e: the cup draw loads archives/movelist.dat from the install path (0x700970), as 1.01
+ *   does, not from the CD root (0x70098c), where the videos are. In GOG's run.exe both are the game
+ *   folder; the 2007 CD has no MoveList.dat, so without this the draw's sign shows no club names.
  */
 .intel_syntax noprefix
 .code32
