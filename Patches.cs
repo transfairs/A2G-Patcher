@@ -25,13 +25,14 @@ namespace A2GPatch
         public static readonly Patch[] All =
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
-            new SquadLimit(), new DisplayModeRestore(), new CupDraw(),
+            new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(),
+            new CopyProtection(), new Patch101(), new DialogStyles(),
         };
 
         /// <summary>What the window's switch says.</summary>
         public abstract string Name { get; }
 
-        /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c).</summary>
+        /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches, which the DLL doesn't know.</summary>
         public abstract ushort Flag { get; }
 
         /// <summary>The patterns that locate the patch; none of them in an exe means its code isn't readable there (packed).</summary>
@@ -502,6 +503,30 @@ namespace A2GPatch
     }
 
     /// <summary>
+    /// Keeps the preseason calculation screen ("ANSTOSS2 - Kalkulation") from hanging. Its constructor
+    /// (at 0x4a513f in the original) sets the selection of "Ermittlung der Zahlen" (+0x10D48) to 0 but
+    /// leaves that of "Darstellung" (+0x10D46) as it comes from the heap. With a large value there,
+    /// drawing the list reads past its entries, the access violation inside WM_INITDIALOG is swallowed
+    /// by the window callback, and the screen stays hidden while the game waits for it. Seen under Wine;
+    /// on Windows that memory is usually 0. The patch clears both selections in the same 11 bytes:
+    /// <code>
+    ///   mov word [esi+10D48],0 / mov eax,esi   ->   mov eax,esi / and dword [esi+10D46],0 / nop x2
+    /// </code>
+    /// </summary>
+    internal sealed class CalculationInit : RewritePatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[] OriginalCode => Exact(0x66, 0xC7, 0x86, 0x48, 0x0D, 0x01, 0x00, 0x00, 0x00, 0x8B, 0xC6);
+        /// <inheritdoc/>
+        internal override byte?[] PatchedCode => Exact(0x8B, 0xC6, 0x83, 0xA6, 0x46, 0x0D, 0x01, 0x00, 0x00, 0x90, 0x90);
+
+        /// <inheritdoc/>
+        public override string Name => "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison";
+        /// <inheritdoc/>
+        public override ushort Flag => 512;
+    }
+
+    /// <summary>
     /// A patch that rewrites one block of code that occurs exactly once. Original and patched code have
     /// the same length and wildcards (null) at the same places; those bytes (addresses, displacements)
     /// are kept from the game.
@@ -606,7 +631,7 @@ namespace A2GPatch
     /// The helper (177 bytes, through the game's own imports of GetDC, GetDIBits and ReleaseDC) goes at
     /// the end of the exe's last executable section, which is zero there: past the end of the original's
     /// code (the loader maps a section's whole raw data), at the end of GOG's import section. Taking the
-    /// patch back zeroes it again.
+    /// patch back zeroes it again. The section of <see cref="Patch101"/> doesn't count: it can go again.
     /// </summary>
     internal sealed class CupDraw : Patch
     {
@@ -672,7 +697,7 @@ namespace A2GPatch
             PeFile pe = PeFile.Read(image);
             uint[] imports = new[] { "GetBitmapBits", "GetDC", "GetDIBits", "ReleaseDC" }
                 .Select(name => pe != null && pe.Imports.TryGetValue(name, out uint entry) ? entry : 0).ToArray();
-            PeFile.Section last = pe?.Sections.LastOrDefault(s => (s.Characteristics & Executable) != 0);
+            PeFile.Section last = pe?.Sections.LastOrDefault(s => (s.Characteristics & Executable) != 0 && s.Name != Patch101.SectionName);
             if (imports.Contains(0u) || last == null)
                 return null;
             bool isPatched = patched.Count == 1;
@@ -697,18 +722,33 @@ namespace A2GPatch
         }
     }
 
-    /// <summary>What <see cref="CupDraw"/> needs of a 32-bit exe's headers: its sections and the imports by name.</summary>
+    /// <summary>What the patches need of a 32-bit exe's headers: its sections, where the headers are, and the imports by name.</summary>
     internal sealed class PeFile
     {
         /// <summary>A section header.</summary>
         internal sealed class Section
         {
-            public uint Va, Raw, RawSize, Characteristics;
+            public string Name;
+            public uint Va, VirtualSize, Raw, RawSize, Characteristics;
         }
 
         private readonly byte[] image;
         /// <summary>Where the exe is loaded.</summary>
         public uint ImageBase { get; private set; }
+        /// <summary>Where the optional header starts in the file.</summary>
+        public long OptionalHeader { get; private set; }
+        /// <summary>Where the section headers start in the file.</summary>
+        public long SectionTable { get; private set; }
+        /// <summary>The size of the loaded image.</summary>
+        public uint SizeOfImage { get; private set; }
+        /// <summary>The alignment of sections in memory.</summary>
+        public uint SectionAlignment { get; private set; }
+        /// <summary>The alignment of sections in the file.</summary>
+        public uint FileAlignment { get; private set; }
+        /// <summary>Where the signature (certificate table) starts in the file and its size; both 0 without one.</summary>
+        public uint CertificateAt { get; private set; }
+        /// <summary>The size of the signature.</summary>
+        public uint CertificateSize { get; private set; }
         /// <summary>The sections in the order of the headers.</summary>
         public List<Section> Sections { get; } = new List<Section>();
         /// <summary>Each imported function's import address table entry (an address in the loaded exe).</summary>
@@ -738,11 +778,22 @@ namespace A2GPatch
             if (this.U32(header) != 0x4550)                    // PE\0\0
                 return false;
             long optional = header + 24, sections = optional + this.U16(header + 20);
+            this.OptionalHeader = optional;
+            this.SectionTable = sections;
             this.ImageBase = this.U32(optional + 28);
+            this.SectionAlignment = this.U32(optional + 32);
+            this.FileAlignment = this.U32(optional + 36);
+            this.SizeOfImage = this.U32(optional + 56);
+            this.CertificateAt = this.U32(optional + 128);
+            this.CertificateSize = this.U32(optional + 132);
             for (int i = 0; i < this.U16(header + 6); i++)
             {
                 long at = sections + 40 * i;
-                this.Sections.Add(new Section { Va = this.U32(at + 12), RawSize = this.U32(at + 16), Raw = this.U32(at + 20), Characteristics = this.U32(at + 36) });
+                this.Sections.Add(new Section
+                {
+                    Name = this.Name(at, 8), VirtualSize = this.U32(at + 8), Va = this.U32(at + 12),
+                    RawSize = this.U32(at + 16), Raw = this.U32(at + 20), Characteristics = this.U32(at + 36),
+                });
             }
             // The import descriptors up to the empty one: names by the import lookup table, entries in the address table.
             for (long descriptor = this.Offset(this.U32(optional + 104)); this.U32(descriptor + 12) != 0; descriptor += 20)
@@ -765,6 +816,14 @@ namespace A2GPatch
             return section == null ? -1 : this.ImageBase + section.Va + (offset - section.Raw);
         }
 
+        /// <summary>Where the loaded address <paramref name="va"/> lies in the file, or -1 outside every section's data.</summary>
+        public long FileOffset(uint va)
+        {
+            uint rva = va - this.ImageBase;
+            Section section = this.Sections.FirstOrDefault(s => rva >= s.Va && rva < s.Va + Math.Min(s.VirtualSize, s.RawSize));
+            return section == null ? -1 : (long)section.Raw + (rva - section.Va);
+        }
+
         // Where the address rva (relative to the image base) lies in the file.
         private long Offset(uint rva)
         {
@@ -776,10 +835,11 @@ namespace A2GPatch
         private int U16(long at) => this.Byte(at) | this.Byte(at + 1) << 8;
         private uint U32(long at) => (uint)(this.U16(at) | this.U16(at + 2) << 16);
 
-        private string Name(long at)
+        // The zero-terminated name at at, at most max characters long.
+        private string Name(long at, int max = int.MaxValue)
         {
             StringBuilder name = new StringBuilder();
-            for (byte c = this.Byte(at); c != 0; c = this.Byte(++at))
+            for (byte c = this.Byte(at); c != 0 && name.Length < max; c = this.Byte(++at))
                 name.Append((char)c);
             return name.ToString();
         }

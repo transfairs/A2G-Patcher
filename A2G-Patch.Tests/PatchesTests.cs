@@ -35,21 +35,20 @@ namespace A2GPatch.Tests
         }
 
         internal static byte[] Both() => Exe(Goals(), Arrow());
-
-        /// <summary>The bytes written as hex digits.</summary>
-        internal static byte[] Hex(this string hex) =>
-            Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(2 * i, 2), 16)).ToArray();
     }
 
     /// <summary>
     /// Minimal 32-bit exes for the patches that read the headers: an import section at 0x1000 (file
     /// 0x200, 0x200 bytes) and a code section at 0x2000 (file 0x400), headers listing the imports first.
-    /// In GOG's layout the import section is executable and listed last, as in GOG's run.exe.
+    /// In GOG's layout the import section is executable and listed last, as in GOG's run.exe. Sections
+    /// are aligned to 0x1000 in memory and 0x200 in the file.
     /// </summary>
     internal static class TestExe
     {
         internal const uint Base = 0x400000, ImportRva = 0x1000, CodeRva = 0x2000, CodeAt = 0x400;
-        internal const int ImportDirectoryAt = 0xC0, SectionsAt = 0x138;
+        // The PE header behind 0x7C, where GOG's run.exe keeps its CRC (see CopyProtection).
+        internal const int PeAt = 0x80, OptionalAt = PeAt + 24, SectionsAt = OptionalAt + 0xE0;
+        internal const int ImportDirectoryAt = OptionalAt + 104, CertificateDirectoryAt = OptionalAt + 128, SizeOfImageAt = OptionalAt + 56;
         internal static readonly string[][] GameImports =
         {
             new[] { "USER32.dll", "GetDC", "ReleaseDC" },
@@ -58,7 +57,7 @@ namespace A2GPatch.Tests
 
         /// <summary>The exe with the code <paramref name="code"/> builds from the import entries' addresses.</summary>
         internal static byte[] Build(Func<Dictionary<string, uint>, byte[]> code, bool gog = false, string[][] imports = null,
-            bool emptyCodeSectionLast = false, byte[] overlay = null)
+            bool emptyCodeSectionLast = false, byte[] overlay = null, uint sizeOfImage = 0, byte[] afterSections = null)
         {
             Dictionary<string, uint> entries = new Dictionary<string, uint>();
             byte[] importSection = Imports(imports ?? GameImports, entries);
@@ -66,9 +65,9 @@ namespace A2GPatch.Tests
             byte[] image = new byte[CodeAt + text.Length];
             image[0] = 0x4D;
             image[1] = 0x5A;
-            Put(image, 0x3C, 0x40);
-            Put(image, 0x40, 0x4550);
-            Put(image, 0x44, 0x14C);
+            Put(image, 0x3C, PeAt);
+            Put(image, PeAt, 0x4550);
+            Put(image, PeAt + 4, 0x14C);
             List<uint[]> sections = new List<uint[]>                     // va, raw size, raw, characteristics
             {
                 new uint[] { ImportRva, 0x200, 0x200, gog ? 0xE0000020u : 0x40000040u },
@@ -78,13 +77,18 @@ namespace A2GPatch.Tests
                 sections.Reverse();
             if (emptyCodeSectionLast)
                 sections.Add(new uint[] { 0x8000, 0, 0, 0x60000020 });
-            image[0x46] = (byte)sections.Count;
-            image[0x54] = 0xE0;                                          // size of the optional header
-            Put(image, 0x58, 0x10B);
-            Put(image, 0x58 + 28, Base);
+            image[PeAt + 6] = (byte)sections.Count;
+            image[PeAt + 20] = 0xE0;                                     // size of the optional header
+            Put(image, OptionalAt, 0x10B);
+            Put(image, OptionalAt + 28, Base);
+            Put(image, OptionalAt + 32, 0x1000);
+            Put(image, OptionalAt + 36, 0x200);
+            Put(image, SizeOfImageAt, sizeOfImage);
             Put(image, ImportDirectoryAt, ImportRva);
+            afterSections?.CopyTo(image, SectionsAt + 40 * sections.Count);
             for (int i = 0; i < sections.Count; i++)
             {
+                Put(image, SectionsAt + 40 * i + 8, sections[i][1]);
                 Put(image, SectionsAt + 40 * i + 12, sections[i][0]);
                 Put(image, SectionsAt + 40 * i + 16, sections[i][1]);
                 Put(image, SectionsAt + 40 * i + 20, sections[i][2]);
@@ -162,8 +166,12 @@ namespace A2GPatch.Tests
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit", "Ton über das Standard-Audiogerät von Windows",
                 "Keine falsche Warnung „Festplatte fast voll“ beim Speichern", "Kader nicht über 30 Spieler wachsen lassen",
                 "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
+                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison",
+                "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)", "Patch 1.01 (Änderungen an Programm und Daten)",
+                "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
             }, Patch.All.Select(p => p.Name));
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256 }, Patch.All.Select(p => p.Flag));
+            // The GOG patches (0) last, as the window lists them under their own heading.
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
         }
 
         private static readonly Patch Cup = Patch.All[8];
@@ -226,7 +234,7 @@ namespace A2GPatch.Tests
             {
                 TestExe.Build(i => GameCode.Exe(CupCall(i), CupCall(i)).Concat(new byte[256]).ToArray()), // ambiguous
                 GameCode.Exe(CupCall(new Dictionary<string, uint> { ["ReleaseDC"] = 1, ["GetBitmapBits"] = 2 })), // no exe headers
-                exe.With(0x40, 0),                                                         // no PE signature
+                exe.With(TestExe.PeAt, 0),                                                 // no PE signature
                 exe.With(0x3C, 0x7FFFFF00),                                                // headers beyond the end
                 exe.With(TestExe.ImportDirectoryAt, 0x9000),                               // imports outside every section
                 TestExe.Build(CupCode, imports: new[] { TestExe.GameImports[0], new[] { "GDI32.dll", "GetBitmapBits" } }), // no GetDIBits
@@ -307,6 +315,23 @@ namespace A2GPatch.Tests
             Assert.True(again.IsPatched);
             Assert.Equal(site.Original, again.Original);
             Assert.Null(Squad.Find(GameCode.Exe(SquadCode, SquadCode)));
+        }
+
+        private static readonly Patch Calculation = Patch.All[9];
+        // The original exe at 0x4A513F (GOG's at 0x4A733F): mov word [esi+10D48],0 / mov eax,esi, then pop esi.
+        internal static readonly byte[] CalculationCode = "66C786480D010000008BC65E".Hex();
+
+        [Fact]
+        public void CalculationInit_ClearsBothSelections_InTheSameBytes()
+        {
+            Site site = Calculation.Find(GameCode.Exe(CalculationCode)).Single();
+
+            Assert.Equal(300, site.Offset);
+            Assert.Equal(CalculationCode.Take(11), site.Original);
+            // mov eax,esi / and dword [esi+10D46],0 / nop x2
+            Assert.Equal("8BC683A6460D0100009090".Hex(), site.Patched);
+            Assert.True(Calculation.Find(Apply(GameCode.Exe(CalculationCode), new[] { site })).Single().IsPatched);
+            Assert.Null(Calculation.Find(GameCode.Exe(CalculationCode, CalculationCode)));
         }
 
         private static readonly Patch Sleep = Patch.All[3];

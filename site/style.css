@@ -220,6 +220,7 @@ h1 {
 }
 .tag-fix { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .tag-opt { color: var(--warm); background: color-mix(in srgb, var(--warm) 14%, transparent); }
+.tag-gog { color: var(--text); background: color-mix(in srgb, var(--text) 10%, transparent); }
 
 /* Scoreboard digits */
 .score {

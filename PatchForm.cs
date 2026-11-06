@@ -44,8 +44,16 @@ namespace A2GPatch
             this.Controls.AddRange(new Control[] { folderLabel, this.folderInput, this.browseButton, this.statusLabel });
 
             int y = 86;
+            bool gogHeading = false;
             foreach (Patch patch in Patch.All)
             {
+                // The GOG patches come last, under a heading of their own.
+                if (patch is FilePatch && !gogHeading)
+                {
+                    gogHeading = true;
+                    this.Controls.Add(new Label { Name = "GogLabel", Text = "Nur für die GOG-Version:", AutoSize = true, Location = new Point(12, y + 6) });
+                    y += 28;
+                }
                 CheckBox box = new CheckBox { Name = patch.GetType().Name + "Input", Text = patch.Name, AutoSize = true, Location = new Point(14, y) };
                 box.CheckedChanged += (s, e) => this.UpdateApplyButton();
                 this.switches[patch] = box;

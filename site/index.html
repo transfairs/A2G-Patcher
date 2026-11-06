@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A2G-Patch – Fehlerbehebungen für Anstoss 2 Gold</title>
-<meta name="description" content="Kleine Patches für Anstoss 2 Gold: Pfeilknöpfe zählen wieder weiter, kein Absturz bei den WM-, EM- und Finalvideos, kein Einfrieren, Ton aufs richtige Gerät, Torgrenzen aufheben und mehr. Für Original, GOG und 2007er-CD.">
+<meta name="description" content="Kleine Patches für Anstoss 2 Gold: Pfeilknöpfe zählen wieder weiter, kein Absturz bei den WM-, EM- und Finalvideos, kein Einfrieren, Ton aufs richtige Gerät, Torgrenzen aufheben und mehr. Für Original, GOG und 2007er-CD, für GOG außerdem Patch 1.01 und keine Kopierschutz-Strafen.">
 <link rel="icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="stylesheet" href="style.css">
@@ -31,7 +31,7 @@
     <div class="hero-copy">
       <p class="eyebrow">Für Anstoss 2 Gold · Original, GOG &amp; 2007er-CD</p>
       <h1>Anstoss 2 Gold,<br><span class="grad">wie es sein sollte.</span></h1>
-      <p class="lead">Ein kleines Fenster, acht Haken: Die Pfeilknöpfe zählen wieder weiter, die Videos zu WM, EM und Finale lassen das Spiel nicht mehr abstürzen, nichts friert nach langer Windows-Laufzeit ein, der Ton kommt aus dem richtigen Gerät, und wer mag, hebt die Torgrenzen auf. Ohne Kompatibilitätsmodus, jederzeit rückgängig zu machen.</p>
+      <p class="lead">Ein kleines Fenster, ein paar Haken: Die Pfeilknöpfe zählen wieder weiter, die Videos zu WM, EM und Finale lassen das Spiel nicht mehr abstürzen, nichts friert nach langer Windows-Laufzeit ein, der Ton kommt aus dem richtigen Gerät, und wer mag, hebt die Torgrenzen auf. Die GOG-Version bekommt dazu Patch 1.01 und ihre Dialoge zurück, und ihr Kopierschutz macht keine „Raubkopie“ mehr aus dem Spielstand. Ohne Kompatibilitätsmodus, jederzeit rückgängig zu machen.</p>
       <div class="cta">
         <a class="btn btn-primary" href="https://github.com/transfairs/A2G-Patcher/releases/latest/download/A2G-Patch-Latest.zip">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
@@ -43,7 +43,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="patch.png" width="542" height="369" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und neun Haken für die Patches">
+      <img src="patch.png" width="542" height="369" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je ein Haken pro Patch">
     </figure>
   </div>
 </section>
@@ -116,6 +116,38 @@
         <h3>Vereinsnamen bei der Pokalauslosung richtig darstellen</h3>
         <p>Unter aktuellem Windows und unter Wine erscheinen die Vereinsnamen im Video der Pokalauslosung doppelt so breit, halb so hoch und gepunktet, weil das Spiel ein Bild mit 16&nbsp;Bit pro Pixel erwartet und 32 bekommt. Der Patch holt das Bild ausdrücklich mit 16&nbsp;Bit.</p>
       </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h6"/></svg>
+        </div>
+        <h3>Kein Hänger beim Öffnen der Kalkulation</h3>
+        <p>Der Kalkulationsbildschirm der Vorsaison übernimmt eine seiner zwei Auswahlen aus Speicher, den er nie gelöscht hat. Steht dort ein großer Wert, bleibt er unsichtbar, und das Spiel wartet auf ihn. Unter Wine gesehen; unter Windows ist der Speicher meist 0, der Patch stellt es sicher.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">Nur GOG</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>Keine Kopierschutz-Strafen</h3>
+        <p>GOG verkauft die Fassung von 2007, aus dem Kopierschutz herausgelöst. Dessen Reste schlagen trotzdem an: Ab der zweiten Saison heißen alle Vereine „Raubkopie“, Spieler fallen auf Stärke&nbsp;1, und zehn Selbstprüfungen der <code>run.exe</code> scheitern. Mit dem Patch bestehen alle Prüfungen.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">Nur GOG</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.3 5.7M4 18v-6h6"/></svg>
+        </div>
+        <h3>Patch 1.01</h3>
+        <p>Die <code>run.exe</code> von GOG ist aus dem Stand 1.00 gebaut. Der Patch bringt Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999 schon hat: Spielerlisten, neue Spieler und Torhüter, Zähler, Ereignistexte und mehr.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">Nur GOG</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 13h6M7 16h10"/></svg>
+        </div>
+        <h3>Dialoge wie im Original von 1999</h3>
+        <p>In der <code>RESDLL.dll</code> von GOG fehlen 342 Dialogen die Titelleiste und 68 Feldern der eingelassene Rahmen, etwa den Auswahlen, die wie Knöpfe aussehen. Der Patch gibt ihnen die Stile von 1999 zurück.</p>
+      </article>
       <article class="card card-alt">
         <div class="card-head">
           <span class="tag tag-opt">Optional</span>
@@ -148,7 +180,7 @@
       </div>
       <div class="rel">
         <div class="rel-head"><b>GOG</b><code>run.exe</code></div>
-        <p>Genauso, mit <code>run.exe.vor-a2g-patch</code>. Eine Dateiprüfung in GOG Galaxy stellt das Original wieder her; dann einfach noch einmal übernehmen.</p>
+        <p>Genauso, mit <code>run.exe.vor-a2g-patch</code>. Die GOG-Patches ändern auch die <code>RESDLL.dll</code> (Sicherung daneben) und die Datendateien von Patch 1.01; abhaken stellt auch sie wieder her. Eine Dateiprüfung in GOG Galaxy stellt das Original wieder her; dann einfach noch einmal übernehmen.</p>
       </div>
       <div class="rel">
         <div class="rel-head"><b>2007er-CD</b><code>run.exe</code> (gepackt)</div>
@@ -172,7 +204,7 @@
       </details>
       <details>
         <summary>Ein Haken ist ausgegraut.</summary>
-        <p>Jeder Patch sucht seine Stellen anhand der Befehle drumherum. Findet er sie nicht genau einmal, im Original- oder im gepatchten Zustand, bietet A2G-Patch ihn nicht an, statt blind etwas zu überschreiben.</p>
+        <p>Jeder Patch sucht seine Stellen anhand der Befehle drumherum. Findet er sie nicht genau einmal, im Original- oder im gepatchten Zustand, bietet A2G-Patch ihn nicht an, statt blind etwas zu überschreiben. Die Haken unter „Nur für die GOG-Version“ gibt es nur, wenn die Dateien genau die von GOG sind.</p>
       </details>
       <details>
         <summary>Liegt schon eine andere msvfw32.dll im Spielordner?</summary>
@@ -239,6 +271,24 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
         <summary><b>Auflösung</b><span>Ein fehlendes Flag</span></summary>
         <p>Das Spiel ruft <code>ChangeDisplaySettingsA</code> mit Flag 0 auf, die Umstellung ist dann nicht an den Prozess gebunden. Mit <code>CDS_FULLSCREEN</code> gilt sie nur fürs Spiel, und Windows stellt die Auflösung zurück, wenn es endet, auch nach einem Absturz:</p>
 <pre><code>mov [esi+1C8],ebx (Feld ist schon 0)  →  mov byte [esp+4],4 / nop</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Kalkulation</b><span>Ein nicht gelöschtes Feld</span></summary>
+        <p>Der Konstruktor des Kalkulationsbildschirms setzt die Auswahl „Ermittlung der Zahlen“ auf 0, die von „Darstellung“ direkt daneben aber nicht. Mit einem großen Wert liest das Zeichnen der Liste über ihr Ende hinaus, der Fehler verschwindet im Fensteraufruf, und der Bildschirm bleibt halb aufgebaut und unsichtbar. Der Patch löscht beide, in denselben 11&nbsp;Bytes:</p>
+<pre><code>mov word [esi+10D48],0 / mov eax,esi  →  mov eax,esi / and dword [esi+10D46],0 / nop / nop</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>
+        <p>Elf Stellen rufen eine Signaturroutine auf und ziehen den erwarteten Wert ab; 0 heißt „Original-CD“. GOG hat das Abziehen durch NOPs ersetzt, also scheitert jede Abfrage. Der Patch setzt das Ergebnis einer bestandenen Abfrage ein. Dazu prüfen fünf Stellen eine CRC32 der <code>run.exe</code> auf der Platte und fünf eine CRC32 ihres eigenen Codes; A2G-Patch speichert nach jeder Änderung die passenden Werte.</p>
+<pre><code>call check / add esp,4 / nop ×5  →  call check / add esp,4 / xor eax,eax / nop ×3</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Patch 1.01 (GOG)</b><span>Ein neuer Abschnitt in der run.exe</span></summary>
+        <p>Die Änderungen von 1.01 wurden durch Vergleich mit dem Programm von 1.01 und der Version von 1999 gefunden und in Assembler neu geschrieben (<code>gog/a2v101.S</code>). Der Code kommt in einen neuen Abschnitt <code>.a2v101</code> am Ende der <code>run.exe</code>, zwölf Stellen springen hinein. Die drei Datendateien von 1.01 entstehen aus denen von GOG und eigenem Code, ohne Dateien des Patches.</p>
+      </details>
+      <details class="tech-item">
+        <summary><b>Dialoge (GOG)</b><span>Fehlende Fensterstile</span></summary>
+        <p>Alle Dialoge sind Vorlagen in der <code>RESDLL.dll</code>. Im Vergleich mit der Datei von 1999 fehlen bei GOG <code>WS_CAPTION</code>, <code>DS_MODALFRAME</code>, <code>WS_EX_CLIENTEDGE</code> und ein paar weitere Stile. Der Patch setzt sie an Ort und Stelle wieder ein; die Datei behält ihre Größe, Ausgang und Ergebnis werden per SHA-256 geprüft.</p>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>Ein Proxy für die 2007er-CD</span></summary>

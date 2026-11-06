@@ -19,6 +19,8 @@
 //  64 squad limit:  "full?" by forecast only                   ->  also full at 30 actual players
 // 128 display mode: ChangeDisplaySettingsA(&640x480, 0)        ->  flags CDS_FULLSCREEN (undone at exit)
 // 256 cup draw:     GetBitmapBits of the names' bitmap         ->  GetDIBits as 16-bit DIB
+// 512 calculation:  only one of two selections cleared         ->  both cleared (no hang)
+// A2G-Patch's GOG patches change files on disk and are not offered with this DLL.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
 // deleting this msvfw32.dll.
@@ -115,7 +117,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_SQUAD_LIMIT  64
 #define FLAG_DISPLAY_MODE 128
 #define FLAG_CUP_DRAW     256   // the first bit of the second flags byte
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x01";   // all on
+#define FLAG_CALC_INIT    512
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x03";   // all on
 #define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -484,6 +487,13 @@ static int PatchCupDraw(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 512: preseason calculation ------------------------------------------------------------------
+
+// As in Patches.cs (CalculationInit): the constructor of the calculation screen clears both selections,
+// not only that of "Ermittlung der Zahlen" (+10D48).
+static const WORD kCalc[] = { 0x66, 0xC7, 0x86, 0x48, 0x0D, 0x01, 0x00, 0x00, 0x00, 0x8B, 0xC6 };           // mov word [esi+10D48],0 / mov eax,esi
+static const WORD kCalcPatched[] = { 0x8B, 0xC6, 0x83, 0xA6, 0x46, 0x0D, 0x01, 0x00, 0x00, 0x90, 0x90 };    // mov eax,esi / and dword [esi+10D46],0
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 static DWORD WINAPI PatchThread(LPVOID param)
@@ -498,8 +508,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL videoDone = !(flags & FLAG_VIDEO_CRASH), sleepDone = !(flags & FLAG_SLEEP_FREEZE);
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
-    BOOL cupDone = !(flags & FLAG_CUP_DRAW);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone)
+    BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -511,6 +521,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!squadDone) squadDone = PatchRewrite(base, size, kSquad, kSquadPatched, ARRAYSIZE(kSquad)) == DONE;
         if (!displayDone) displayDone = PatchRewrite(base, size, kDisplay, kDisplayPatched, ARRAYSIZE(kDisplay)) == DONE;
         if (!cupDone) cupDone = PatchCupDraw(base, size) == DONE;
+        if (!calcDone) calcDone = PatchRewrite(base, size, kCalc, kCalcPatched, ARRAYSIZE(kCalc)) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

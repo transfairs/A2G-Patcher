@@ -34,6 +34,10 @@ namespace A2GPatch.Tests
         internal static readonly Patch Goals = Patch.All[0];
         internal static readonly Patch Arrow = Patch.All[1];
         internal static readonly Patch Cup = Patch.All[8];
+        internal static readonly Patch Protection = Patch.All[10];
+        internal static readonly Patch V101 = Patch.All[11];
+        internal static readonly Patch Dialogs = Patch.All[12];
+        internal static readonly Patch[] Gog = { Protection, V101, Dialogs };
         // Stands for A2G-Patch's msvfw32.dll: the marker with the two flags bytes after it.
         internal static readonly byte[] OwnDll = Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x03\0..");
 
@@ -70,6 +74,8 @@ namespace A2GPatch.Tests
                 Assert.Equal(folder.File(name), install.ExePath);
                 Assert.True(install.CanApply(Goals) && install.CanApply(Arrow));
                 Assert.False(install.IsApplied(Goals) || install.IsApplied(Arrow));
+                // Not GOG's files: none of the GOG patches.
+                Assert.All(Gog, p => Assert.False(install.CanApply(p) || install.IsApplied(p)));
 
                 install.Apply(new[] { Arrow });
                 Assert.Equal(original, File.ReadAllBytes(folder.File(name) + GameInstall.BackupSuffix));
@@ -139,6 +145,70 @@ namespace A2GPatch.Tests
             }
         }
 
+        // GOG: the code patches and the GOG patches together; CopyProtection's CRCs cover the finished exe,
+        // and taking everything back restores every file.
+        [Fact]
+        public void Gog_AppliesEverything_AndTakesItBackToTheByte() => GogPatchesTests.WithTestHashes(() =>
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                GogPatchesTests.GogData(folder);
+                byte[] exe = GogExe.Build();
+                File.WriteAllBytes(folder.File("run.exe"), exe);
+                File.WriteAllBytes(folder.File(DialogStyles.Dll), GogPatchesTests.GogDll());
+                GameInstall install = GameInstall.Detect(folder.Path);
+                Assert.Equal(PatchKind.Exe, install.Kind);
+                Assert.All(Gog.Concat(new[] { Goals }), p => Assert.True(install.CanApply(p) && !install.IsApplied(p)));
+
+                Patch[] all = { Goals, Protection, V101, Dialogs };
+                install.Apply(all);
+                Assert.All(all, p => Assert.True(install.IsApplied(p)));
+                GameInstall again = GameInstall.Detect(folder.Path);
+                Assert.All(all, p => Assert.True(again.IsApplied(p) && again.CanApply(p)));
+                byte[] patched = File.ReadAllBytes(folder.File("run.exe"));
+                Assert.Equal(Crc32.Compute(patched, 0x80, patched.Length - 0x80), BitConverter.ToUInt32(patched, 0x7C));
+                Assert.Equal(exe, File.ReadAllBytes(folder.File("run.exe" + GameInstall.BackupSuffix)));
+                Assert.Equal(GogPatchesTests.EventFile('.'), File.ReadAllBytes(folder.File(Patch101.EventsShort)));
+                Assert.Equal(GogPatchesTests.Dll1999(), File.ReadAllBytes(folder.File(DialogStyles.Dll)));
+                // The same choice again changes nothing.
+                again.Apply(all);
+                Assert.Equal(patched, File.ReadAllBytes(folder.File("run.exe")));
+
+                // Only the goal limits taken back: the CRCs follow.
+                again.Apply(new[] { Protection, V101, Dialogs });
+                byte[] withoutGoals = File.ReadAllBytes(folder.File("run.exe"));
+                Assert.NotEqual(patched, withoutGoals);
+                Assert.True(GameInstall.Detect(folder.Path).IsApplied(Protection));
+
+                again.Apply(new Patch[0]);
+                Assert.Equal(exe, File.ReadAllBytes(folder.File("run.exe")));
+                Assert.Equal(GogPatchesTests.GogDll(), File.ReadAllBytes(folder.File(DialogStyles.Dll)));
+                Assert.Equal(GogPatchesTests.EventFile(':'), File.ReadAllBytes(folder.File(Patch101.Events)));
+                Assert.Equal(new[] { "ARCHIVES", "DATA.DEF", "DATA.VER", DialogStyles.Dll, "run.exe", "TEXTE" },
+                    Directory.GetFileSystemEntries(folder.Path).Select(Path.GetFileName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+                Assert.Empty(Directory.GetFiles(folder.File("ARCHIVES")));
+                Assert.Single(Directory.GetFiles(folder.File("TEXTE")));
+            }
+        });
+
+        // RESDLL.dll with the 1999 styles but without GOG's file as the backup: shown as applied, can't be switched.
+        [Fact]
+        public void Gog_DialogsWithoutTheirBackup_StayAsTheyAre() => GogPatchesTests.WithTestHashes(() =>
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                File.WriteAllBytes(folder.File("run.exe"), GogExe.Build());
+                File.WriteAllBytes(folder.File(DialogStyles.Dll), GogPatchesTests.Dll1999());
+                GameInstall install = GameInstall.Detect(folder.Path);
+                Assert.True(install.IsApplied(Dialogs));
+                Assert.False(install.CanApply(Dialogs));
+
+                install.Apply(new[] { Goals });
+                Assert.Equal(GogPatchesTests.Dll1999(), File.ReadAllBytes(folder.File(DialogStyles.Dll)));
+                Assert.True(install.IsApplied(Goals) && install.IsApplied(Dialogs));
+            }
+        });
+
         // The 2007 CD: anstoss2.exe is the launcher, run.exe packed - neither holds a pattern.
         [Fact]
         public void PackedRunExe_GetsTheDllWithTheChosenFlags_AndLosesItAgain() => WithDll(OwnDll, () =>
@@ -152,6 +222,8 @@ namespace A2GPatch.Tests
                 Assert.Equal(folder.File("run.exe"), install.ExePath);
                 Assert.True(install.CanApply(Goals) && install.CanApply(Arrow));
                 Assert.False(install.ForeignDll);
+                // The DLL knows none of the GOG patches.
+                Assert.All(Gog, p => Assert.False(install.CanApply(p) || install.IsApplied(p)));
 
                 install.Apply(new[] { Arrow });
                 Assert.Equal(2, Flags(folder));

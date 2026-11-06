@@ -54,6 +54,8 @@ namespace A2GPatch
 
         // Exe: the places of each patch found in the exe (patches not found are missing).
         private readonly Dictionary<Patch, Site[]> sites = new Dictionary<Patch, Site[]>();
+        // Exe: where each GOG patch stands (those that aren't possible here are missing).
+        private readonly Dictionary<FilePatch, FileState> fileStates = new Dictionary<FilePatch, FileState>();
         // Dll: the flags of the installed msvfw32.dll (0 without one).
         private ushort flags;
 
@@ -102,18 +104,41 @@ namespace A2GPatch
             return Enumerable.Range(0, installed.Length).Any(i => i != flagsAt && i != flagsAt + 1 && installed[i] != embedded[i]);
         }
 
-        /// <summary>Whether <paramref name="patch"/> can be switched here.</summary>
+        /// <summary>Whether <paramref name="patch"/> can be switched here (the GOG patches never through the DLL).</summary>
         public bool CanApply(Patch patch) =>
-            this.Kind == PatchKind.Dll ? !this.ForeignDll : this.sites.ContainsKey(patch);
+            this.Kind == PatchKind.Dll ? !this.ForeignDll && patch.Flag != 0
+            : patch is FilePatch file ? this.State(file) == FileState.Off || this.State(file) == FileState.On
+            : this.sites.ContainsKey(patch);
 
         /// <summary>Whether <paramref name="patch"/> is applied here.</summary>
         public bool IsApplied(Patch patch) =>
-            this.Kind == PatchKind.Dll ? (this.flags & patch.Flag) != 0 : this.sites.TryGetValue(patch, out Site[] found) && found.All(s => s.IsPatched);
+            this.Kind == PatchKind.Dll ? (this.flags & patch.Flag) != 0
+            : patch is FilePatch file ? this.State(file) == FileState.On || this.State(file) == FileState.Fixed
+            : this.sites.TryGetValue(patch, out Site[] found) && found.All(s => s.IsPatched);
+
+        private FileState State(FilePatch patch) => this.fileStates.TryGetValue(patch, out FileState state) ? state : FileState.Unknown;
+
+        // Finds each patch's places in the exe's image, and where the GOG patches stand.
+        private void Load(byte[] exe)
+        {
+            this.sites.Clear();
+            this.fileStates.Clear();
+            GameFiles files = new GameFiles(this.Folder, exe);
+            foreach (Patch patch in Patch.All)
+            {
+                Site[] found = patch.Find(exe);
+                if (found != null)
+                    this.sites[patch] = found;
+                FileState state = patch is FilePatch file ? file.State(files) : FileState.Unknown;
+                if (state != FileState.Unknown)
+                    this.fileStates[(FilePatch)patch] = state;
+            }
+        }
 
         /// <summary>
         /// Looks at the game in <paramref name="folder"/>: an exe in which a patch finds its places is
-        /// patched on disk; without one, an existing run.exe that holds none of the patterns is taken
-        /// as the packed 2007 CD exe.
+        /// patched on disk (the GOG patches are looked at only then); without one, an existing run.exe
+        /// that holds none of the patterns is taken as the packed 2007 CD exe.
         /// </summary>
         public static GameInstall Detect(string folder)
         {
@@ -124,12 +149,7 @@ namespace A2GPatch
                     continue;
                 byte[] exe = File.ReadAllBytes(path);
                 GameInstall install = new GameInstall(folder, PatchKind.Exe, path);
-                foreach (Patch patch in Patch.All)
-                {
-                    Site[] found = patch.Find(exe);
-                    if (found != null)
-                        install.sites[patch] = found;
-                }
+                install.Load(exe);
                 if (install.sites.Count > 0)
                     return install;
                 if (name == "run.exe" && Patch.All.SelectMany(p => p.Patterns).All(p => Patch.FindAll(exe, p).Count == 0))
@@ -148,8 +168,9 @@ namespace A2GPatch
         /// <summary>
         /// Applies exactly the patches in <paramref name="wanted"/> (others are taken back). The exe gets
         /// a backup next to it before it's changed for the first time; once it's back to the original,
-        /// the backup goes again. Throws IOException or UnauthorizedAccessException where the files
-        /// can't be written, InvalidOperationException where nothing may be changed.
+        /// the backup goes again. The GOG patches write their other files after the exe. Throws
+        /// IOException or UnauthorizedAccessException where the files can't be written,
+        /// InvalidOperationException where nothing may be changed (then nothing is).
         /// </summary>
         public void Apply(ICollection<Patch> wanted)
         {
@@ -161,27 +182,40 @@ namespace A2GPatch
                 throw new InvalidOperationException("Kein bekanntes Anstoss 2 Gold in diesem Ordner.");
         }
 
+        // The code patches first, then the GOG patches; CopyProtection last, as it stores the CRC of the
+        // finished exe. Everything is prepared in memory before anything is written.
         private void WriteExe(ICollection<Patch> wanted)
         {
-            List<Site> changes = this.sites
-                .SelectMany(p => p.Value.Where(s => s.IsPatched != wanted.Contains(p.Key)))
-                .ToList();
-            if (changes.Count == 0)
-                return;
-            if (!File.Exists(this.BackupPath))
-                File.Copy(this.ExePath, this.BackupPath);
-            using (FileStream exe = new FileStream(this.ExePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            byte[] current = File.ReadAllBytes(this.ExePath), image = (byte[])current.Clone();
+            foreach (KeyValuePair<Patch, Site[]> patch in this.sites)
             {
-                foreach (Site site in changes)
+                foreach (Site site in patch.Value.Where(s => s.IsPatched != wanted.Contains(patch.Key)))
+                    (site.IsPatched ? site.Original : site.Patched).CopyTo(image, site.Offset);
+            }
+            GameFiles files = new GameFiles(this.Folder, image);
+            foreach (FilePatch patch in this.fileStates.Where(s => s.Value != FileState.Fixed).Select(s => s.Key).OrderBy(p => p is CopyProtection))
+                patch.Switch(files, wanted.Contains(patch));
+
+            if (!files.Exe.SequenceEqual(current))
+            {
+                if (!File.Exists(this.BackupPath))
+                    File.Copy(this.ExePath, this.BackupPath);
+                File.WriteAllBytes(this.ExePath, files.Exe);
+                if (File.ReadAllBytes(this.BackupPath).SequenceEqual(files.Exe))
+                    File.Delete(this.BackupPath);
+            }
+            foreach (KeyValuePair<string, byte[]> file in files.Changes)
+            {
+                string path = Path.Combine(this.Folder, file.Key);
+                if (file.Value == null)
+                    File.Delete(path);
+                else
                 {
-                    byte[] bytes = site.IsPatched ? site.Original : site.Patched;
-                    exe.Position = site.Offset;
-                    exe.Write(bytes, 0, bytes.Length);
-                    site.IsPatched = !site.IsPatched;
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    File.WriteAllBytes(path, file.Value);
                 }
             }
-            if (this.sites.Values.All(s => s.All(x => !x.IsPatched)) && File.ReadAllBytes(this.BackupPath).SequenceEqual(File.ReadAllBytes(this.ExePath)))
-                File.Delete(this.BackupPath);
+            this.Load(files.Exe);
         }
 
         private void WriteDll(ICollection<Patch> wanted)

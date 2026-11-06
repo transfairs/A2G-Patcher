@@ -68,6 +68,16 @@ namespace A2GPatch.Tests
                     Assert.True(GoalsInput(form).Enabled && ArrowInput(form).Enabled);
                     Assert.False(GoalsInput(form).Checked || ArrowInput(form).Checked);
                     Assert.False(ApplyButton(form).Enabled);
+                    // The GOG patches under their heading, greyed out for another release.
+                    Label gog = Find<Label>(form, "GogLabel");
+                    Assert.Equal("Nur für die GOG-Version:", gog.Text);
+                    Assert.All(new[] { "CopyProtectionInput", "Patch101Input", "DialogStylesInput" }, name =>
+                    {
+                        CheckBox box = Find<CheckBox>(form, name);
+                        Assert.False(box.Enabled);
+                        Assert.True(box.Top > gog.Top);
+                    });
+                    Assert.True(Find<CheckBox>(form, "CalculationInitInput").Top < gog.Top);
 
                     ArrowInput(form).Checked = true;
                     Assert.True(ApplyButton(form).Enabled);

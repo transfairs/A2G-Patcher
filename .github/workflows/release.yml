@@ -108,6 +108,20 @@ jobs:
           - Vereinsnamen bei der Pokalauslosung richtig darstellen: Unter aktuellem Windows und
             unter Wine erscheinen die Vereinsnamen im Video der Pokalauslosung sonst doppelt so
             breit, halb so hoch und gepunktet.
+          - Kein Hänger beim Öffnen der Kalkulation in der Vorsaison: Der Bildschirm übernimmt eine
+            seiner zwei Auswahlen aus nicht gelöschtem Speicher. Steht dort ein großer Wert, bleibt
+            er unsichtbar und das Spiel wartet auf ihn (unter Wine gesehen).
+
+          Nur für die GOG-Version (bei den anderen ausgegraut):
+
+          - Keine Kopierschutz-Strafen (z. B. "Raubkopie" als Vereinsname): Die Reste des
+            Kopierschutzes der 2007er-Version schlagen in GOGs run.exe an: Ab der zweiten Saison
+            heißen alle Vereine "Raubkopie", Spieler fallen auf Stärke 1. Mit dem Patch bestehen
+            alle Prüfungen.
+          - Patch 1.01: GOGs run.exe ist aus dem Stand 1.00 gebaut. Der Patch bringt Programm und
+            Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999 schon hat.
+          - Dialoge mit Titelleiste und Rahmen wie im Original von 1999: In GOGs RESDLL.dll fehlen
+            342 Dialogen die Titelleiste und 68 Feldern der eingelassene Rahmen.
 
           So geht's
           ---------
@@ -121,6 +135,8 @@ jobs:
           - Original und GOG: Die Spieldatei wird geändert, vorher legt A2G-Patch eine Sicherung
             daneben (*.vor-a2g-patch). Sind alle Patches wieder abgehakt, ist die Datei wieder im
             Originalzustand und die Sicherung verschwindet.
+          - Die GOG-Patches ändern auch RESDLL.dll (Sicherung RESDLL.dll.vor-a2g-patch) und die
+            Datendateien von Patch 1.01. Abhaken stellt auch sie wieder her.
           - 2007er-CD: Deren run.exe ist gepackt. A2G-Patch legt stattdessen eine msvfw32.dll in den
             Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Manche
             Virenscanner schlagen bei dieser DLL an, weil sie eine System-DLL ersetzt.
