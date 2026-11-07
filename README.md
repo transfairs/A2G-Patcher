@@ -52,7 +52,8 @@ releases don't need):
 Works with the original release (1999), the GOG release and the 2007 CD release. Like the game, the
 user interface is in German.
 
-Project page with download (German): <https://transfairs.github.io/A2G-Patcher/>. All versions are
+Project page with download: <https://transfairs.github.io/A2G-Patcher/en/> (German:
+<https://transfairs.github.io/A2G-Patcher/>). All versions are
 on the [releases page](https://github.com/transfairs/A2G-Patcher/releases).
 
 Sister projects: [A2G-Trainer](https://github.com/transfairs/A2G-Trainer) (its *Spielmechaniken*
