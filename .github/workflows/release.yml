@@ -123,6 +123,8 @@ jobs:
             alle Prüfungen.
           - Dialoge mit Titelleiste und Rahmen wie im Original von 1999: In GOGs RESDLL.dll fehlen
             342 Dialogen die Titelleiste und 68 Feldern der eingelassene Rahmen.
+          - Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü): GOGs Grafik-Wrapper
+            (ddraw.dll) zeigt rechts und unten an den Animationen einen schwarzen Strich.
 
           So geht's
           ---------

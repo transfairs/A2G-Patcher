@@ -169,9 +169,10 @@ namespace A2GPatch.Tests
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Patch 1.01 (Änderungen an Programm und Daten)",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
+                "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
             // The GOG-only patches (0) last, as the window lists them under their own heading.
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
         }
 
         private static readonly Patch Cup = Patch.All[8];

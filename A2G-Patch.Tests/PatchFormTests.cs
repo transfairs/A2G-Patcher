@@ -4,7 +4,9 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Drawing;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using Xunit;
 
@@ -23,13 +25,52 @@ namespace A2GPatch.Tests
         private static void Click(Form form, string name) =>
             typeof(Button).GetMethod("OnClick", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(Find<Button>(form, name), new object[] { EventArgs.Empty });
 
-        // A window on folders, recording its messages and answering them with answer.
+        // A window on folders, recording its messages and answering them with answer; applying takes no extra time.
         private static PatchForm Form(List<string> messages, DialogResult answer, params string[] folders)
         {
             PatchForm form = new PatchForm(folders.ToList());
             form.ShowMessage = (text, buttons) => { messages.Add(text); return answer; };
+            form.MinimumBusyTime = 0;
             return form;
         }
+
+        // Clicks "Übernehmen" and lets the window work until the switches are applied.
+        private static void Apply(PatchForm form)
+        {
+            Click(form, "ApplyButton");
+            WaitWhileBusy(form);
+        }
+
+        // Handles the window's messages until it is done applying.
+        private static void WaitWhileBusy(PatchForm form)
+        {
+            for (DateTime end = DateTime.Now.AddSeconds(30); form.Busy && DateTime.Now < end; Thread.Sleep(5))
+                Application.DoEvents();
+            Assert.False(form.Busy);
+        }
+
+        // The arc turns while busy (the timer runs only then), whatever the load on the test machine.
+        [Fact]
+        public void BusyIndicator_TurnsWhileBusy() => StaThread.Run(() =>
+        {
+            using (Form form = new Form())
+            using (BusyIndicator progress = new BusyIndicator { Size = new Size(20, 20) })
+            {
+                form.Controls.Add(progress);
+                form.Show();
+                progress.State = BusyState.Busy;
+                for (DateTime end = DateTime.Now.AddSeconds(30); progress.Angle == 0 && DateTime.Now < end; Thread.Sleep(5))
+                    Application.DoEvents();
+                Assert.NotEqual(0, progress.Angle);
+
+                progress.State = BusyState.Idle;
+                int angle = progress.Angle;
+                for (int i = 0; i < 40; i++, Thread.Sleep(5))
+                    Application.DoEvents();
+                Assert.Equal(angle, progress.Angle);
+                Assert.False(progress.Visible);
+            }
+        });
 
         // Runs body with IsGameRunning answering running.
         private static void WithGameRunning(bool running, Action body)
@@ -71,7 +112,7 @@ namespace A2GPatch.Tests
                     // The GOG patches under their heading, greyed out for another release.
                     Label gog = Find<Label>(form, "GogLabel");
                     Assert.Equal("Nur für die GOG-Version:", gog.Text);
-                    Assert.All(new[] { "CopyProtectionInput", "DialogStylesInput" }, name =>
+                    Assert.All(new[] { "CopyProtectionInput", "DialogStylesInput", "AnimationEdgeInput" }, name =>
                     {
                         CheckBox box = Find<CheckBox>(form, name);
                         Assert.False(box.Enabled);
@@ -87,16 +128,63 @@ namespace A2GPatch.Tests
                     Assert.False(ApplyButton(form).Enabled);
 
                     ArrowInput(form).Checked = true;
-                    Click(form, "ApplyButton");
+                    Apply(form);
                     Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Arrow));
                     Assert.False(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Goals));
                     Assert.True(ArrowInput(form).Checked);
                     Assert.False(ApplyButton(form).Enabled);
 
                     ArrowInput(form).Checked = false;
-                    Click(form, "ApplyButton");
+                    Apply(form);
                     Assert.Equal(GameCode.Both(), File.ReadAllBytes(folder.File("anstoss2.exe")));
                     Assert.Empty(messages);
+                }
+            }
+        }));
+
+        // While applying, a turning circle and a locked window that can't be closed; then a tick until the next change.
+        [Fact]
+        public void Apply_ShowsItIsBusy_ThenConfirms() => StaThread.Run(() => WithGameRunning(false, () =>
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                File.WriteAllBytes(folder.File("anstoss2.exe"), GameCode.Both());
+                using (PatchForm form = Form(new List<string>(), DialogResult.OK, folder.Path))
+                {
+                    BusyIndicator progress = Find<BusyIndicator>(form, "Progress");
+                    Label progressLabel = Find<Label>(form, "ProgressLabel");
+                    form.Show();
+                    Assert.False(progress.Visible);
+                    Assert.Equal("", progressLabel.Text);
+
+                    // Busy until the window handles its messages again; the minimum time is covered there too.
+                    form.MinimumBusyTime = 50;
+                    ArrowInput(form).Checked = true;
+                    Click(form, "ApplyButton");
+                    Assert.True(form.Busy);
+                    Assert.Equal(BusyState.Busy, progress.State);
+                    Assert.True(progress.Visible);
+                    Assert.Equal("Änderungen werden übernommen …", progressLabel.Text);
+                    Assert.All(new[] { "FolderInput", "BrowseButton", "ApplyButton", "CloseButton", "ArrowRepeatInput", "GoalLimitsInput" },
+                        name => Assert.False(form.Controls.Find(name, false).Single().Enabled));
+                    using (Bitmap image = new Bitmap(progress.Width, progress.Height))
+                        progress.DrawToBitmap(image, new Rectangle(Point.Empty, progress.Size));
+                    form.Close();
+                    Assert.False(form.IsDisposed);
+
+                    WaitWhileBusy(form);
+                    Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Arrow));
+                    Assert.Equal(BusyState.Done, progress.State);
+                    Assert.Equal("Änderungen übernommen.", progressLabel.Text);
+                    Assert.True(Find<Button>(form, "CloseButton").Enabled && GoalsInput(form).Enabled);
+                    Assert.False(ApplyButton(form).Enabled);
+                    using (Bitmap image = new Bitmap(progress.Width, progress.Height))
+                        progress.DrawToBitmap(image, new Rectangle(Point.Empty, progress.Size));
+
+                    // The next change hides the confirmation.
+                    GoalsInput(form).Checked = true;
+                    Assert.False(progress.Visible);
+                    Assert.Equal("", progressLabel.Text);
                 }
             }
         }));
@@ -111,7 +199,7 @@ namespace A2GPatch.Tests
                 using (PatchForm form = Form(messages, DialogResult.OK, folder.Path))
                 {
                     GoalsInput(form).Checked = true;
-                    Click(form, "ApplyButton");
+                    Apply(form);
 
                     Assert.Equal(new[] { "Bitte zuerst das Spiel beenden." }, messages);
                     Assert.False(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Goals));
@@ -137,7 +225,7 @@ namespace A2GPatch.Tests
                     form.RestartElevated = restarted.Add;
                     form.Show();
                     GoalsInput(form).Checked = true;
-                    Click(form, "ApplyButton");
+                    Apply(form);
 
                     Assert.Single(messages);
                     Assert.StartsWith("Für diesen Ordner fehlen die Schreibrechte.", messages[0]);
@@ -158,7 +246,7 @@ namespace A2GPatch.Tests
                     form.RestartElevated = f => throw new Win32Exception(1223);
                     form.Show();
                     GoalsInput(form).Checked = true;
-                    Click(form, "ApplyButton");
+                    Apply(form);
 
                     Assert.False(form.IsDisposed);
                     Assert.False(GoalsInput(form).Checked);
@@ -178,7 +266,7 @@ namespace A2GPatch.Tests
                     using (new FileStream(folder.File("anstoss2.exe"), FileMode.Open, FileAccess.Read, FileShare.None))
                     {
                         GoalsInput(form).Checked = true;
-                        Click(form, "ApplyButton");
+                        Apply(form);
 
                         // Not even readable now: the window says so instead of a state.
                         Assert.Single(messages);

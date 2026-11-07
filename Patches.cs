@@ -26,7 +26,7 @@ namespace A2GPatch
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
             new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(), new Patch101(),
-            new CopyProtection(), new DialogStyles(),
+            new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
 
         /// <summary>What the window's switch says.</summary>

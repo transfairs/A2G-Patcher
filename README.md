@@ -45,6 +45,9 @@ releases don't need):
 - **Dialoge mit Titelleiste und Rahmen wie im Original von 1999**: GOG's `RESDLL.dll` lacks the title bar
   of 342 dialogs, the sunken frame around 68 controls (e.g. the choices that look like buttons) and a
   few other styles. The patch gives them back.
+- **Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)** (bug fix): GOG's DirectDraw wrapper
+  (`ddraw.dll`) shows a black line along the right and bottom edge of the animations (the overhead kick in
+  the main menu and the others). Offered only with GOG's `ddraw.dll` in the game folder.
 
 Works with the original release (1999), the GOG release and the 2007 CD release. Like the game, the
 user interface is in German.
@@ -289,6 +292,25 @@ quotes. Not changed are texts and pictures the 2007 release changed on purpose (
 dialog, "Championsleague", "Managerkarriere", four pictures). The file keeps its size; GOG's file and the
 result are checked by their SHA-256. GOG's file can't be told from the result alone, so taking the patch
 back restores the backup `RESDLL.dll.vor-a2g-patch`; without it the switch stays ticked and greyed out.
+
+**Animation edge.** The animations (`*.anm` in `ARCHIVES\ANIMDATA.CPR`, e.g. `fallrz.anm`, the overhead
+kick in the main menu) play in a child window "DDOutput" exactly as large as the picture
+(`FUN_004093d0` in the original). Its thread blits the offscreen surface onto the primary surface into the
+window's client rect (`0x40bc50`, `GetClientRect` / `ClientToScreen` / `OffsetRect`, a clipper on the
+window). GOG's wrapper (`ddraw.dll`, "GOG.com DirectX 1-7 wrapper", Direct3D 9 underneath) shows the
+window's rect plus one column and one row of the primary surface, where nothing was drawn: a black line
+right of and below the picture. WineD3D (in the user's 1999 and 2007 installs) shows the rect exactly. The
+patch makes the window one pixel smaller each way (`dec ecx` / `dec eax` after `x + width`, `y + height`;
+`and dword [esi+4C],0` instead of a 7-byte `mov` makes room) and blits the whole picture to the source rect
+moved onto the window (`CopyRect(dest, source)` instead of `GetClientRect(window, dest)`; the window for
+`ClientToScreen` from `[esi+1C]`, the same handle as `[esi+480]`, in 3 bytes instead of 6). So the column
+and row the wrapper adds show the picture's last ones. With a correct DirectDraw the clipper keeps the blit
+in the smaller window and the picture would lose them, so the patch is offered only when the folder's
+`ddraw.dll` names GOG's wrapper (UTF-16 in its version resource); a patched exe is taken back without it as
+well. The decoded animation frames (LZ77 with delta to the previous frame, `0x651a80` and `0x409970`) are
+clean; the line came only from the presentation. The 1999 release has the same code (offered there too if
+GOG's `ddraw.dll` is put in its folder); the 2007 CD release isn't offered it, as `msvfw32.dll` makes only
+the patches with a flag.
 
 ## msvfw32.dll (`dll/`)
 

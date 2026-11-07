@@ -674,6 +674,99 @@ namespace A2GPatch.Tests
             }
         });
 
+        // ---- AnimationEdge ----
+
+        private static readonly AnimationEdge Edge = (AnimationEdge)Patch.All[13];
+        private static readonly string[][] EdgeImports = { new[] { "USER32.dll", "GetClientRect", "CopyRect" } };
+        private static readonly byte[] GogWrapper = new byte[] { 0x4D, 0x5A, 0, 0 }.Concat(AnimationEdge.WrapperName).Concat(new byte[4]).ToArray();
+
+        private static byte[] Window(bool patched) => patched ? AnimationEdge.WindowPatched : AnimationEdge.WindowOriginal;
+
+        private static byte[] Blit(Dictionary<string, uint> imports, bool patched) => patched
+            ? AnimationEdge.WithEntry(AnimationEdge.BlitPatched, 12, imports["CopyRect"])
+            : AnimationEdge.WithEntry(AnimationEdge.BlitOriginal, 11, imports["GetClientRect"]);
+
+        // An exe with the window's and the blit's places, each original or patched.
+        private static byte[] EdgeExe(bool window = false, bool blit = false, string[][] imports = null) =>
+            TestExe.Build(i => GameCode.Exe(Window(window), Blit(i, blit)), imports: imports ?? EdgeImports);
+
+        // Files of a folder holding GOG's wrapper.
+        private static GameFiles WithWrapper(GameFolder folder, byte[] exe, byte[] wrapper = null)
+        {
+            File.WriteAllBytes(folder.File(AnimationEdge.Wrapper), wrapper ?? GogWrapper);
+            return Files(exe, folder.Path);
+        }
+
+        // The bytes as tested in the game (GOG's run.exe, CopyRect at 0xCBAD94); they must never change.
+        [Fact]
+        public void AnimationEdge_PatchedCode_IsWhatWasTestedInTheGame()
+        {
+            Assert.Equal("03ca498944241003c748894c241c83c4048bce83664c008944241490".Hex(), AnimationEdge.WindowPatched);
+            Assert.Equal("8d4424188d5424285052ff1594adcb008b561c8d4c241051529090".Hex(), AnimationEdge.WithEntry(AnimationEdge.BlitPatched, 12, 0xCBAD94));
+            Assert.Equal(AnimationEdge.WindowOriginal.Length, AnimationEdge.WindowPatched.Length);
+            Assert.Equal(AnimationEdge.BlitOriginal.Length, AnimationEdge.BlitPatched.Length);
+        }
+
+        [Fact]
+        public void AnimationEdge_WithGogsWrapper_SwitchesBothPlaces_AndTakesThemBack()
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                byte[] exe = EdgeExe();
+                GameFiles files = WithWrapper(folder, exe);
+                Assert.Equal(FileState.Off, Edge.State(files));
+
+                Edge.Switch(files, true);
+                Assert.Equal(FileState.On, Edge.State(files));
+                Assert.Equal(EdgeExe(window: true, blit: true), files.Exe);
+                Assert.Empty(files.Changes);
+
+                Edge.Switch(files, false);
+                Assert.Equal(exe, files.Exe);
+            }
+        }
+
+        // Without GOG's wrapper the clipper would cut the picture: not offered, but taken back.
+        [Fact]
+        public void AnimationEdge_WithoutGogsWrapper_IsOnlyTakenBack()
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                Assert.Equal(FileState.Unknown, Edge.State(Files(EdgeExe(), folder.Path)));
+                Assert.Equal(FileState.Unknown, Edge.State(WithWrapper(folder, EdgeExe(), new byte[] { 0x4D, 0x5A, 0, 0 })));
+                File.Delete(folder.File(AnimationEdge.Wrapper));
+                Assert.Equal(FileState.On, Edge.State(Files(EdgeExe(window: true, blit: true), folder.Path)));
+            }
+        }
+
+        public static IEnumerable<object[]> UnknownEdgeCode()
+        {
+            byte[] exe = EdgeExe();
+            return new[]
+            {
+                GameCode.Exe(AnimationEdge.WindowOriginal, AnimationEdge.BlitOriginal),                     // no exe headers
+                TestExe.Build(i => GameCode.Exe(Window(false), AnimationEdge.BlitOriginal), imports: new[] { new[] { "USER32.dll", "CopyRect" } }),  // no GetClientRect
+                EdgeExe(imports: new[] { new[] { "USER32.dll", "GetClientRect" } }),                         // no CopyRect
+                TestExe.Build(i => GameCode.Exe(Blit(i, false)), imports: EdgeImports),                      // no window
+                TestExe.Build(i => GameCode.Exe(Window(false)), imports: EdgeImports),                       // no blit
+                TestExe.Build(i => GameCode.Exe(Window(false), Window(true), Blit(i, false)), imports: EdgeImports), // the window twice
+                TestExe.Build(i => GameCode.Exe(Window(false), Blit(i, false), Blit(i, true)), imports: EdgeImports), // the blit twice
+                EdgeExe(window: true),                                                                       // half patched
+                TestExe.Build(i => GameCode.Exe(Window(false), AnimationEdge.WithEntry(AnimationEdge.BlitOriginal, 11, i["CopyRect"])), imports: EdgeImports), // another call
+            }.Select(image => new object[] { image });
+        }
+
+        [Theory]
+        [MemberData(nameof(UnknownEdgeCode))]
+        public void AnimationEdge_InUnknownCode_IsNotOffered(byte[] image)
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                Assert.Null(AnimationEdge.Sites(image));
+                Assert.Equal(FileState.Unknown, Edge.State(WithWrapper(folder, image)));
+            }
+        }
+
         [Fact]
         public void DialogStyles_WithAnUnexpectedResult_ChangesNothing() => WithTestHashes(() =>
         {

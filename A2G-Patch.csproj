@@ -50,6 +50,9 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BusyIndicator.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GameInstall.cs" />
     <Compile Include="GogPatches.cs" />
     <Compile Include="Patches.cs" />

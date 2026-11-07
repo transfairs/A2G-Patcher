@@ -808,6 +808,91 @@ namespace A2GPatch
         private static bool In(Dictionary<int, int[]> table, int key, int control) => table.TryGetValue(key, out int[] controls) && controls.Contains(control);
     }
 
+    /// <summary>
+    /// Takes the black line off the right and bottom edge of the animations (the overhead kick in the
+    /// main menu and the other *.anm of ARCHIVES\ANIMDATA.CPR). The game plays them in a child window
+    /// "DDOutput" as large as the picture (FUN_004093d0 in the original) and blits its offscreen surface
+    /// onto the primary surface into the window's client rect (FUN_0040bc50). GOG's DirectDraw wrapper
+    /// (ddraw.dll, "GOG.com DirectX 1-7 wrapper") shows the window's rect plus one column and one row of
+    /// the primary surface, where nothing was drawn. The patch makes the window one pixel smaller each way
+    /// and blits the whole picture there (the source rect as destination), so that column and row show the
+    /// picture's last ones:
+    /// <code>
+    ///   window: add ecx,edx / ...      / add eax,edi / ...      / mov dword [esi+4C],0
+    ///        -> add ecx,edx / dec ecx  / add eax,edi / dec eax  / and dword [esi+4C],0 / nop
+    ///   blit:   mov eax,[esi+1C] / lea edx,[esp+28] / push edx / push eax / call [GetClientRect] / mov edx,[esi+480]
+    ///        -> lea eax,[esp+18] / lea edx,[esp+28] / push eax / push edx / call [CopyRect]      / mov edx,[esi+1C] / nop x2
+    /// </code>
+    /// ([esi+1C] and [esi+480] both hold the window.) With any other DirectDraw the clipper keeps the blit
+    /// in the window, which would cut off the picture's last column and row: the patch is offered only with
+    /// GOG's wrapper in the folder (taken back without it as well). The 1999 release has the same code.
+    /// </summary>
+    internal sealed class AnimationEdge : FilePatch
+    {
+        internal const string Wrapper = "ddraw.dll";
+        internal static readonly byte[] WrapperName = Encoding.Unicode.GetBytes("GOG.com DirectX 1-7 wrapper");
+
+        internal static readonly byte[] WindowOriginal = "03ca8944241003c7894c241c83c4048bcec7464c0000000089442414".Hex();
+        internal static readonly byte[] WindowPatched = "03ca498944241003c748894c241c83c4048bce83664c008944241490".Hex();
+        // The call's import entry is left 0 (at 11 and 12).
+        internal static readonly byte[] BlitOriginal = "8b461c8d5424285250ff15000000008b96800400008d4c24105152".Hex();
+        internal static readonly byte[] BlitPatched = "8d4424188d5424285052ff15000000008b561c8d4c241051529090".Hex();
+        private const int GetClientRectAt = 11, CopyRectAt = 12;
+
+        /// <inheritdoc/>
+        public override string Name => "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)";
+
+        /// <summary>The window's and the blit's place in <paramref name="image"/>, or null if they aren't both original or both patched.</summary>
+        internal static Site[] Sites(byte[] image)
+        {
+            PeFile pe = PeFile.Read(image);
+            if (pe == null || !pe.Imports.TryGetValue("GetClientRect", out uint getClientRect) || !pe.Imports.TryGetValue("CopyRect", out uint copyRect))
+                return null;
+            Site window = Place(image, WindowOriginal, WindowPatched);
+            Site blit = Place(image, WithEntry(BlitOriginal, GetClientRectAt, getClientRect), WithEntry(BlitPatched, CopyRectAt, copyRect));
+            return window == null || blit == null || window.IsPatched != blit.IsPatched ? null : new[] { window, blit };
+        }
+
+        /// <summary><paramref name="code"/> calling the import entry <paramref name="entry"/> (at <paramref name="at"/>).</summary>
+        internal static byte[] WithEntry(byte[] code, int at, uint entry)
+        {
+            byte[] result = (byte[])code.Clone();
+            BitConverter.GetBytes(entry).CopyTo(result, at);
+            return result;
+        }
+
+        // The one place holding original or patched, or null.
+        private static Site Place(byte[] image, byte[] original, byte[] patched)
+        {
+            List<long> found = FindAll(image, Exact(original)), changed = FindAll(image, Exact(patched));
+            if (found.Count + changed.Count != 1)
+                return null;
+            bool isPatched = changed.Count == 1;
+            return new Site { Offset = isPatched ? changed[0] : found[0], Original = original, Patched = patched, IsPatched = isPatched };
+        }
+
+        /// <inheritdoc/>
+        public override FileState State(GameFiles files)
+        {
+            Site[] sites = Sites(files.Exe);
+            if (sites == null)
+                return FileState.Unknown;
+            if (sites[0].IsPatched)
+                return FileState.On;
+            byte[] wrapper = files.Read(Wrapper);
+            return wrapper != null && FindAll(wrapper, Exact(WrapperName)).Count > 0 ? FileState.Off : FileState.Unknown;
+        }
+
+        /// <inheritdoc/>
+        public override void Switch(GameFiles files, bool on)
+        {
+            byte[] image = (byte[])files.Exe.Clone();
+            foreach (Site site in Sites(image))
+                (on ? site.Patched : site.Original).CopyTo(image, site.Offset);
+            files.Exe = image;
+        }
+    }
+
     /// <summary>Helpers for byte strings.</summary>
     internal static class Bytes
     {
