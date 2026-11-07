@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="542" height="369" alt="The A2G-Patch window: game folder selection and one tick box per patch">
+      <img src="../patch.png" width="538" height="546" alt="The A2G-Patch window: game folder selection and one tick box per patch">
     </figure>
   </div>
 </section>
@@ -155,6 +155,14 @@
         </div>
         <h3>Dialogs as in the 1999 original</h3>
         <p>In GOG’s <code>RESDLL.dll</code>, 342 dialogs lack their title bar and 68 controls their sunken frame, such as the choices that look like buttons. The patch gives them back the styles of 1999.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">GOG only</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="15" height="15" rx="1"/><path d="M21 7v14H7"/></svg>
+        </div>
+        <h3>No black line on the animations</h3>
+        <p>GOG’s DirectDraw wrapper (<code>ddraw.dll</code>) shows a black line along the right and bottom edge of the animations, such as the overhead kick in the main menu. The patch fills it with the picture. Offered only with GOG’s <code>ddraw.dll</code> in the game folder.</p>
       </article>
       <article class="card card-alt">
         <div class="card-head">
@@ -281,6 +289,12 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
 <pre><code>mov [esi+1C8],ebx (field is 0 already)  →  mov byte [esp+4],4 / nop</code></pre>
       </details>
       <details class="tech-item">
+        <summary><b>Cup draw</b><span>32 instead of 16 bits per pixel</span></summary>
+        <p>The video draws the club names with GDI into a 128×32 <code>CreateCompatibleBitmap</code> and reads them out with <code>GetBitmapBits</code> as a 16-bit picture. On current Windows and under Wine that bitmap has 32&nbsp;bits per pixel even in the game’s 16-bit mode, so the game gets the upper half with each pixel split in two. The patch sends the call to added code that fetches the picture with <code>GetDIBits</code> explicitly in 16&nbsp;bits and converts 5-5-5 to 5-6-5 where needed:</p>
+<pre><code>call [GetBitmapBits]  →  call helper / nop
+helper: GetDC / GetDIBits(…, 128×-32, 16 bit) / ReleaseDC / 5-5-5 → 5-6-5 if needed / ret C</code></pre>
+      </details>
+      <details class="tech-item">
         <summary><b>Calculation</b><span>A field never cleared</span></summary>
         <p>The constructor of the calculation screen sets the selection “Ermittlung der Zahlen” (how the figures are computed) to 0, but not the “Darstellung” (display) one right next to it. With a large value, drawing the list reads past its end, the error vanishes inside the window call, and the screen stays half built and invisible. The patch clears both, in the same 11&nbsp;bytes:</p>
 <pre><code>mov word [esi+10D48],0 / mov eax,esi  →  mov eax,esi / and dword [esi+10D46],0 / nop / nop</code></pre>
@@ -297,6 +311,12 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
       <details class="tech-item">
         <summary><b>Dialogs (GOG)</b><span>Missing window styles</span></summary>
         <p>All dialogs are templates in <code>RESDLL.dll</code>. Compared with the 1999 file, GOG’s lacks <code>WS_CAPTION</code>, <code>DS_MODALFRAME</code>, <code>WS_EX_CLIENTEDGE</code> and a few more styles. The patch puts them back in place; the file keeps its size, and input and result are checked by SHA-256.</p>
+      </details>
+      <details class="tech-item">
+        <summary><b>Animations (GOG)</b><span>One pixel too many</span></summary>
+        <p>The animations play in a child window exactly as large as the picture; a thread blits them into its client rect on the primary surface. GOG’s wrapper shows that rect plus one column and one row of the primary surface, where nothing was ever drawn. The patch makes the window one pixel smaller each way and blits the whole picture into it, so the extra column and row show the picture’s last ones. With a correct DirectDraw the clipper would cut them off, hence only with GOG’s wrapper.</p>
+<pre><code>window: add ecx,edx / add eax,edi            →  add ecx,edx / dec ecx / add eax,edi / dec eax
+blit:   call GetClientRect(window, dest)     →  call CopyRect(dest, source)</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>A proxy for the 2007 CD</span></summary>

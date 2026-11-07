@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="patch.png" width="542" height="369" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je ein Haken pro Patch">
+      <img src="patch.png" width="538" height="546" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je ein Haken pro Patch">
     </figure>
   </div>
 </section>
@@ -155,6 +155,14 @@
         </div>
         <h3>Dialoge wie im Original von 1999</h3>
         <p>In der <code>RESDLL.dll</code> von GOG fehlen 342 Dialogen die Titelleiste und 68 Feldern der eingelassene Rahmen, etwa den Auswahlen, die wie Knöpfe aussehen. Der Patch gibt ihnen die Stile von 1999 zurück.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">Nur GOG</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="15" height="15" rx="1"/><path d="M21 7v14H7"/></svg>
+        </div>
+        <h3>Kein schwarzer Strich an den Animationen</h3>
+        <p>Der DirectDraw-Wrapper von GOG (<code>ddraw.dll</code>) zeigt rechts und unten an den Animationen, etwa dem Fallrückzieher im Hauptmenü, eine schwarze Linie. Der Patch füllt sie mit dem Bild. Angeboten nur, wenn die <code>ddraw.dll</code> von GOG im Spielordner liegt.</p>
       </article>
       <article class="card card-alt">
         <div class="card-head">
@@ -281,6 +289,12 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
 <pre><code>mov [esi+1C8],ebx (Feld ist schon 0)  →  mov byte [esp+4],4 / nop</code></pre>
       </details>
       <details class="tech-item">
+        <summary><b>Pokalauslosung</b><span>32 statt 16 Bit pro Pixel</span></summary>
+        <p>Das Video zeichnet die Vereinsnamen per GDI in eine <code>CreateCompatibleBitmap</code> von 128×32 und liest sie mit <code>GetBitmapBits</code> als 16-Bit-Bild aus. Unter aktuellem Windows und unter Wine hat diese Bitmap auch im 16-Bit-Modus des Spiels 32&nbsp;Bit pro Pixel, das Spiel bekommt die obere Hälfte mit jedem Pixel in zwei geteilt. Der Patch leitet den Aufruf in eingefügten Code um, der das Bild per <code>GetDIBits</code> ausdrücklich mit 16&nbsp;Bit holt und bei Bedarf von 5-5-5 nach 5-6-5 umrechnet:</p>
+<pre><code>call [GetBitmapBits]  →  call helper / nop
+helper: GetDC / GetDIBits(…, 128×-32, 16 Bit) / ReleaseDC / ggf. 5-5-5 → 5-6-5 / ret C</code></pre>
+      </details>
+      <details class="tech-item">
         <summary><b>Kalkulation</b><span>Ein nicht gelöschtes Feld</span></summary>
         <p>Der Konstruktor des Kalkulationsbildschirms setzt die Auswahl „Ermittlung der Zahlen“ auf 0, die von „Darstellung“ direkt daneben aber nicht. Mit einem großen Wert liest das Zeichnen der Liste über ihr Ende hinaus, der Fehler verschwindet im Fensteraufruf, und der Bildschirm bleibt halb aufgebaut und unsichtbar. Der Patch löscht beide, in denselben 11&nbsp;Bytes:</p>
 <pre><code>mov word [esi+10D48],0 / mov eax,esi  →  mov eax,esi / and dword [esi+10D46],0 / nop / nop</code></pre>
@@ -297,6 +311,12 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
       <details class="tech-item">
         <summary><b>Dialoge (GOG)</b><span>Fehlende Fensterstile</span></summary>
         <p>Alle Dialoge sind Vorlagen in der <code>RESDLL.dll</code>. Im Vergleich mit der Datei von 1999 fehlen bei GOG <code>WS_CAPTION</code>, <code>DS_MODALFRAME</code>, <code>WS_EX_CLIENTEDGE</code> und ein paar weitere Stile. Der Patch setzt sie an Ort und Stelle wieder ein; die Datei behält ihre Größe, Ausgang und Ergebnis werden per SHA-256 geprüft.</p>
+      </details>
+      <details class="tech-item">
+        <summary><b>Animationen (GOG)</b><span>Ein Pixel zu viel</span></summary>
+        <p>Die Animationen laufen in einem Unterfenster genau so groß wie das Bild; ein Thread blittet sie in dessen Client-Rechteck auf die Primärfläche. Der Wrapper von GOG zeigt dieses Rechteck plus eine Spalte und eine Zeile der Primärfläche, auf die nie etwas gezeichnet wurde. Der Patch macht das Fenster in jede Richtung ein Pixel kleiner und blittet das ganze Bild hinein, sodass die zusätzliche Spalte und Zeile die letzten des Bildes zeigen. Mit einem korrekten DirectDraw schnitte der Clipper sie ab, daher nur mit dem Wrapper von GOG.</p>
+<pre><code>Fenster: add ecx,edx / add eax,edi           →  add ecx,edx / dec ecx / add eax,edi / dec eax
+Blit:    call GetClientRect(Fenster, Ziel)   →  call CopyRect(Ziel, Quelle)</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>Ein Proxy für die 2007er-CD</span></summary>
