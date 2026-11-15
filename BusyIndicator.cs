@@ -58,6 +58,7 @@ namespace A2GPatch
             this.Invalidate();
         }
 
+        /// <summary>Draws the green tick when done, otherwise the grey ring with the turning arc.</summary>
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);

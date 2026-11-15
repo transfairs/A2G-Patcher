@@ -20,7 +20,8 @@
 // 128 display mode: ChangeDisplaySettingsA(&640x480, 0)        ->  flags CDS_FULLSCREEN (undone at exit)
 // 256 cup draw:     GetBitmapBits of the names' bitmap         ->  GetDIBits as 16-bit DIB
 // 512 calculation:  only one of two selections cleared         ->  both cleared (no hang)
-// 1024 patch 1.01:   the program of 1.00                         ->  13 places jump to the code of 1.01
+// 1024 patch 1.01: the program of 1.00                         ->  13 places jump to the code of 1.01
+// 2048 buttons:    picture button's BITMAP left uncleared      ->  cleared ("A/B" and "i" in place)
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -120,7 +121,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_CUP_DRAW     256   // the first bit of the second flags byte
 #define FLAG_CALC_INIT    512
 #define FLAG_V101         1024
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x07";   // all on
+#define FLAG_BUTTON_INIT  2048
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x0F";   // all on
 #define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -496,6 +498,33 @@ static int PatchCupDraw(BYTE *base, SIZE_T size)
 static const WORD kCalc[] = { 0x66, 0xC7, 0x86, 0x48, 0x0D, 0x01, 0x00, 0x00, 0x00, 0x8B, 0xC6 };           // mov word [esi+10D48],0 / mov eax,esi
 static const WORD kCalcPatched[] = { 0x8B, 0xC6, 0x83, 0xA6, 0x46, 0x0D, 0x01, 0x00, 0x00, 0x90, 0x90 };    // mov eax,esi / and dword [esi+10D46],0
 
+// ---- 2048: picture buttons -----------------------------------------------------------------------
+
+// As in Patches.cs (PictureButtonInit): the constructor of the picture button class also clears the
+// BITMAP at +7C..+93; the stores beyond +7F go through edx = this+80 to make room.
+#define BUTTON_HEAD 0x33, 0xC0, 0xB9, ANY, ANY, ANY, ANY                          // xor eax,eax / mov ecx,CString
+#define BUTTON_TAIL 0xC7, 0x06, ANY, ANY, ANY, ANY, 0x8B, 0xC6, 0x5E, 0xC3        // mov [esi],vtable / mov eax,esi / pop esi / ret
+static const WORD kButton[] = { BUTTON_HEAD,
+    0x89, 0x46, 0x5C, 0x89, 0x4E, 0x58, 0x89, 0x46, 0x64, 0x89, 0x4E, 0x60, 0x89, 0x46, 0x6C, 0x89, 0x4E, 0x68,
+    0x89, 0x86, 0xA4, 0x00, 0x00, 0x00, 0x89, 0x46, 0x3C, 0x66, 0x89, 0x46, 0x46, 0x66, 0x89, 0x46, 0x48,
+    0x89, 0x46, 0x50, 0x89, 0x46, 0x54, 0x89, 0x86, 0x98, 0x00, 0x00, 0x00, 0x89, 0x86, 0x9C, 0x00, 0x00, 0x00,
+    0x89, 0x86, 0xA0, 0x00, 0x00, 0x00, 0x89, 0x86, 0xB0, 0x00, 0x00, 0x00, 0x89, 0x46, 0x74, 0x89, 0x46, 0x78,
+    0x66, 0x89, 0x46, 0x44, 0x66, 0x89, 0x46, 0x4A, 0x66, 0x89, 0x46, 0x4C,
+    0x89, 0x86, 0xB4, 0x00, 0x00, 0x00, 0x89, 0x86, 0xB8, 0x00, 0x00, 0x00, 0x89, 0x86, 0xBC, 0x00, 0x00, 0x00,
+    0x89, 0x86, 0xC0, 0x00, 0x00, 0x00, 0x89, 0x86, 0xC4, 0x00, 0x00, 0x00, 0x89, 0x86, 0xC8, 0x00, 0x00, 0x00,
+    0x89, 0x86, 0x94, 0x00, 0x00, 0x00, BUTTON_TAIL };
+static const WORD kButtonPatched[] = { BUTTON_HEAD,
+    0x89, 0x46, 0x5C, 0x89, 0x4E, 0x58, 0x89, 0x46, 0x64, 0x89, 0x4E, 0x60, 0x89, 0x46, 0x6C, 0x89, 0x4E, 0x68,
+    0x89, 0x46, 0x3C, 0x66, 0x89, 0x46, 0x44, 0x66, 0x89, 0x46, 0x46, 0x66, 0x89, 0x46, 0x48,
+    0x66, 0x89, 0x46, 0x4A, 0x66, 0x89, 0x46, 0x4C,
+    0x89, 0x46, 0x50, 0x89, 0x46, 0x54, 0x89, 0x46, 0x74, 0x89, 0x46, 0x78, 0x89, 0x46, 0x7C,
+    0x8D, 0x96, 0x80, 0x00, 0x00, 0x00, 0x89, 0x02,                                     // lea edx,[esi+80] / mov [edx],eax
+    0x89, 0x42, 0x04, 0x89, 0x42, 0x08, 0x89, 0x42, 0x0C, 0x89, 0x42, 0x10,
+    0x89, 0x42, 0x14, 0x89, 0x42, 0x18, 0x89, 0x42, 0x1C, 0x89, 0x42, 0x20, 0x89, 0x42, 0x24,
+    0x89, 0x42, 0x30, 0x89, 0x42, 0x34, 0x89, 0x42, 0x38, 0x89, 0x42, 0x3C, 0x89, 0x42, 0x40,
+    0x89, 0x42, 0x44, 0x89, 0x42, 0x48,
+    0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, BUTTON_TAIL };
+
 // ---- 1024: patch 1.01 ----------------------------------------------------------------------------
 
 // As in GogPatches.cs (Patch101): the code of gog/a2v101.S (v101code.h, generated together with
@@ -591,7 +620,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
     BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT), v101Done = !(flags & FLAG_V101);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done)
+    BOOL buttonDone = !(flags & FLAG_BUTTON_INIT);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -605,6 +635,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!cupDone) cupDone = PatchCupDraw(base, size) == DONE;
         if (!calcDone) calcDone = PatchRewrite(base, size, kCalc, kCalcPatched, ARRAYSIZE(kCalc)) == DONE;
         if (!v101Done) v101Done = PatchV101(base, size) == DONE;
+        if (!buttonDone) buttonDone = PatchRewrite(base, size, kButton, kButtonPatched, ARRAYSIZE(kButton)) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

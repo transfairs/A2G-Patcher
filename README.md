@@ -33,6 +33,10 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window:
 - **Patch 1.01 (Änderungen an Programm und Daten)**: the GOG release and the 2007 CD release are built
   from the 1.00 source. The patch brings program and data to the official patch 1.01, which the 1999
   release contains already. Greyed out for the 1999 release.
+- **Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz** (bug fix): picture buttons take their size
+  from memory they never cleared before their picture is loaded. In the team lineup before a match, "A/B"
+  and "i" are placed by that size, so with old data there they end up shifted or off screen. Seen under
+  Wine; on Windows that memory is usually 0, the patch makes sure.
 
 Only for the GOG release, under their own heading and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -204,6 +208,29 @@ can hold anything, depending on what was freed before. The patch clears both, in
 mov word [esi+10D48],0 / mov eax,esi   ->   mov eax,esi / and dword [esi+10D46],0 / nop / nop
 ```
 
+**Picture buttons.** The constructor of the game's picture button class (`0x5bc3a0` in the original exe,
+`0x5bf0d0` in GOG's and the 2007 CD's) clears most of its fields but leaves the `BITMAP` it fills when a
+picture is loaded (`+0x7C` to `+0x93`, width and height at `+0x80` and `+0x84`) as it comes from the heap.
+The team lineup before a match moves "A/B" and "i" to their template position with that width and height
+before it loads their pictures, then aligns them to the bottom right corner of that window. With zeroed
+memory they land on the template's spot; with old data there the window gets a huge size, its corner is
+clipped, and the button ends up shifted or off screen until the lineup is opened again. Found under Wine
+(A2G-Linux, `a2start.c`). The patch clears the `BITMAP` too, in the same 142 bytes: the twelve stores
+beyond `+0x7F` had a 4-byte displacement and now go through `edx` = `this+0x80` with one byte, which
+leaves room for the six new ones (`esi` is the button, `edx` is free there):
+
+```
+xor eax,eax / mov ecx,CString / mov [esi+5C..68],eax|ecx / mov [esi+A4],eax / ... / mov [esi+94],eax
+mov [esi],vtable / mov eax,esi / pop esi / ret
+->
+xor eax,eax / mov ecx,CString / mov [esi+5C..68],eax|ecx / ... / mov [esi+74],eax / mov [esi+78],eax
+mov [esi+7C],eax / lea edx,[esi+80] / mov [edx+0..24],eax / mov [edx+30..48],eax / nop x13
+mov [esi],vtable / mov eax,esi / pop esi / ret
+```
+
+The string and vtable addresses differ between the builds and are kept. The constructor lies outside the
+code the 2007 release checks with its CRCs.
+
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
@@ -324,9 +351,9 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 - Which patches it applies are two flags bytes (low byte first) after the marker `A2GPatchFlags` in its
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
-  calculation, 1024 patch 1.01; the build has all on). The other GOG patches have no flag: they change
-  files on disk, which the DLL doesn't. An installed copy that differs from the embedded one in more than these bytes is from another
-  version and gets replaced.
+  calculation, 1024 patch 1.01, 2048 picture buttons; the build has all on). The other GOG patches have
+  no flag: they change files on disk, which the DLL doesn't. An installed copy that differs from the
+  embedded one in more than these bytes is from another version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled
   patch's code is in memory, then rewrites it (`VirtualProtect`, `FlushInstructionCache`). Code that
   is ambiguous or not as expected is left alone; in other programs (Editor.exe) nothing turns up.

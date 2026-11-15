@@ -264,17 +264,24 @@ namespace A2GPatch
     /// </summary>
     internal sealed class Patch101 : FilePatch
     {
+        /// <summary>The name of the section the patch adds to run.exe for the code of 1.01.</summary>
         internal const string SectionName = ".a2v101";
+        /// <summary>The event texts that 1.01 changes, under their long and their short name.</summary>
         internal static readonly string Events = Path.Combine("TEXTE", "EreigGold.saq"), EventsShort = Path.Combine("TEXTE", "EreigGld.saq");
+        /// <summary>The move list, new in 1.01 and computed by <see cref="MoveList"/>.</summary>
         internal static readonly string MoveListFile = Path.Combine("ARCHIVES", "MoveList.dat");
+        /// <summary>The country files that 1.01 changes.</summary>
         internal static readonly string[] Countries = { Path.Combine("DATA.DEF", "LAENDER.SAV"), Path.Combine("DATA.VER", "LAENDER.SAV") };
         private const uint Code = 0x60000020;           // IMAGE_SCN_CNT_CODE | MEM_EXECUTE | MEM_READ
         private const uint Writable = 0x80000000;
 
-        // The SHA-256 of the files of GOG and of 1.01; tests replace them.
+        /// <summary>The SHA-256 of the event texts of GOG; tests replace it (as the other hashes).</summary>
         internal static string EventsGog = "f7d1b920fe90881a78a949748940185cc0c3bf3276b8511fc4544b723cbf04f5";
+        /// <summary>The SHA-256 of the event texts of 1.01.</summary>
         internal static string Events101 = "df6a3684216271716d792e10e5b14a449701a92888c81fca2aba73078a9a6d0e";
+        /// <summary>The SHA-256 of the country files of GOG.</summary>
         internal static string CountriesGog = "fe8818ea7024ad4650fb274501e6f6b524f6299249d2815d83f3124517a6a27f";
+        /// <summary>The SHA-256 of the country files of 1.01.</summary>
         internal static string Countries101 = "13762d5b8158a89952a1e724fc1a65046d0fd3a2e122089c6accc4d328d14675";
         private static readonly int[] EventTexts = { 10, 55 };
         private const int CountriesAt = 2065;
@@ -282,7 +289,9 @@ namespace A2GPatch
         /// <summary>One place the program changes: jumps to <see cref="Target"/> in the section, or gets <see cref="Bytes"/>.</summary>
         internal sealed class Hook
         {
+            /// <summary>The virtual address of the place, and where its jump goes (0 for a change in place).</summary>
             public uint Va, Target;
+            /// <summary>What the place holds originally, and its new bytes if it isn't a jump.</summary>
             public byte[] Original, Bytes;
 
             /// <summary>What the place holds patched.</summary>
@@ -617,10 +626,13 @@ namespace A2GPatch
     /// </summary>
     internal sealed class DialogStyles : FilePatch
     {
+        /// <summary>The file the patch changes.</summary>
         internal const string Dll = "RESDLL.dll";
+        /// <summary>The backup of the file while it is patched.</summary>
         internal const string Backup = Dll + GameInstall.BackupSuffix;
-        // The SHA-256 of GOG's file (1.0 fix2) and of the result; tests replace them.
+        /// <summary>The SHA-256 of GOG's file (1.0 fix2); tests replace it.</summary>
         internal static string Gog = "e47e0802188c00b51b227675c172b4fb05bf92af9b3feba95aba3f293c135aae";
+        /// <summary>The SHA-256 of the patched file; tests replace it.</summary>
         internal static string Result = "31b058abfc46c3bca421e85952ba57a517292ca7ae2ff6be009dc563d1015adc";
 
         private const int De = 1031, En = 1033, Gb = 2057;
@@ -829,13 +841,18 @@ namespace A2GPatch
     /// </summary>
     internal sealed class AnimationEdge : FilePatch
     {
+        /// <summary>GOG's graphics wrapper, which has to be in the folder.</summary>
         internal const string Wrapper = "ddraw.dll";
+        /// <summary>The name by which the wrapper is recognised in the file.</summary>
         internal static readonly byte[] WrapperName = Encoding.Unicode.GetBytes("GOG.com DirectX 1-7 wrapper");
 
+        /// <summary>The code that sizes the animation's window, original.</summary>
         internal static readonly byte[] WindowOriginal = "03ca8944241003c7894c241c83c4048bcec7464c0000000089442414".Hex();
+        /// <summary>The code that sizes the animation's window, patched.</summary>
         internal static readonly byte[] WindowPatched = "03ca498944241003c748894c241c83c4048bce83664c008944241490".Hex();
-        // The call's import entry is left 0 (at 11 and 12).
+        /// <summary>The code that sets the blit's destination rect, original; the call's import entry is left 0 (at 11).</summary>
         internal static readonly byte[] BlitOriginal = "8b461c8d5424285250ff15000000008b96800400008d4c24105152".Hex();
+        /// <summary>The code that sets the blit's destination rect, patched; the call's import entry is left 0 (at 12).</summary>
         internal static readonly byte[] BlitPatched = "8d4424188d5424285052ff15000000008b561c8d4c241051529090".Hex();
         private const int GetClientRectAt = 11, CopyRectAt = 12;
 

@@ -8,8 +8,11 @@ namespace A2GPatch
     /// <summary>One rewritable place in the game's code: where it starts, and both versions of its bytes.</summary>
     internal sealed class Site
     {
+        /// <summary>Where the place starts in the image.</summary>
         public long Offset;
+        /// <summary>Its bytes original and patched.</summary>
         public byte[] Original, Patched;
+        /// <summary>Whether it holds the patched bytes now.</summary>
         public bool IsPatched;
     }
 
@@ -26,7 +29,7 @@ namespace A2GPatch
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
             new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(), new Patch101(),
-            new CopyProtection(), new DialogStyles(), new AnimationEdge(),
+            new PictureButtonInit(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
 
         /// <summary>What the window's switch says.</summary>
@@ -75,15 +78,19 @@ namespace A2GPatch
     /// </summary>
     internal sealed class GoalLimits : Patch
     {
+        /// <summary>The most goals per team the patch allows.</summary>
         internal const short MaxGoals = 15;
+        /// <summary>The brakes' original jump (jle rel8).</summary>
         internal const byte Jle = 0x7E;
+        /// <summary>The brakes' patched jump (jmp rel8), which skips the halving.</summary>
         internal const byte Jmp = 0xEB;
         private const byte Nop = 0x90;
 
-        // The instructions right before each rewritten byte: cmp word [clock+8], 45 ... setg; cmp word
-        // [esi+0xE], 6 / mov [esp+0x30], eax; mov dx, [esi+0x10] / add esp, 4 / cmp dx, 6 / mov ecx, eax.
+        /// <summary>The instructions right before the limit's code: cmp word [clock+8], 45 ... setg.</summary>
         internal static readonly byte[] LimitPattern     = { 0x66, 0x83, 0x7F, 0x08, 0x2D, 0x57, 0x6A, 0x01, 0x0F, 0x9F };
+        /// <summary>The instructions right before the home team's brake (jle): cmp word [esi+0xE], 6 / mov [esp+0x30], eax.</summary>
         internal static readonly byte[] HomeBrakePattern = { 0x66, 0x83, 0x7E, 0x0E, 0x06, 0x89, 0x44, 0x24, 0x30 };
+        /// <summary>The instructions right before the away team's brake (jle): mov dx, [esi+0x10] / add esp, 4 / cmp dx, 6 / mov ecx, eax.</summary>
         internal static readonly byte[] AwayBrakePattern = { 0x66, 0x8B, 0x56, 0x10, 0x83, 0xC4, 0x04, 0x66, 0x83, 0xFA, 0x06, 0x8B, 0xC8 };
 
         /// <inheritdoc/>
@@ -134,8 +141,10 @@ namespace A2GPatch
             return null;
         }
 
-        // dec r32 / and r, -4 / add r, 10 - with eax, the compiler may use the short "and al, -4". The
-        // long form comes first: patched, the short form is a prefix of it.
+        /// <summary>
+        /// The limit's code for <paramref name="register"/>: dec r32 / and r, -4 / add r, 10 - with eax, the
+        /// compiler may use the short "and al, -4". The long form comes first: patched, the short form is a prefix of it.
+        /// </summary>
         internal static byte[][] LimitOriginals(int register)
         {
             byte[] add = { 0x83, (byte)(0xC0 + register), 0x0A };
@@ -145,7 +154,7 @@ namespace A2GPatch
                 : new[] { longForm };
         }
 
-        // mov r32, 15, padded with nops to the original's length.
+        /// <summary>mov r32, 15 for <paramref name="register"/>, padded with nops to <paramref name="length"/>.</summary>
         internal static byte[] LimitPatched(int register, int length) =>
             new[] { (byte)(0xB8 + register) }.Concat(BitConverter.GetBytes((int)MaxGoals)).Concat(Enumerable.Repeat(Nop, length - 5)).ToArray();
     }
@@ -243,9 +252,11 @@ namespace A2GPatch
     /// </summary>
     internal sealed class VideoCrash : Patch
     {
-        // test eax,eax / je +21 / release: mov ecx,[ebp] / push ecx / call AVIFileRelease / lea ecx,[esp+10] /
-        // call / xor eax,eax / pop edi,esi,ebp,ebx / add esp,84 / ret C / mov eax,[edi] / lea edx,[esi+8498] /
-        // push 8C / push edx / push eax / call AVIStreamInfoA
+        /// <summary>
+        /// test eax,eax / je +21 / release: mov ecx,[ebp] / push ecx / call AVIFileRelease / lea ecx,[esp+10] /
+        /// call / xor eax,eax / pop edi,esi,ebp,ebx / add esp,84 / ret C / mov eax,[edi] / lea edx,[esi+8498] /
+        /// push 8C / push edx / push eax / call AVIStreamInfoA
+        /// </summary>
         internal static readonly byte?[] Prefix =
         {
             0x85, 0xC0, 0x74, 0x21, 0x8B, 0x4D, 0x00, 0x51, 0xE8, null, null, null, null,
@@ -527,6 +538,61 @@ namespace A2GPatch
     }
 
     /// <summary>
+    /// Keeps picture buttons such as "A/B" and "i" in the team lineup before a match where they belong.
+    /// The constructor of the picture button class (FUN_005bc3a0 in the original) leaves the BITMAP it
+    /// fills when a picture is loaded (+0x7C to +0x93, width and height at +0x80 and +0x84) as it comes
+    /// from the heap. The lineup moves "A/B" and "i" to their template position with that width and height
+    /// before loading their pictures, then aligns them to the bottom right corner of that window. With
+    /// zeroed memory they land on the template's spot; with old data there the window gets a huge size,
+    /// its corner is clipped, and the button ends up shifted or off screen until the lineup is opened
+    /// again. Seen under Wine (A2G-Linux, a2start.c); on Windows that memory is usually 0. The patch
+    /// clears the BITMAP as well. Room comes from encoding the constructor's other stores more tightly:
+    /// the ones beyond +0x7F through edx = this+0x80, so they need one displacement byte instead of four.
+    /// <code>
+    ///   xor eax,eax / mov ecx,CString / mov [esi+..],eax|ecx ... (12 with a 4-byte displacement) ... / mov [esi],vtable / mov eax,esi / pop esi / ret
+    /// ->
+    ///   xor eax,eax / mov ecx,CString / mov [esi+..],eax|ecx ... / mov [esi+7C],eax / lea edx,[esi+80]
+    ///   mov [edx+0..24],eax / mov [edx+30..48],eax / nop x13 / mov [esi],vtable / mov eax,esi / pop esi / ret
+    /// </code>
+    /// The constructor stores nothing but zeros and the empty string, so the order doesn't matter, and
+    /// edx is free (the caller expects only eax and esi).
+    /// </summary>
+    internal sealed class PictureButtonInit : RewritePatch
+    {
+        private static readonly byte?[] Head = { 0x33, 0xC0, 0xB9, null, null, null, null };          // xor eax,eax / mov ecx,CString
+        private static readonly byte?[] Tail = { 0xC7, 0x06, null, null, null, null, 0x8B, 0xC6, 0x5E, 0xC3 };   // mov [esi],vtable / mov eax,esi / pop esi / ret
+
+        /// <inheritdoc/>
+        internal override byte?[] OriginalCode => Head.Concat(Exact(
+            0x89, 0x46, 0x5C, 0x89, 0x4E, 0x58, 0x89, 0x46, 0x64, 0x89, 0x4E, 0x60, 0x89, 0x46, 0x6C, 0x89, 0x4E, 0x68,
+            0x89, 0x86, 0xA4, 0x00, 0x00, 0x00, 0x89, 0x46, 0x3C, 0x66, 0x89, 0x46, 0x46, 0x66, 0x89, 0x46, 0x48,
+            0x89, 0x46, 0x50, 0x89, 0x46, 0x54, 0x89, 0x86, 0x98, 0x00, 0x00, 0x00, 0x89, 0x86, 0x9C, 0x00, 0x00, 0x00,
+            0x89, 0x86, 0xA0, 0x00, 0x00, 0x00, 0x89, 0x86, 0xB0, 0x00, 0x00, 0x00, 0x89, 0x46, 0x74, 0x89, 0x46, 0x78,
+            0x66, 0x89, 0x46, 0x44, 0x66, 0x89, 0x46, 0x4A, 0x66, 0x89, 0x46, 0x4C,
+            0x89, 0x86, 0xB4, 0x00, 0x00, 0x00, 0x89, 0x86, 0xB8, 0x00, 0x00, 0x00, 0x89, 0x86, 0xBC, 0x00, 0x00, 0x00,
+            0x89, 0x86, 0xC0, 0x00, 0x00, 0x00, 0x89, 0x86, 0xC4, 0x00, 0x00, 0x00, 0x89, 0x86, 0xC8, 0x00, 0x00, 0x00,
+            0x89, 0x86, 0x94, 0x00, 0x00, 0x00)).Concat(Tail).ToArray();
+
+        /// <inheritdoc/>
+        internal override byte?[] PatchedCode => Head.Concat(Exact(
+            0x89, 0x46, 0x5C, 0x89, 0x4E, 0x58, 0x89, 0x46, 0x64, 0x89, 0x4E, 0x60, 0x89, 0x46, 0x6C, 0x89, 0x4E, 0x68,
+            0x89, 0x46, 0x3C, 0x66, 0x89, 0x46, 0x44, 0x66, 0x89, 0x46, 0x46, 0x66, 0x89, 0x46, 0x48,
+            0x66, 0x89, 0x46, 0x4A, 0x66, 0x89, 0x46, 0x4C,
+            0x89, 0x46, 0x50, 0x89, 0x46, 0x54, 0x89, 0x46, 0x74, 0x89, 0x46, 0x78, 0x89, 0x46, 0x7C,     // +7C: new
+            0x8D, 0x96, 0x80, 0x00, 0x00, 0x00, 0x89, 0x02,                                         // lea edx,[esi+80] / +80: new
+            0x89, 0x42, 0x04, 0x89, 0x42, 0x08, 0x89, 0x42, 0x0C, 0x89, 0x42, 0x10,                 // +84 to +90: new
+            0x89, 0x42, 0x14, 0x89, 0x42, 0x18, 0x89, 0x42, 0x1C, 0x89, 0x42, 0x20, 0x89, 0x42, 0x24,   // +94 to +A4
+            0x89, 0x42, 0x30, 0x89, 0x42, 0x34, 0x89, 0x42, 0x38, 0x89, 0x42, 0x3C, 0x89, 0x42, 0x40,   // +B0 to +C8
+            0x89, 0x42, 0x44, 0x89, 0x42, 0x48,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90)).Concat(Tail).ToArray();
+
+        /// <inheritdoc/>
+        public override string Name => "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz";
+        /// <inheritdoc/>
+        public override ushort Flag => 2048;
+    }
+
+    /// <summary>
     /// A patch that rewrites one block of code that occurs exactly once. Original and patched code have
     /// the same length and wildcards (null) at the same places; those bytes (addresses, displacements)
     /// are kept from the game.
@@ -728,7 +794,9 @@ namespace A2GPatch
         /// <summary>A section header.</summary>
         internal sealed class Section
         {
+            /// <summary>Its name (up to 8 characters).</summary>
             public string Name;
+            /// <summary>Its virtual address, size in memory, file offset, size in the file, and flags.</summary>
             public uint Va, VirtualSize, Raw, RawSize, Characteristics;
         }
 

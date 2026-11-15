@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="patch.png" width="538" height="546" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je ein Haken pro Patch">
+      <img src="patch.png" width="538" height="577" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je ein Haken pro Patch">
     </figure>
   </div>
 </section>
@@ -131,6 +131,14 @@
         </div>
         <h3>Kein Hänger beim Öffnen der Kalkulation</h3>
         <p>Der Kalkulationsbildschirm der Vorsaison übernimmt eine seiner zwei Auswahlen aus Speicher, den er nie gelöscht hat. Steht dort ein großer Wert, bleibt er unsichtbar, und das Spiel wartet auf ihn. Unter Wine gesehen; unter Windows ist der Speicher meist 0, der Patch stellt es sicher.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Fehlerbehebung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="12" y="13" width="6" height="5" rx="1"/><path d="M7 7h6M7 10h4"/></svg>
+        </div>
+        <h3>Knöpfe „A/B“ und „i“ an ihrem Platz</h3>
+        <p>Bildknöpfe übernehmen ihre Größe aus Speicher, den sie nie gelöscht haben, bevor ihr Bild geladen ist. In der Aufstellung vor dem Spiel werden „A/B“ und „i“ danach ausgerichtet und landen mit alten Daten dort verschoben oder außerhalb des Bildschirms. Unter Wine gesehen; unter Windows ist der Speicher meist 0, der Patch stellt es sicher.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -298,6 +306,11 @@ helper: GetDC / GetDIBits(…, 128×-32, 16 Bit) / ReleaseDC / ggf. 5-5-5 → 5-
         <summary><b>Kalkulation</b><span>Ein nicht gelöschtes Feld</span></summary>
         <p>Der Konstruktor des Kalkulationsbildschirms setzt die Auswahl „Ermittlung der Zahlen“ auf 0, die von „Darstellung“ direkt daneben aber nicht. Mit einem großen Wert liest das Zeichnen der Liste über ihr Ende hinaus, der Fehler verschwindet im Fensteraufruf, und der Bildschirm bleibt halb aufgebaut und unsichtbar. Der Patch löscht beide, in denselben 11&nbsp;Bytes:</p>
 <pre><code>mov word [esi+10D48],0 / mov eax,esi  →  mov eax,esi / and dword [esi+10D46],0 / nop / nop</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Bildknöpfe</b><span>Eine nicht gelöschte BITMAP</span></summary>
+        <p>Der Konstruktor der Bildknopf-Klasse löscht fast alle Felder, nur die <code>BITMAP</code> nicht (<code>+0x7C</code> bis <code>+0x93</code>), die erst beim Laden des Bildes gefüllt wird. Die Aufstellung setzt „A/B“ und „i“ mit deren Breite und Höhe auf ihre Vorlagenposition, bevor sie die Bilder lädt, und richtet sie dann an der unteren rechten Ecke aus. Mit alten Daten wird das Fenster riesig, und der Knopf landet verschoben oder außerhalb des Bildschirms. Der Patch löscht die <code>BITMAP</code> mit, in denselben 142&nbsp;Bytes: Die Schreibbefehle hinter <code>+0x7F</code> laufen über <code>edx</code> = <code>this+0x80</code> und brauchen so ein statt vier Bytes Versatz.</p>
+<pre><code>mov [esi+A4],eax / … / mov [esi+94],eax  →  mov [esi+7C],eax / lea edx,[esi+80] / mov [edx+0…24],eax / mov [edx+30…48],eax / nop ×13</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>

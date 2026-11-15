@@ -167,12 +167,13 @@ namespace A2GPatch.Tests
                 "Keine falsche Warnung „Festplatte fast voll“ beim Speichern", "Kader nicht über 30 Spieler wachsen lassen",
                 "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Patch 1.01 (Änderungen an Programm und Daten)",
+                "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
             // The GOG-only patches (0) last, as the window lists them under their own heading.
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
         }
 
         private static readonly Patch Cup = Patch.All[8];
@@ -333,6 +334,30 @@ namespace A2GPatch.Tests
             Assert.Equal("8BC683A6460D0100009090".Hex(), site.Patched);
             Assert.True(Calculation.Find(Apply(GameCode.Exe(CalculationCode), new[] { site })).Single().IsPatched);
             Assert.Null(Calculation.Find(GameCode.Exe(CalculationCode, CalculationCode)));
+        }
+
+        private static readonly Patch Button = Patch.All[11];
+        // The original exe from 0x5BC3B6 (GOG's from 0x5BF0E6, there with CString 0x67C9E8 and vtable 0x6A0A78) to the ret.
+        internal static readonly byte[] ButtonCode = (
+            "33C0B9E8796700" + "89465C894E58894664894E6089466C894E68" + "8986A4000000" + "89463C" + "66894646" + "66894648"
+            + "894650894654" + "898698000000" + "89869C000000" + "8986A0000000" + "8986B0000000" + "894674894678"
+            + "66894644" + "6689464A" + "6689464C" + "8986B4000000" + "8986B8000000" + "8986BC000000" + "8986C0000000"
+            + "8986C4000000" + "8986C8000000" + "898694000000" + "C70678BA6900" + "8BC6" + "5E" + "C3").Hex();
+
+        [Fact]
+        public void PictureButtonInit_ClearsTheBitmap_InTheSameBytes()
+        {
+            Site site = Button.Find(GameCode.Exe(ButtonCode)).Single();
+
+            Assert.Equal(300, site.Offset);
+            Assert.Equal(ButtonCode, site.Original);
+            Assert.Equal(ButtonCode.Length, site.Patched.Length);
+            // CString and vtable kept; +7C and edx = esi+80, then [edx+0..48] instead of [esi+80..C8]; ends as before.
+            Assert.Equal(ButtonCode.Take(7), site.Patched.Take(7));
+            Assert.Equal("894678 89467C 8D9680000000 8902 894204".Replace(" ", "").Hex(), site.Patched.Skip(57).Take(17));
+            Assert.Equal(ButtonCode.Skip(ButtonCode.Length - 10), site.Patched.Skip(ButtonCode.Length - 10));
+            Assert.True(Button.Find(Apply(GameCode.Exe(ButtonCode), new[] { site })).Single().IsPatched);
+            Assert.Null(Button.Find(GameCode.Exe(ButtonCode, ButtonCode)));
         }
 
         private static readonly Patch Sleep = Patch.All[3];

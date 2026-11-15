@@ -25,12 +25,16 @@ namespace A2GPatch
     /// </summary>
     internal sealed class GameInstall
     {
+        /// <summary>The name of the proxy DLL put into the folder of a packed run.exe.</summary>
         internal const string DllName = "msvfw32.dll";
+        /// <summary>Appended to a file's name for the backup kept while it is patched.</summary>
         internal const string BackupSuffix = ".vor-a2g-patch";
-        // The exes that may hold the game's code, in this order (anstoss2.exe is only a launcher in the
-        // 2007 CD and GOG releases, run.exe the game).
+        /// <summary>
+        /// The exes that may hold the game's code, in this order (anstoss2.exe is only a launcher in the
+        /// 2007 CD and GOG releases, run.exe the game).
+        /// </summary>
         internal static readonly string[] ExeNames = { "anstoss2.exe", "run.exe" };
-        // In A2G-Patch's msvfw32.dll, followed by a NUL and the two flags bytes, low byte first (see dll/msvfw32.c).
+        /// <summary>In A2G-Patch's msvfw32.dll, followed by a NUL and the two flags bytes, low byte first (see dll/msvfw32.c).</summary>
         internal static readonly byte[] DllMarker = Encoding.ASCII.GetBytes("A2GPatchFlags\0");
 
         /// <summary>The msvfw32.dll to install (embedded at build time, see the csproj); null if this build has none. Tests replace it.</summary>

@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="538" height="546" alt="The A2G-Patch window: game folder selection and one tick box per patch">
+      <img src="../patch.png" width="538" height="577" alt="The A2G-Patch window: game folder selection and one tick box per patch">
     </figure>
   </div>
 </section>
@@ -131,6 +131,14 @@
         </div>
         <h3>No hang when opening the calculation screen</h3>
         <p>The preseason calculation screen takes one of its two selections from memory it never cleared. If a large value is there, the screen stays invisible and the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Bug fix</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="12" y="13" width="6" height="5" rx="1"/><path d="M7 7h6M7 10h4"/></svg>
+        </div>
+        <h3>“A/B” and “i” buttons in their place</h3>
+        <p>Picture buttons take their size from memory they never cleared before their picture is loaded. In the team lineup before a match, “A/B” and “i” are placed by that size and, with old data there, end up shifted or off screen. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -298,6 +306,11 @@ helper: GetDC / GetDIBits(…, 128×-32, 16 bit) / ReleaseDC / 5-5-5 → 5-6-5 i
         <summary><b>Calculation</b><span>A field never cleared</span></summary>
         <p>The constructor of the calculation screen sets the selection “Ermittlung der Zahlen” (how the figures are computed) to 0, but not the “Darstellung” (display) one right next to it. With a large value, drawing the list reads past its end, the error vanishes inside the window call, and the screen stays half built and invisible. The patch clears both, in the same 11&nbsp;bytes:</p>
 <pre><code>mov word [esi+10D48],0 / mov eax,esi  →  mov eax,esi / and dword [esi+10D46],0 / nop / nop</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Picture buttons</b><span>A BITMAP never cleared</span></summary>
+        <p>The constructor of the picture button class clears almost all its fields, but not the <code>BITMAP</code> (<code>+0x7C</code> to <code>+0x93</code>) that is only filled when the picture is loaded. The lineup moves “A/B” and “i” to their template position with its width and height before loading the pictures, then aligns them to the bottom right corner. With old data there the window gets huge, and the button ends up shifted or off screen. The patch clears the <code>BITMAP</code> too, in the same 142&nbsp;bytes: the stores beyond <code>+0x7F</code> go through <code>edx</code> = <code>this+0x80</code> and so need one byte of displacement instead of four.</p>
+<pre><code>mov [esi+A4],eax / … / mov [esi+94],eax  →  mov [esi+7C],eax / lea edx,[esi+80] / mov [edx+0…24],eax / mov [edx+30…48],eax / nop ×13</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>

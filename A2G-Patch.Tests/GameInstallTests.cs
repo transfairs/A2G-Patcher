@@ -35,8 +35,8 @@ namespace A2GPatch.Tests
         internal static readonly Patch Arrow = Patch.All[1];
         internal static readonly Patch Cup = Patch.All[8];
         internal static readonly Patch V101 = Patch.All[10];
-        internal static readonly Patch Protection = Patch.All[11];
-        internal static readonly Patch Dialogs = Patch.All[12];
+        internal static readonly Patch Protection = Patch.All[12];
+        internal static readonly Patch Dialogs = Patch.All[13];
         internal static readonly Patch[] Gog = { Protection, V101, Dialogs };
         // Stands for A2G-Patch's msvfw32.dll: the marker with the two flags bytes after it.
         internal static readonly byte[] OwnDll = Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x03\0..");

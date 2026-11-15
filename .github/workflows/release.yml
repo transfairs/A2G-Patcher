@@ -114,6 +114,9 @@ jobs:
           - Patch 1.01 (GOG und 2007er-CD): Beide sind aus dem Stand 1.00 gebaut. Der Patch bringt
             Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999
             schon hat.
+          - Knöpfe "A/B" und "i" in der Aufstellung an ihrem Platz: Bildknöpfe übernehmen ihre Größe
+            aus nicht gelöschtem Speicher. In der Aufstellung vor dem Spiel landen "A/B" und "i" dann
+            verschoben oder außerhalb des Bildschirms (unter Wine gesehen).
 
           Nur für die GOG-Version (bei den anderen ausgegraut):
 
