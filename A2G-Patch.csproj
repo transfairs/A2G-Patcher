@@ -50,6 +50,9 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AboutDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="BusyIndicator.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -68,6 +71,10 @@
     <Compile Include="V101Code.cs" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The logo for the about dialog, which wants its 64 px frame (the exe icon only yields 32 px). -->
+    <EmbeddedResource Include="A2G-Patch.ico">
+      <LogicalName>A2GPatch.Logo.ico</LogicalName>
+    </EmbeddedResource>
     <!-- Built by dll\build.cmd (not committed); without it the exe can only patch exes on disk. -->
     <EmbeddedResource Include="dll\msvfw32.dll" Condition="Exists('dll\msvfw32.dll')">
       <LogicalName>A2GPatch.msvfw32.dll</LogicalName>

@@ -100,6 +100,17 @@ namespace A2GPatch
             };
             this.Controls.AddRange(new Control[] { folderLabel, this.folderInput, this.browseButton, this.statusLabel });
 
+            // "Über" in the banner, left of the penalty area (transparent, so the pitch shows through).
+            LinkLabel aboutLink = new LinkLabel
+            {
+                Name = "AboutLink", Text = "Über", AutoSize = true, BackColor = Color.Transparent, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                LinkColor = Color.White, ActiveLinkColor = Color.White, VisitedLinkColor = Color.White, LinkBehavior = LinkBehavior.HoverUnderline,
+            };
+            aboutLink.Location = new Point(width - this.Px(80) - aboutLink.PreferredWidth, (this.bannerHeight - aboutLink.PreferredHeight) / 2);
+            aboutLink.LinkClicked += (s, e) => this.ShowAbout();
+            this.tips.SetToolTip(aboutLink, "Version und Links zum Projekt");
+            this.Controls.Add(aboutLink);
+
             // The tiles by group, in the order of Patch.All within a group, in a panel that scrolls.
             this.tilePanel = new TilePanel
             {
@@ -321,6 +332,7 @@ namespace A2GPatch
         /// <summary>The tiles' scrolling area: double buffered, and it has the window place the tiles before it works out how far to scroll.</summary>
         private sealed class TilePanel : Panel
         {
+            /// <summary>Creates the panel, double buffered and redrawn when resized.</summary>
             public TilePanel()
             {
                 this.DoubleBuffered = true;
@@ -330,6 +342,7 @@ namespace A2GPatch
             /// <summary>Places the tiles for the panel's current size.</summary>
             public Action Arrange;
 
+            /// <summary>Has the tiles placed before the panel lays itself out and works out its scroll range.</summary>
             protected override void OnLayout(LayoutEventArgs levent)
             {
                 this.Arrange?.Invoke();
@@ -440,6 +453,13 @@ namespace A2GPatch
             this.progress.State = state;
             this.progressLabel.Text = state == BusyState.Busy ? "Änderungen werden übernommen …"
                 : state == BusyState.Done ? "Änderungen übernommen." : "";
+        }
+
+        /// <summary>Shows the about dialog over the window.</summary>
+        internal void ShowAbout()
+        {
+            using (AboutDialog dialog = new AboutDialog())
+                dialog.ShowDialog(this);
         }
 
         // Closes once the elevated copy runs; stays if the user declined the UAC prompt.
