@@ -131,6 +131,7 @@ static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x0F";   // all o
 #define POLL_MS 250
 #define POLL_COUNT 480         // two minutes: the packed exe decrypts its code right after start
 
+// Whether memory with this protection can be read without a fault.
 static BOOL Readable(DWORD protect)
 {
     if (protect & (PAGE_GUARD | PAGE_NOACCESS)) return FALSE;
@@ -138,6 +139,7 @@ static BOOL Readable(DWORD protect)
         | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
 }
 
+// Whether the n bytes at at match the pattern (ANY matches every byte).
 static BOOL Matches(const BYTE *at, const WORD *pattern, SIZE_T n)
 {
     for (SIZE_T i = 0; i < n; i++)
@@ -171,6 +173,7 @@ static int Count(BYTE *base, SIZE_T size, const WORD *pattern, SIZE_T n, BYTE **
     return count;
 }
 
+// memcmp and memcpy without the CRT.
 static BOOL Equal(const BYTE *a, const BYTE *b, SIZE_T n)
 {
     while (n--) if (*a++ != *b++) return FALSE;
@@ -182,6 +185,7 @@ static void Copy(BYTE *dst, const BYTE *src, SIZE_T n)
     while (n--) *dst++ = *src++;
 }
 
+// Writes the bytes into the game's code: made writable for the moment, then the old protection back.
 static void Write(BYTE *at, const BYTE *bytes, SIZE_T n)
 {
     DWORD old;
@@ -349,6 +353,8 @@ static const WORD kDisk[] = {
     0x0F, 0xAF, 0x44, 0x24, ANY, 0x3D, 0x00, 0x70, 0x17, 0x00,           // imul eax,[esp+?] / cmp eax,177000
     0x73, ANY, 0x8D, 0x4C, 0x24, ANY, 0x68, 0xC1, 0x0A, 0x00, 0x00 };     // jae (-> jmp) / lea / push 0AC1
 
+// Rewrites the byte at code[at] (as OpcodePatch in Patches.cs): only if original and patched occurrences
+// together are exactly as many as expected; mixed states are finished.
 static int PatchOpcode(BYTE *base, SIZE_T size, const WORD *code, SIZE_T n, SIZE_T at, BYTE patched, int occurrences)
 {
     WORD patchedCode[32];
@@ -607,6 +613,7 @@ static int PatchV101(BYTE *base, SIZE_T size)
 
 // ---- the patch thread -----------------------------------------------------------------------------
 
+// Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
 static DWORD WINAPI PatchThread(LPVOID param)
 {
     (void)param;
@@ -642,6 +649,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
     return 0;
 }
 
+// Entry point (no CRT): on load only sets up the lock and starts the patch thread.
 BOOL WINAPI DllMain(HINSTANCE self, DWORD reason, LPVOID reserved)
 {
     (void)reserved;

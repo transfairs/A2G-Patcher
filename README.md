@@ -333,7 +333,7 @@ kick in the main menu) play in a child window "DDOutput" exactly as large as the
 window's client rect (`0x40bc50`, `GetClientRect` / `ClientToScreen` / `OffsetRect`, a clipper on the
 window). GOG's wrapper (`ddraw.dll`, "GOG.com DirectX 1-7 wrapper", Direct3D 9 underneath) shows the
 window's rect plus one column and one row of the primary surface, where nothing was drawn: a black line
-right of and below the picture. WineD3D (in the user's 1999 and 2007 installs) shows the rect exactly. The
+right of and below the picture. WineD3D, for example, shows the rect exactly. The
 patch makes the window one pixel smaller each way (`dec ecx` / `dec eax` after `x + width`, `y + height`;
 `and dword [esi+4C],0` instead of a 7-byte `mov` makes room) and blits the whole picture to the source rect
 moved onto the window (`CopyRect(dest, source)` instead of `GetClientRect(window, dest)`; the window for

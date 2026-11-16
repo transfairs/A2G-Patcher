@@ -151,6 +151,7 @@ namespace A2GPatch
         /// <summary>Tells screen readers that the tile is a check box and whether it is checked.</summary>
         protected override AccessibleObject CreateAccessibilityInstance() => new TileAccessibility(this);
 
+        /// <summary>The tile as screen readers see it: a check button, checked while the switch is on.</summary>
         private sealed class TileAccessibility : ControlAccessibleObject
         {
             private readonly PatchTile tile;
