@@ -420,7 +420,7 @@ static const WORD kDisplayPatched[] = { DISPLAY_HEAD, 0xC6, 0x44, 0x24, 0x04, 0x
 // Rewrites a block that occurs once (as RewritePatch in Patches.cs): ANY bytes are kept.
 static int PatchRewrite(BYTE *base, SIZE_T size, const WORD *original, const WORD *patched, SIZE_T n)
 {
-    BYTE *site, *patchedSite, code[96];
+    BYTE *site, *patchedSite, code[160];   // the longest block is 142 bytes (picture buttons)
     if (n > sizeof code) return DONE;
     int count = Count(base, size, original, n, &site);
     int countPatched = Count(base, size, patched, n, &patchedSite);

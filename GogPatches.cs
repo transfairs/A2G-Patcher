@@ -83,6 +83,8 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override ushort Flag => 0;
         /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Gog;
+        /// <inheritdoc/>
         public sealed override IEnumerable<byte?[]> Patterns => Enumerable.Empty<byte?[]>();
         /// <inheritdoc/>
         public sealed override Site[] Find(byte[] image) => null;
@@ -139,6 +141,8 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)";
+        /// <inheritdoc/>
+        public override string Title => "Kopierschutz";
 
         /// <summary>The 11 CD checks: after each call of the signature routine, the subtraction's room.</summary>
         internal static Site[] DiscSites(byte[] image)
@@ -321,7 +325,11 @@ namespace A2GPatch
         };
 
         /// <inheritdoc/>
-        public override string Name => "Patch 1.01 (Änderungen an Programm und Daten)";
+        public override string Name => "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr";
+        /// <inheritdoc/>
+        public override string Title => "Patch 1.01";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
         /// <inheritdoc/>
         public override ushort Flag => 1024;
 
@@ -693,6 +701,8 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Dialoge mit Titelleiste und Rahmen wie im Original von 1999";
+        /// <inheritdoc/>
+        public override string Title => "Fensterrahmen anzeigen";
 
         /// <inheritdoc/>
         public override FileState State(GameFiles files)
@@ -858,6 +868,8 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)";
+        /// <inheritdoc/>
+        public override string Title => "Animationen";
 
         /// <summary>The window's and the blit's place in <paramref name="image"/>, or null if they aren't both original or both patched.</summary>
         internal static Site[] Sites(byte[] image)

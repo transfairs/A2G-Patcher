@@ -16,6 +16,17 @@ namespace A2GPatch
         public bool IsPatched;
     }
 
+    /// <summary>The groups of tiles in the window, in this order.</summary>
+    internal enum PatchGroup
+    {
+        /// <summary>Crashes, hangs, and how the game gets on with today's Windows.</summary>
+        System,
+        /// <summary>What happens in the game and how it is played.</summary>
+        Game,
+        /// <summary>Only for GOG's release.</summary>
+        Gog,
+    }
+
     /// <summary>
     /// A change to the game's code. Each finds its places by the instructions around them, in the exe
     /// on disk (original, GOG) or in memory (the packed 2007 CD exe, see dll/msvfw32.c, which repeats
@@ -32,8 +43,14 @@ namespace A2GPatch
             new PictureButtonInit(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
 
-        /// <summary>What the window's switch says.</summary>
+        /// <summary>What the patch does, in a sentence: the text under its tile in the window.</summary>
         public abstract string Name { get; }
+
+        /// <summary>The tile's heading in the window, a few words.</summary>
+        public abstract string Title { get; }
+
+        /// <summary>The group the window shows the tile in.</summary>
+        public abstract PatchGroup Group { get; }
 
         /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract ushort Flag { get; }
@@ -94,7 +111,11 @@ namespace A2GPatch
         internal static readonly byte[] AwayBrakePattern = { 0x66, 0x8B, 0x56, 0x10, 0x83, 0xC4, 0x04, 0x66, 0x83, 0xFA, 0x06, 0x8B, 0xC8 };
 
         /// <inheritdoc/>
-        public override string Name => "Torgrenzen aufheben";
+        public override string Name => "Torgrenze auf 15 Tore pro Mannschaft erhöhen";
+        /// <inheritdoc/>
+        public override string Title => "Mehr Tore";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
         /// <inheritdoc/>
         public override ushort Flag => 1;
         /// <inheritdoc/>
@@ -211,6 +232,10 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Pfeile zählen beim Gedrückthalten weiter";
         /// <inheritdoc/>
+        public override string Title => "Pfeile gedrückt halten";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
+        /// <inheritdoc/>
         public override ushort Flag => 2;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
@@ -325,6 +350,10 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen";
         /// <inheritdoc/>
+        public override string Title => "Videos ohne Absturz";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.System;
+        /// <inheritdoc/>
         public override ushort Flag => 4;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
@@ -406,6 +435,10 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit";
         /// <inheritdoc/>
+        public override string Title => "Langer Windows-Betrieb";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.System;
+        /// <inheritdoc/>
         public override ushort Flag => 8;
     }
 
@@ -429,6 +462,10 @@ namespace A2GPatch
         internal override byte PatchedByte => 0xEB;
         /// <inheritdoc/>
         public override string Name => "Keine falsche Warnung „Festplatte fast voll“ beim Speichern";
+        /// <inheritdoc/>
+        public override string Title => "Große Festplatten";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.System;
         /// <inheritdoc/>
         public override ushort Flag => 32;
     }
@@ -468,6 +505,10 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Kader nicht über 30 Spieler wachsen lassen";
+        /// <inheritdoc/>
+        public override string Title => "Kadergröße";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
         /// <inheritdoc/>
         public override ushort Flag => 64;
     }
@@ -510,6 +551,10 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Name => "Desktop-Auflösung auch nach einem Absturz zurückholen";
         /// <inheritdoc/>
+        public override string Title => "Bildschirmauflösung";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.System;
+        /// <inheritdoc/>
         public override ushort Flag => 128;
     }
 
@@ -533,6 +578,10 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison";
+        /// <inheritdoc/>
+        public override string Title => "Kalkulation";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.System;
         /// <inheritdoc/>
         public override ushort Flag => 512;
     }
@@ -588,6 +637,10 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz";
+        /// <inheritdoc/>
+        public override string Title => "Aufstellung";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
         /// <inheritdoc/>
         public override ushort Flag => 2048;
     }
@@ -651,6 +704,10 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Ton über das Standard-Audiogerät von Windows";
+        /// <inheritdoc/>
+        public override string Title => "Audiogerät";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.System;
         /// <inheritdoc/>
         public override ushort Flag => 16;
         /// <inheritdoc/>
@@ -739,6 +796,10 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         public override string Name => "Vereinsnamen bei der Pokalauslosung richtig darstellen";
+        /// <inheritdoc/>
+        public override string Title => "Pokalauslosung";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
         /// <inheritdoc/>
         public override ushort Flag => 256;
         /// <inheritdoc/>

@@ -161,12 +161,12 @@ namespace A2GPatch.Tests
         {
             Assert.Equal(new[]
             {
-                "Torgrenzen aufheben", "Pfeile zählen beim Gedrückthalten weiter",
+                "Torgrenze auf 15 Tore pro Mannschaft erhöhen", "Pfeile zählen beim Gedrückthalten weiter",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit", "Ton über das Standard-Audiogerät von Windows",
                 "Keine falsche Warnung „Festplatte fast voll“ beim Speichern", "Kader nicht über 30 Spieler wachsen lassen",
                 "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
-                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Patch 1.01 (Änderungen an Programm und Daten)",
+                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
                 "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
@@ -174,6 +174,14 @@ namespace A2GPatch.Tests
             }, Patch.All.Select(p => p.Name));
             // The GOG-only patches (0) last, as the window lists them under their own heading.
             Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new[]
+            {
+                "Mehr Tore", "Pfeile gedrückt halten", "Videos ohne Absturz", "Langer Windows-Betrieb", "Audiogerät", "Große Festplatten",
+                "Kadergröße", "Bildschirmauflösung", "Pokalauslosung", "Kalkulation", "Patch 1.01", "Aufstellung",
+                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
+            }, Patch.All.Select(p => p.Title));
+            PatchGroup s = PatchGroup.System, g = PatchGroup.Game, o = PatchGroup.Gog;
+            Assert.Equal(new[] { g, g, s, s, s, s, g, s, g, s, g, g, o, o, o }, Patch.All.Select(p => p.Group));
         }
 
         private static readonly Patch Cup = Patch.All[8];

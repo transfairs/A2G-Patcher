@@ -1,13 +1,9 @@
 # A2G-Patch
 
-Patches for **Anstoss 2 Gold**, switched on and off in one small window:
+Patches for **Anstoss 2 Gold**, switched on and off in one small window, one tile each in three groups:
 
-- **Pfeile zählen beim Gedrückthalten weiter** (bug fix): on current Windows, the game's arrow
-  buttons for numeric values count one or two steps and then stop while held down. Until now the
-  workaround was to run the game in the "Windows 98" compatibility mode.
-- **Torgrenzen aufheben** (optional gameplay change): the match engine lets a team score only while
-  it has fewer than 6 goals up to minute 45 and fewer than 10 after, and halves its chances from 7
-  goals on. The patch raises the limit to 15 (the most the game can store) and drops the halving.
+"Abstürze und Windows" (crashes and Windows):
+
 - **Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen** (bug fix): on current
   Windows the game crashes when it plays `WM.AVI`, `EM.AVI` or `FINALE.AVI` (e.g. after winning the
   World Cup), because their Indeo codec is gone. With the patch these videos are skipped and the game
@@ -19,26 +15,35 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window:
   wrong one.
 - **Keine falsche Warnung „Festplatte fast voll“ beim Speichern** (bug fix): the free space is computed
   in 32 bits, so on large disks the warning comes up now and then for no reason.
-- **Kader nicht über 30 Spieler wachsen lassen** (bug fix): a club with players on loan can get a 31st
-  player, which overwrites data behind the squad array. The patch counts the actual squad too.
 - **Desktop-Auflösung auch nach einem Absturz zurückholen** (bug fix): the game switches the screen to
   640x480 in a way that outlives it; after a crash the desktop stayed at 640x480. With the patch Windows
   restores the resolution itself when the game ends. The GOG release already does this; there the switch
   is greyed out.
-- **Vereinsnamen bei der Pokalauslosung richtig darstellen** (bug fix): on current Windows and under
-  Wine, the club names on the sign in the cup draw video come out twice as wide, half as high and dotted.
 - **Kein Hänger beim Öffnen der Kalkulation in der Vorsaison** (bug fix): the calculation screen sets up
   one of its two selections from memory it never cleared. With a large value there it stays hidden and
   the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.
-- **Patch 1.01 (Änderungen an Programm und Daten)**: the GOG release and the 2007 CD release are built
+
+"Spiel und Bedienung" (game and controls):
+
+- **Torgrenze auf 15 Tore pro Mannschaft erhöhen** (optional gameplay change): the match engine lets a team score only while
+  it has fewer than 6 goals up to minute 45 and fewer than 10 after, and halves its chances from 7
+  goals on. The patch raises the limit to 15 (the most the game can store) and drops the halving.
+- **Pfeile zählen beim Gedrückthalten weiter** (bug fix): on current Windows, the game's arrow
+  buttons for numeric values count one or two steps and then stop while held down. Until now the
+  workaround was to run the game in the "Windows 98" compatibility mode.
+- **Kader nicht über 30 Spieler wachsen lassen** (bug fix): a club with players on loan can get a 31st
+  player, which overwrites data behind the squad array. The patch counts the actual squad too.
+- **Vereinsnamen bei der Pokalauslosung richtig darstellen** (bug fix): on current Windows and under
+  Wine, the club names on the sign in the cup draw video come out twice as wide, half as high and dotted.
+- **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr): the GOG release and the 2007 CD release are built
   from the 1.00 source. The patch brings program and data to the official patch 1.01, which the 1999
-  release contains already. Greyed out for the 1999 release.
+  release contains already, among them the training camp in the winter break. Greyed out for the 1999 release.
 - **Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz** (bug fix): picture buttons take their size
   from memory they never cleared before their picture is loaded. In the team lineup before a match, "A/B"
   and "i" are placed by that size, so with old data there they end up shifted or off screen. Seen under
   Wine; on Windows that memory is usually 0, the patch makes sure.
 
-Only for the GOG release, under their own heading and greyed out for the other releases (GOG sells the
+"Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
 releases don't need):
 
@@ -69,7 +74,8 @@ switch lifts the goal limits while the trainer runs; it recognizes A2G-Patch's c
 1. Close the game.
 2. Start `A2G-Patch.exe`, from anywhere. It offers its own folder and the installed CD and GOG
    releases (from the registry); *Durchsuchen …* picks another game folder.
-3. Tick the patches you want, untick the ones to take back, and click *Übernehmen*.
+3. Switch on the patches you want, switch off the ones to take back (an orange dot marks each change
+   not applied yet), and click *Übernehmen*.
 
 What happens depends on the release:
 
@@ -77,7 +83,7 @@ What happens depends on the release:
 |---|---|---|
 | Original (1999) | `anstoss2.exe` | Patched on disk. A backup `anstoss2.exe.vor-a2g-patch` is written first; once all patches are taken back, the exe is byte-identical again and the backup goes. |
 | GOG | `run.exe` | Same, `run.exe.vor-a2g-patch`. A GOG Galaxy file check restores the original; then apply again. The GOG patches also change other files: `RESDLL.dll` (backup `RESDLL.dll.vor-a2g-patch`) and the data files of patch 1.01 (taken back without a backup, see below). |
-| 2007 CD | `run.exe` (packed) | The code only exists decrypted in memory, so `msvfw32.dll` is put into the game folder. The game loads it instead of the Windows DLL; it forwards everything to the real one and patches the code at every game start. Taking all patches back deletes it. Patch 1.01's data files are changed on disk as for GOG. A `msvfw32.dll` from another version of A2G-Patch is replaced on *Übernehmen*, even with the same patches ticked. |
+| 2007 CD | `run.exe` (packed) | The code only exists decrypted in memory, so `msvfw32.dll` is put into the game folder. The game loads it instead of the Windows DLL; it forwards everything to the real one and patches the code at every game start. Taking all patches back deletes it. Patch 1.01's data files are changed on disk as for GOG. A `msvfw32.dll` from another version of A2G-Patch is replaced on *Übernehmen*, even with the same patches switched on. |
 
 Under *Program Files*, writing needs administrator rights; A2G-Patch then offers to restart itself
 as administrator. A `msvfw32.dll` in the game folder that isn't A2G-Patch's is never touched.
@@ -319,7 +325,7 @@ name of the dialog font, control IDs -1 as 32-bit values and three titles with d
 quotes. Not changed are texts and pictures the 2007 release changed on purpose (version "1.0" in the info
 dialog, "Championsleague", "Managerkarriere", four pictures). The file keeps its size; GOG's file and the
 result are checked by their SHA-256. GOG's file can't be told from the result alone, so taking the patch
-back restores the backup `RESDLL.dll.vor-a2g-patch`; without it the switch stays ticked and greyed out.
+back restores the backup `RESDLL.dll.vor-a2g-patch`; without it the switch stays on and greyed out.
 
 **Animation edge.** The animations (`*.anm` in `ARCHIVES\ANIMDATA.CPR`, e.g. `fallrz.anm`, the overhead
 kick in the main menu) play in a child window "DDOutput" exactly as large as the picture

@@ -39,7 +39,7 @@
     <div class="hero-copy">
       <p class="eyebrow">For Anstoss 2 Gold · Original, GOG &amp; 2007 CD</p>
       <h1>Anstoss 2 Gold,<br><span class="grad">the way it should be.</span></h1>
-      <p class="lead">One small window, a few ticks: the arrow buttons keep counting, the World Cup, European Championship and final videos no longer crash the game, nothing freezes after Windows has run for weeks, the sound comes out of the right device, and if you like, the goal limits are lifted. The GOG and 2007 releases also get patch 1.01, the GOG release gets its dialogs back, and its copy protection no longer turns your save into a “Raubkopie” (pirated copy). No compatibility mode needed, and every change can be taken back.</p>
+      <p class="lead">One small window, a few switches: the arrow buttons keep counting, the World Cup, European Championship and final videos no longer crash the game, nothing freezes after Windows has run for weeks, the sound comes out of the right device, and if you like, the goal limits are lifted. The GOG and 2007 releases also get patch 1.01, the GOG release gets its dialogs back, and its copy protection no longer turns your save into a “Raubkopie” (pirated copy). No compatibility mode needed, and every change can be taken back.</p>
       <div class="cta">
         <a class="btn btn-primary" href="https://github.com/transfairs/A2G-Patcher/releases/latest/download/A2G-Patch-Latest.zip">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="538" height="577" alt="The A2G-Patch window: game folder selection and one tick box per patch">
+      <img src="../patch.png" width="906" height="725" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
     </figure>
   </div>
 </section>
@@ -114,7 +114,7 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
         </div>
         <h3>Desktop resolution restored, even after a crash</h3>
-        <p>The game switches the screen to 640×480 in a way that outlives a crash. With the patch, Windows restores the resolution itself as soon as the game ends. The GOG release already gets this right; there the tick box is greyed out.</p>
+        <p>The game switches the screen to 640×480 in a way that outlives a crash. With the patch, Windows restores the resolution itself as soon as the game ends. The GOG release already gets this right; there the switch is greyed out.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -154,7 +154,7 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.3 5.7M4 18v-6h6"/></svg>
         </div>
         <h3>Patch 1.01</h3>
-        <p>The <code>run.exe</code> of GOG and that of the 2007 CD are built from version 1.00. The patch brings program and data up to the official patch 1.01, which the 1999 release already has: player lists, new players and goalkeepers, counters, event texts and more.</p>
+        <p>The <code>run.exe</code> of GOG and that of the 2007 CD are built from version 1.00. The patch brings program and data up to the official patch 1.01, which the 1999 release already has: the training camp in the winter break, player lists, new players and goalkeepers, counters, event texts and more.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -177,7 +177,7 @@
           <span class="tag tag-opt">Optional</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>
         </div>
-        <h3>Lift the goal limits</h3>
+        <h3>Raise the goal limit to 15</h3>
         <p>The game lets a team score only while it has fewer than 6 goals up to half-time and fewer than 10 after, and halves its chances from 7 goals on. The patch raises the limit to 15 and drops the brake.</p>
         <div class="score" aria-label="Limit raised from 10 to 15 goals">
           <span class="old">10</span><span class="arrow">→</span><span class="new">15</span>
@@ -193,22 +193,22 @@
     <ol class="steps">
       <li><b>Close the game.</b><span>A2G-Patch changes nothing while Anstoss 2 is running.</span></li>
       <li><b>Start <code>A2G-Patch.exe</code>.</b><span>From anywhere. It offers its own folder and the installed CD and GOG releases; <i>Durchsuchen …</i> (Browse) picks another game folder.</span></li>
-      <li><b>Tick, then <i>Übernehmen</i> (Apply).</b><span>Tick the patches you want, untick the ones you no longer want. Done.</span></li>
+      <li><b>Switch on, then <i>Übernehmen</i> (Apply).</b><span>Switch on the patches you want, switch off the ones you no longer want. Done.</span></li>
     </ol>
 
     <h3 class="sub">What happens</h3>
     <div class="releases">
       <div class="rel">
         <div class="rel-head"><b>Original (1999)</b><code>anstoss2.exe</code></div>
-        <p>The game file is changed directly. First, A2G-Patch puts a backup <code>anstoss2.exe.vor-a2g-patch</code> next to it. Once all patches are unticked again, the file is byte for byte as before and the backup goes.</p>
+        <p>The game file is changed directly. First, A2G-Patch puts a backup <code>anstoss2.exe.vor-a2g-patch</code> next to it. Once all patches are switched off again, the file is byte for byte as before and the backup goes.</p>
       </div>
       <div class="rel">
         <div class="rel-head"><b>GOG</b><code>run.exe</code></div>
-        <p>The same, with <code>run.exe.vor-a2g-patch</code>. The GOG patches also change <code>RESDLL.dll</code> (backup next to it) and the data files of patch 1.01; unticking restores them too. A file check in GOG Galaxy restores the original; then simply apply again.</p>
+        <p>The same, with <code>run.exe.vor-a2g-patch</code>. The GOG patches also change <code>RESDLL.dll</code> (backup next to it) and the data files of patch 1.01; switching them off restores them too. A file check in GOG Galaxy restores the original; then simply apply again.</p>
       </div>
       <div class="rel">
         <div class="rel-head"><b>2007 CD</b><code>run.exe</code> (packed)</div>
-        <p>The program code is only stored encrypted on disk. So A2G-Patch puts an <code>msvfw32.dll</code> into the game folder, which changes the code in memory at every game start. A2G-Patch changes the data files of patch 1.01 directly. Unticking all patches deletes the DLL again.</p>
+        <p>The program code is only stored encrypted on disk. So A2G-Patch puts an <code>msvfw32.dll</code> into the game folder, which changes the code in memory at every game start. A2G-Patch changes the data files of patch 1.01 directly. Switching off all patches deletes the DLL again.</p>
       </div>
     </div>
   </div>
@@ -227,8 +227,8 @@
         <p>Some scanners react to an unsigned DLL in a game folder that has the name of a system DLL; malware uses the same trick. The DLL passes every call on to the real <code>msvfw32.dll</code> of Windows and only changes the game’s code. The source code is open in <a href="https://github.com/transfairs/A2G-Patcher/tree/main/dll"><code>dll/msvfw32.c</code></a>.</p>
       </details>
       <details>
-        <summary>A tick box is greyed out.</summary>
-        <p>Each patch finds its places by the instructions around them. If it doesn’t find them exactly once, in the original or the patched state, A2G-Patch doesn’t offer it instead of blindly overwriting something. The tick boxes under “Nur für die GOG-Version” (GOG release only) are only there if the files are exactly GOG’s.</p>
+        <summary>A switch is greyed out.</summary>
+        <p>Each patch finds its places by the instructions around them. If it doesn’t find them exactly once, in the original or the patched state, A2G-Patch doesn’t offer it instead of blindly overwriting something. The switches under “Nur für die GOG-Version” (GOG release only) are only there if the files are exactly GOG’s.</p>
       </details>
       <details>
         <summary>There is already another msvfw32.dll in the game folder?</summary>

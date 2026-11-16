@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -11,14 +12,32 @@ using System.Windows.Forms;
 
 namespace A2GPatch
 {
-    /// <summary>The program's window: game folder, how it is patched, one switch per patch, and apply.</summary>
+    /// <summary>
+    /// The program's window: a banner, the game folder and how it is patched, one tile per patch in
+    /// groups, and apply.
+    /// </summary>
     internal sealed class PatchForm : Form
     {
+        /// <summary>The headings of the groups, by <see cref="PatchGroup"/>.</summary>
+        internal static readonly string[] GroupTitles = { "Abstürze und Windows", "Spiel und Bedienung", "Nur für die GOG-Version" };
+        /// <summary>The groups' colours (blue, the pitch's green, GOG's purple), by <see cref="PatchGroup"/>.</summary>
+        internal static readonly Color[] GroupColors = { Color.FromArgb(0x1F, 0x6F, 0xB2), Color.FromArgb(0x1E, 0x8E, 0x4E), Color.FromArgb(0x7B, 0x4F, 0xC0) };
+        private static readonly Color Page = Color.FromArgb(0xF4, 0xF6, 0xF5), Line = Color.FromArgb(0xDD, 0xE2, 0xDF),
+            Grass = Color.FromArgb(0x1B, 0x7A, 0x45), DarkGrass = Color.FromArgb(0x0C, 0x4D, 0x2A),
+            Apply = Color.FromArgb(0x1E, 0x8E, 0x4E), ApplyHover = Color.FromArgb(0x18, 0x78, 0x41), ApplyDown = Color.FromArgb(0x12, 0x62, 0x35),
+            ApplyDisabled = Color.FromArgb(0xD3, 0xD9, 0xD6);
+        private const int Width96 = 900, MinWidth96 = 480, Margin96 = 16, Gap96 = 10, TileHeight96 = 70, MinTileWidth96 = 240, MaxColumns = 3;
+
         private readonly ComboBox folderInput;
         private readonly Button browseButton, applyButton, closeButton;
         private readonly Label statusLabel, progressLabel;
         private readonly BusyIndicator progress;
-        private readonly Dictionary<Patch, CheckBox> switches = new Dictionary<Patch, CheckBox>();
+        private readonly TilePanel tilePanel;
+        private readonly Dictionary<Patch, PatchTile> switches = new Dictionary<Patch, PatchTile>();
+        private readonly List<KeyValuePair<Label, PatchTile[]>> groups = new List<KeyValuePair<Label, PatchTile[]>>();
+        private readonly ToolTip tips = new ToolTip();
+        private readonly float scale;
+        private readonly int bannerHeight;
         private GameInstall install;
         private bool busy;
 
@@ -40,48 +59,123 @@ namespace A2GPatch
         public PatchForm(List<string> folders)
         {
             this.Text = "A2G-Patch";
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Font = SystemFonts.MessageBoxFont;
             this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            this.BackColor = Page;
+            this.DoubleBuffered = true;
+            this.ResizeRedraw = true;
+            this.Disposed += (s, e) => this.tips.Dispose();
 
-            Label folderLabel = new Label { Text = "Spielordner:", AutoSize = true, Location = new Point(12, 16) };
-            this.folderInput = new ComboBox { Name = "FolderInput", DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(96, 12), Size = new Size(316, 23) };
+            // Laid out for 96 dpi and scaled to the screen's (the program is dpiAware, see app.manifest).
+            // Header and footer stick to the window's edges; the tiles scroll in between and arrange
+            // themselves for the window's width (LayOutTiles).
+            using (Graphics screen = Graphics.FromHwnd(IntPtr.Zero))
+                this.scale = screen.DpiX / 96f;
+            int width = this.Px(Width96), margin = this.Px(Margin96);
+            this.bannerHeight = this.Px(60);
+            int buttonHeight = this.Px(30), footerHeight = this.Px(12) + buttonHeight + this.Px(14), tilesTop = this.bannerHeight + this.Px(84);
+            // A first size for the anchors to measure from; the real one follows once the tiles are in.
+            this.ClientSize = new Size(width, tilesTop + this.Px(200) + footerHeight);
+
+            int y = this.bannerHeight + this.Px(14);
+            Label folderLabel = new Label { Text = "Spielordner:", AutoSize = true, Location = new Point(margin, y + this.Px(4)) };
+            int browseWidth = this.Px(120), inputLeft = margin + this.Px(84);
+            this.folderInput = new ComboBox
+            {
+                Name = "FolderInput", DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Location = new Point(inputLeft, y), Width = width - margin - browseWidth - this.Px(8) - inputLeft,
+            };
             this.folderInput.Items.AddRange(folders.ToArray());
-            this.browseButton = new Button { Name = "BrowseButton", Text = "Durchsuchen …", Location = new Point(418, 11), Size = new Size(110, 25), UseVisualStyleBackColor = true };
-            this.statusLabel = new Label { Name = "StatusLabel", AutoSize = false, Location = new Point(12, 46), Size = new Size(516, 36) };
+            this.browseButton = new Button
+            {
+                Name = "BrowseButton", Text = "Durchsuchen …", UseVisualStyleBackColor = true, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Bounds = new Rectangle(width - margin - browseWidth, y - 1, browseWidth, this.folderInput.Height + 2),
+            };
+            y += this.Px(32);
+            this.statusLabel = new Label
+            {
+                Name = "StatusLabel", AutoSize = false, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Location = new Point(margin, y), Size = new Size(width - 2 * margin, this.Px(34)),
+            };
             this.Controls.AddRange(new Control[] { folderLabel, this.folderInput, this.browseButton, this.statusLabel });
 
-            int y = 86;
-            bool gogHeading = false;
-            foreach (Patch patch in Patch.All)
+            // The tiles by group, in the order of Patch.All within a group, in a panel that scrolls.
+            this.tilePanel = new TilePanel
             {
-                // The GOG-only patches (no flag) come last, under a heading of their own.
-                if (patch is FilePatch && patch.Flag == 0 && !gogHeading)
+                Name = "TilePanel", AutoScroll = true, AutoScrollMargin = new Size(0, this.Px(Gap96 + 6)),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                Bounds = new Rectangle(0, tilesTop, width, this.ClientSize.Height - tilesTop - footerHeight),
+            };
+            foreach (PatchGroup group in Enum.GetValues(typeof(PatchGroup)))
+            {
+                Label heading = new Label
                 {
-                    gogHeading = true;
-                    this.Controls.Add(new Label { Name = "GogLabel", Text = "Nur für die GOG-Version:", AutoSize = true, Location = new Point(12, y + 6) });
-                    y += 28;
-                }
-                CheckBox box = new CheckBox { Name = patch.GetType().Name + "Input", Text = patch.Name, AutoSize = true, Location = new Point(14, y) };
-                box.CheckedChanged += (s, e) =>
-                {
-                    this.ShowProgress(BusyState.Idle);
-                    this.UpdateApplyButton();
+                    Name = group + "Label", Text = GroupTitles[(int)group], AutoSize = true,
+                    Font = new Font(this.Font, FontStyle.Bold), ForeColor = GroupColors[(int)group],
                 };
-                this.switches[patch] = box;
-                this.Controls.Add(box);
-                y += 26;
+                this.tilePanel.Controls.Add(heading);
+                List<PatchTile> tiles = new List<PatchTile>();
+                foreach (Patch patch in Patch.All.Where(p => p.Group == group))
+                {
+                    PatchTile tile = new PatchTile
+                    {
+                        Name = patch.GetType().Name + "Input", Title = patch.Title, Text = patch.Name, Accent = GroupColors[(int)group],
+                        AccessibleName = patch.Title, AccessibleDescription = patch.Name,
+                    };
+                    tile.CheckedChanged += (s, e) =>
+                    {
+                        this.ShowProgress(BusyState.Idle);
+                        this.UpdateApplyButton();
+                    };
+                    this.tips.SetToolTip(tile, patch.Name);
+                    this.switches[patch] = tile;
+                    this.tilePanel.Controls.Add(tile);
+                    tiles.Add(tile);
+                }
+                this.groups.Add(new KeyValuePair<Label, PatchTile[]>(heading, tiles.ToArray()));
             }
+            this.tilePanel.Arrange = this.ArrangeTiles;
+            this.tilePanel.Paint += (s, e) => this.PaintRules(e.Graphics);
+            this.Controls.Add(this.tilePanel);
 
-            this.applyButton = new Button { Name = "ApplyButton", Text = "Übernehmen", Location = new Point(342, y + 8), Size = new Size(90, 28), UseVisualStyleBackColor = true };
-            this.closeButton = new Button { Name = "CloseButton", Text = "Schließen", DialogResult = DialogResult.Cancel, Location = new Point(438, y + 8), Size = new Size(90, 28), UseVisualStyleBackColor = true };
-            this.progress = new BusyIndicator { Name = "Progress", Location = new Point(14, y + 12), Size = new Size(20, 20) };
-            this.progressLabel = new Label { Name = "ProgressLabel", AutoSize = true, Location = new Point(40, y + 15) };
+            y = this.tilePanel.Bottom + this.Px(12);
+            int closeWidth = this.Px(100), applyWidth = this.Px(140);
+            this.closeButton = new Button
+            {
+                Name = "CloseButton", Text = "Schließen", DialogResult = DialogResult.Cancel, UseVisualStyleBackColor = true,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right, Bounds = new Rectangle(width - margin - closeWidth, y, closeWidth, buttonHeight),
+            };
+            this.applyButton = new Button
+            {
+                Name = "ApplyButton", Text = "Übernehmen", FlatStyle = FlatStyle.Flat, BackColor = Apply, ForeColor = Color.White,
+                Font = new Font(this.Font, FontStyle.Bold), Cursor = Cursors.Hand, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Bounds = new Rectangle(this.closeButton.Left - this.Px(8) - applyWidth, y, applyWidth, buttonHeight),
+            };
+            this.applyButton.FlatAppearance.BorderSize = 0;
+            this.applyButton.FlatAppearance.MouseOverBackColor = ApplyHover;
+            this.applyButton.FlatAppearance.MouseDownBackColor = ApplyDown;
+            this.applyButton.EnabledChanged += (s, e) => this.applyButton.BackColor = this.applyButton.Enabled ? Apply : ApplyDisabled;
+            this.progress = new BusyIndicator
+            {
+                Name = "Progress", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+                Location = new Point(margin, y + this.Px(5)), Size = new Size(this.Px(20), this.Px(20)),
+            };
+            this.progressLabel = new Label
+            {
+                Name = "ProgressLabel", AutoSize = true, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+                Location = new Point(margin + this.Px(28), y + this.Px(8)),
+            };
             this.Controls.AddRange(new Control[] { this.progress, this.progressLabel, this.applyButton, this.closeButton });
             this.CancelButton = this.closeButton;
-            this.ClientSize = new Size(540, y + 48);
+
+            // As tall as the tiles need at full width, but no larger than the screen; the user may
+            // shrink it down to one column with a few tiles in view.
+            Rectangle screenArea = Screen.FromPoint(Cursor.Position).WorkingArea;
+            Size frame = this.SizeFromClientSize(Size.Empty);
+            this.MinimumSize = this.SizeFromClientSize(new Size(this.Px(MinWidth96), tilesTop + this.Px(120) + footerHeight));
+            this.ClientSize = new Size(Math.Min(width, screenArea.Width - frame.Width),
+                Math.Min(tilesTop + this.LayOutTiles(width) + footerHeight, screenArea.Height - frame.Height));
 
             this.BrowseFolder = start =>
             {
@@ -124,7 +218,7 @@ namespace A2GPatch
                 this.install = null;
                 this.statusLabel.Text = ex.Message;
             }
-            foreach (KeyValuePair<Patch, CheckBox> s in this.switches)
+            foreach (KeyValuePair<Patch, PatchTile> s in this.switches)
             {
                 s.Value.Enabled = this.install != null && this.install.CanApply(s.Key);
                 s.Value.Checked = this.install != null && this.install.IsApplied(s.Key);
@@ -135,10 +229,115 @@ namespace A2GPatch
         // Only a choice that differs from the folder's state can be applied, or any choice that keeps
         // a msvfw32.dll from another version of A2G-Patch (applying replaces it). A disabled switch is
         // never checked (LoadFolder), and with A2G-Patch's dll in the folder every switch is enabled.
-        private void UpdateApplyButton() =>
-            this.applyButton.Enabled = this.install != null
-                && (this.switches.Any(s => s.Value.Enabled && s.Value.Checked != this.install.IsApplied(s.Key))
-                    || (this.install.DllOutdated && this.switches.Values.Any(box => box.Checked)));
+        // The tiles that differ get their dot, the button counts them.
+        private void UpdateApplyButton()
+        {
+            int changes = 0;
+            foreach (KeyValuePair<Patch, PatchTile> s in this.switches)
+            {
+                s.Value.Pending = this.install != null && s.Value.Enabled && s.Value.Checked != this.install.IsApplied(s.Key);
+                changes += s.Value.Pending ? 1 : 0;
+            }
+            this.applyButton.Enabled = changes > 0 || (this.install != null && this.install.DllOutdated && this.switches.Values.Any(tile => tile.Checked));
+            this.applyButton.Text = changes > 0 ? $"Übernehmen ({changes})" : "Übernehmen";
+        }
+
+        /// <summary>Draws the banner (a strip of pitch with its markings and the program's name) and the lines under the headings and above the buttons.</summary>
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            int width = this.ClientSize.Width, height = this.bannerHeight, stripe = this.Px(36);
+            using (LinearGradientBrush grass = new LinearGradientBrush(new Rectangle(0, 0, width, height), Grass, DarkGrass, LinearGradientMode.Vertical))
+                g.FillRectangle(grass, 0, 0, width, height);
+            using (Brush mown = new SolidBrush(Color.FromArgb(16, Color.White)))
+                for (int x = 0; x < width; x += 2 * stripe)
+                    g.FillRectangle(mown, x, 0, stripe, height);
+            // Halfway line, centre circle and spot on the right; penalty and goal area at the edge.
+            using (Pen chalk = new Pen(Color.FromArgb(80, Color.White), 1.5f * this.scale))
+            {
+                float middle = width * 0.68f, radius = height * 0.42f, half = height / 2f;
+                g.DrawLine(chalk, middle, 0, middle, height);
+                g.DrawEllipse(chalk, middle - radius, half - radius, 2 * radius, 2 * radius);
+                g.FillEllipse(Brushes.White, middle - 2 * this.scale, half - 2 * this.scale, 4 * this.scale, 4 * this.scale);
+                g.DrawRectangle(chalk, width - this.Px(64), height * 0.12f, this.Px(80), height * 0.76f);
+                g.DrawRectangle(chalk, width - this.Px(24), height * 0.32f, this.Px(40), height * 0.36f);
+            }
+            using (Font name = new Font(this.Font.FontFamily, this.Font.SizeInPoints * 1.6f, FontStyle.Bold))
+                TextRenderer.DrawText(g, "A2G-Patch", name, new Point(this.Px(14), this.Px(7)), Color.White);
+            TextRenderer.DrawText(g, "Fehlerbehebungen für Anstoss 2 Gold", this.Font, new Point(this.Px(17), this.Px(36)), Color.FromArgb(0xD4, 0xEE, 0xDD));
+
+            using (Pen rule = new Pen(Line))
+                g.DrawLine(rule, 0, this.tilePanel.Bottom, width, this.tilePanel.Bottom);
+        }
+
+        // The line right of each heading, up to the right edge of its tiles.
+        private void PaintRules(Graphics g)
+        {
+            foreach (KeyValuePair<Label, PatchTile[]> group in this.groups)
+            {
+                Label heading = group.Key;
+                int middle = heading.Top + heading.Height / 2;
+                using (Pen rule = new Pen(PatchTile.Blend(heading.ForeColor, Page, 0.75f)))
+                    g.DrawLine(rule, heading.Right + this.Px(6), middle, group.Value.Max(t => t.Right), middle);
+            }
+        }
+
+        // Lays the tiles out for the panel's width, leaving room for the scroll bar if they don't all fit.
+        private void ArrangeTiles()
+        {
+            if (this.LayOutTiles(this.tilePanel.Width) > this.tilePanel.Height)
+                this.LayOutTiles(this.tilePanel.Width - SystemInformation.VerticalScrollBarWidth);
+        }
+
+        /// <summary>
+        /// Places headings and tiles for a panel <paramref name="width"/> wide: as many columns as fit
+        /// (one to three), each row as tall as its longest text needs. Returns the height they take.
+        /// </summary>
+        private int LayOutTiles(int width)
+        {
+            int margin = this.Px(Margin96), gap = this.Px(Gap96), minHeight = this.Px(TileHeight96);
+            int columns = Math.Max(1, Math.Min(MaxColumns, (width - 2 * margin + gap) / (this.Px(MinTileWidth96) + gap)));
+            int tileWidth = (width - 2 * margin - (columns - 1) * gap) / columns;
+            int scrolled = this.tilePanel.AutoScrollPosition.Y, y = 0;
+            foreach (KeyValuePair<Label, PatchTile[]> group in this.groups)
+            {
+                group.Key.Location = new Point(margin - 2, y + scrolled);
+                y += this.Px(26);
+                for (int first = 0; first < group.Value.Length; first += columns)
+                {
+                    PatchTile[] row = group.Value.Skip(first).Take(columns).ToArray();
+                    int height = Math.Max(minHeight, row.Max(t => t.GetPreferredSize(new Size(tileWidth, 0)).Height));
+                    for (int i = 0; i < row.Length; i++)
+                        row[i].Bounds = new Rectangle(margin + i * (tileWidth + gap), y + scrolled, tileWidth, height);
+                    y += height + gap;
+                }
+                y += this.Px(6);
+            }
+            return y;
+        }
+
+        /// <summary>The tiles' scrolling area: double buffered, and it has the window place the tiles before it works out how far to scroll.</summary>
+        private sealed class TilePanel : Panel
+        {
+            public TilePanel()
+            {
+                this.DoubleBuffered = true;
+                this.ResizeRedraw = true;
+            }
+
+            /// <summary>Places the tiles for the panel's current size.</summary>
+            public Action Arrange;
+
+            protected override void OnLayout(LayoutEventArgs levent)
+            {
+                this.Arrange?.Invoke();
+                base.OnLayout(levent);
+            }
+        }
+
+        private int Px(int pixels) => (int)Math.Round(pixels * this.scale);
 
         /// <summary>What the window says about the game in a folder.</summary>
         internal static string StatusText(GameInstall install)
@@ -229,8 +428,8 @@ namespace A2GPatch
             this.folderInput.Enabled = this.browseButton.Enabled = this.closeButton.Enabled = !on;
             if (on)
             {
-                foreach (CheckBox box in this.switches.Values)
-                    box.Enabled = false;
+                foreach (PatchTile tile in this.switches.Values)
+                    tile.Enabled = false;
                 this.applyButton.Enabled = false;
             }
             this.ShowProgress(on ? BusyState.Busy : BusyState.Idle);

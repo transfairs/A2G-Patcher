@@ -83,13 +83,10 @@ jobs:
           A2G-Patch $tag
           =================
 
-          Patches für Anstoss 2 Gold (Original, GOG und 2007er-CD):
+          Patches für Anstoss 2 Gold (Original, GOG und 2007er-CD), im Fenster in drei Gruppen:
 
-          - Pfeile zählen beim Gedrückthalten weiter: Behebt den Fehler, dass die Pfeilknöpfe bei
-            Zahlenwerten unter aktuellem Windows beim Gedrückthalten nicht weiterzählen. Der
-            Kompatibilitätsmodus "Windows 98" ist dafür nicht mehr nötig.
-          - Torgrenzen aufheben: Bis zu 15 Tore pro Mannschaft statt 6 bis zur Halbzeit und 10 bis
-            zum Schluss, keine halbierten Torchancen ab 7 Toren.
+          Abstürze und Windows:
+
           - Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen: Ohne den
             Indeo-Codec stürzt das Spiel bei WM.AVI, EM.AVI und FINALE.AVI ab (etwa nach dem
             WM-Titel). Mit dem Patch werden diese Videos übersprungen; mit Indeo-Codec laufen sie
@@ -100,20 +97,28 @@ jobs:
             Gerät, bei mehreren Ausgängen (Monitor, Headset) also womöglich das falsche.
           - Keine falsche Warnung "Festplatte fast voll" beim Speichern: Auf großen Platten kam die
             Warnung sonst ab und zu ohne Grund.
-          - Kader nicht über 30 Spieler wachsen lassen: Ein Verein mit verliehenen Spielern kann
-            sonst einen 31. Spieler bekommen, der Daten hinter dem Kader überschreibt.
           - Desktop-Auflösung auch nach einem Absturz zurückholen: Nach einem Absturz blieb der
             Desktop sonst auf 640x480. In der GOG-Version ist das schon behoben, dort ist der
             Schalter ausgegraut.
-          - Vereinsnamen bei der Pokalauslosung richtig darstellen: Unter aktuellem Windows und
-            unter Wine erscheinen die Vereinsnamen im Video der Pokalauslosung sonst doppelt so
-            breit, halb so hoch und gepunktet.
           - Kein Hänger beim Öffnen der Kalkulation in der Vorsaison: Der Bildschirm übernimmt eine
             seiner zwei Auswahlen aus nicht gelöschtem Speicher. Steht dort ein großer Wert, bleibt
             er unsichtbar und das Spiel wartet auf ihn (unter Wine gesehen).
+
+          Spiel und Bedienung:
+
+          - Torgrenze auf 15 Tore pro Mannschaft erhöhen: statt 6 bis zur Halbzeit und 10 bis
+            zum Schluss, keine halbierten Torchancen ab 7 Toren.
+          - Pfeile zählen beim Gedrückthalten weiter: Behebt den Fehler, dass die Pfeilknöpfe bei
+            Zahlenwerten unter aktuellem Windows beim Gedrückthalten nicht weiterzählen. Der
+            Kompatibilitätsmodus "Windows 98" ist dafür nicht mehr nötig.
+          - Kader nicht über 30 Spieler wachsen lassen: Ein Verein mit verliehenen Spielern kann
+            sonst einen 31. Spieler bekommen, der Daten hinter dem Kader überschreibt.
+          - Vereinsnamen bei der Pokalauslosung richtig darstellen: Unter aktuellem Windows und
+            unter Wine erscheinen die Vereinsnamen im Video der Pokalauslosung sonst doppelt so
+            breit, halb so hoch und gepunktet.
           - Patch 1.01 (GOG und 2007er-CD): Beide sind aus dem Stand 1.00 gebaut. Der Patch bringt
             Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999
-            schon hat.
+            schon hat, darunter das Trainingslager in der Winterpause.
           - Knöpfe "A/B" und "i" in der Aufstellung an ihrem Platz: Bildknöpfe übernehmen ihre Größe
             aus nicht gelöschtem Speicher. In der Aufstellung vor dem Spiel landen "A/B" und "i" dann
             verschoben oder außerhalb des Bildschirms (unter Wine gesehen).
@@ -134,18 +139,18 @@ jobs:
           1. Spiel beenden.
           2. A2G-Patch.exe starten (egal von wo). Es schlägt den eigenen Ordner sowie die
              installierte CD- und GOG-Version vor; "Durchsuchen ..." wählt einen anderen Spielordner.
-          3. Gewünschte Patches anhaken, nicht mehr gewünschte abhaken, "Übernehmen".
+          3. Gewünschte Patches einschalten, nicht mehr gewünschte ausschalten, "Übernehmen".
 
           Gut zu wissen
           -------------
           - Original und GOG: Die Spieldatei wird geändert, vorher legt A2G-Patch eine Sicherung
-            daneben (*.vor-a2g-patch). Sind alle Patches wieder abgehakt, ist die Datei wieder im
+            daneben (*.vor-a2g-patch). Sind alle Patches wieder ausgeschaltet, ist die Datei wieder im
             Originalzustand und die Sicherung verschwindet.
           - Die GOG-Patches ändern auch RESDLL.dll (Sicherung RESDLL.dll.vor-a2g-patch) und die
-            Datendateien von Patch 1.01. Abhaken stellt auch sie wieder her.
+            Datendateien von Patch 1.01. Ausschalten stellt auch sie wieder her.
           - 2007er-CD: Deren run.exe ist gepackt. A2G-Patch legt stattdessen eine msvfw32.dll in den
             Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Die Datendateien
-            von Patch 1.01 ändert A2G-Patch direkt, Abhaken stellt sie wieder her. Manche
+            von Patch 1.01 ändert A2G-Patch direkt, Ausschalten stellt sie wieder her. Manche
             Virenscanner schlagen bei dieser DLL an, weil sie eine System-DLL ersetzt.
           - Liegt das Spiel unter "Programme", fragt A2G-Patch nach Administratorrechten.
           - Voraussetzungen: Windows XP (SP3) oder neuer, .NET Framework 4.0 oder neuer.

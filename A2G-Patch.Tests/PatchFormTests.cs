@@ -16,10 +16,10 @@ namespace A2GPatch.Tests
     [Collection("GameInstall statics")]
     public class PatchFormTests
     {
-        private static T Find<T>(Form form, string name) where T : Control => (T)form.Controls.Find(name, false).Single();
+        private static T Find<T>(Form form, string name) where T : Control => (T)form.Controls.Find(name, true).Single();
 
-        private static CheckBox GoalsInput(Form form) => Find<CheckBox>(form, "GoalLimitsInput");
-        private static CheckBox ArrowInput(Form form) => Find<CheckBox>(form, "ArrowRepeatInput");
+        private static PatchTile GoalsInput(Form form) => Find<PatchTile>(form, "GoalLimitsInput");
+        private static PatchTile ArrowInput(Form form) => Find<PatchTile>(form, "ArrowRepeatInput");
         private static Button ApplyButton(Form form) => Find<Button>(form, "ApplyButton");
 
         private static void Click(Form form, string name) =>
@@ -72,6 +72,157 @@ namespace A2GPatch.Tests
             }
         });
 
+        // Handles the window's messages until the tile's knob and tint have arrived.
+        private static void WaitWhileMoving(PatchTile tile)
+        {
+            for (DateTime end = DateTime.Now.AddSeconds(30); tile.Moving && DateTime.Now < end; Thread.Sleep(5))
+                Application.DoEvents();
+            Assert.False(tile.Moving);
+        }
+
+        private static void Draw(Control control)
+        {
+            using (Bitmap image = new Bitmap(control.Width, control.Height))
+                control.DrawToBitmap(image, new Rectangle(Point.Empty, control.Size));
+        }
+
+        private static void Raise(Control control, string method, EventArgs e) =>
+            control.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance).Invoke(control, new object[] { e });
+
+        // Click and space bar toggle a tile, the knob slides and the tint fades in steps of the timer.
+        [Fact]
+        public void PatchTile_TogglesAndAnimates() => StaThread.Run(() =>
+        {
+            using (Form form = new Form())
+            using (PatchTile tile = new PatchTile { Title = "Mehr Tore", Text = "Torgrenzen aufheben", Size = new Size(280, 70) })
+            {
+                form.Controls.Add(tile);
+                form.Show();
+                // Nobody listening yet.
+                tile.Checked = true;
+                tile.Checked = false;
+                WaitWhileMoving(tile);
+                int changes = 0;
+                tile.CheckedChanged += (s, e) => changes++;
+
+                Raise(tile, "OnClick", EventArgs.Empty);
+                Assert.True(tile.Checked);
+                Assert.True(tile.Focused);
+                Assert.True(tile.Moving);
+                tile.Animate();
+                Assert.Equal(0.125f, tile.Knob);
+                WaitWhileMoving(tile);
+                Assert.Equal(1f, tile.Knob);
+
+                Raise(tile, "OnKeyUp", new KeyEventArgs(Keys.Space));
+                Assert.False(tile.Checked);
+                Raise(tile, "OnKeyUp", new KeyEventArgs(Keys.Enter));
+                Assert.False(tile.Checked);
+                tile.Checked = false;
+                Assert.Equal(2, changes);
+                WaitWhileMoving(tile);
+                Assert.Equal(0f, tile.Knob);
+
+                // The tint follows the mouse, not on a disabled tile.
+                Raise(tile, "OnMouseEnter", EventArgs.Empty);
+                WaitWhileMoving(tile);
+                Assert.Equal(1f, tile.Hover);
+                tile.Enabled = false;
+                WaitWhileMoving(tile);
+                Assert.Equal(0f, tile.Hover);
+                tile.Enabled = true;
+                Raise(tile, "OnMouseLeave", EventArgs.Empty);
+                WaitWhileMoving(tile);
+                Assert.Equal(0f, tile.Hover);
+
+                // Screen readers see a check box.
+                AccessibleObject accessible = tile.AccessibilityObject;
+                Assert.Equal(AccessibleRole.CheckButton, accessible.Role);
+                Assert.Equal(AccessibleStates.None, accessible.State & AccessibleStates.Checked);
+                tile.Checked = true;
+                Assert.Equal(AccessibleStates.Checked, accessible.State & AccessibleStates.Checked);
+
+                // Every look: focused or not, pending or not, disabled.
+                tile.Focus();
+                Assert.True(tile.Focused);
+                Draw(tile);
+                tile.Pending = true;
+                tile.Enabled = false;
+                Assert.False(tile.Focused);
+                Draw(tile);
+            }
+        });
+
+        [Fact]
+        public void PatchTile_BlendsColors()
+        {
+            Assert.Equal(Color.FromArgb(0, 0, 0), PatchTile.Blend(Color.Black, Color.White, 0));
+            Assert.Equal(Color.FromArgb(127, 127, 127), PatchTile.Blend(Color.Black, Color.White, 0.5f));
+            Assert.Equal(Color.FromArgb(255, 255, 255), PatchTile.Blend(Color.Black, Color.White, 1));
+        }
+
+        // The tiles in their groups, three to a row, and the window drawn with banner and lines.
+        [Fact]
+        public void Tiles_StandInTheirGroups() => StaThread.Run(() =>
+        {
+            using (PatchForm form = Form(new List<string>(), DialogResult.OK))
+            {
+                Label[] headings = Enum.GetValues(typeof(PatchGroup)).Cast<PatchGroup>().Select(g => Find<Label>(form, g + "Label")).ToArray();
+                Assert.Equal(PatchForm.GroupTitles, headings.Select(h => h.Text));
+                foreach (Patch patch in Patch.All)
+                {
+                    PatchTile tile = Find<PatchTile>(form, patch.GetType().Name + "Input");
+                    Assert.Equal(patch.Title, tile.Title);
+                    Assert.Equal(patch.Name, tile.Text);
+                    Assert.Equal(PatchForm.GroupColors[(int)patch.Group], tile.Accent);
+                    // Below its own heading, above the next one.
+                    Assert.True(tile.Top > headings[(int)patch.Group].Bottom);
+                    Assert.True((int)patch.Group == headings.Length - 1 || tile.Bottom < headings[(int)patch.Group + 1].Top);
+                }
+                // Six tiles in two rows.
+                Assert.Equal(2, Patch.All.Where(p => p.Group == PatchGroup.Game).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input").Top).Distinct().Count());
+                form.Show();
+                Draw(form);
+            }
+        });
+
+        // Narrow, the tiles stand in one column and scroll; wide, three to a row. They never stick out
+        // of the panel, and rearranging keeps the scroll position.
+        [Fact]
+        public void Tiles_FollowTheWindowSize() => StaThread.Run(() =>
+        {
+            using (PatchForm form = Form(new List<string>(), DialogResult.OK))
+            {
+                form.Show();
+                Panel panel = Find<Panel>(form, "TilePanel");
+                PatchTile[] game = Patch.All.Where(p => p.Group == PatchGroup.Game).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
+                PatchTile[] all = Patch.All.Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
+
+                form.Size = form.MinimumSize;
+                Application.DoEvents();
+                Assert.Equal(6, game.Select(t => t.Top).Distinct().Count());
+                Assert.True(panel.VerticalScroll.Visible);
+                Assert.False(panel.HorizontalScroll.Visible);
+                Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
+                // Each tile as tall as its text needs, at least the usual height.
+                Assert.All(all, t => Assert.True(t.Height >= t.GetPreferredSize(new Size(t.Width, 0)).Height));
+                Draw(form);
+
+                panel.AutoScrollPosition = new Point(0, 10000);
+                int scrolled = panel.AutoScrollPosition.Y, top = game[0].Top;
+                Assert.True(scrolled < 0);
+                form.Height++;
+                Application.DoEvents();
+                Assert.Equal(top - scrolled, game[0].Top - panel.AutoScrollPosition.Y);
+
+                form.Size = SystemInformation.MaxWindowTrackSize;
+                Application.DoEvents();
+                Assert.Equal(2, game.Select(t => t.Top).Distinct().Count());
+                Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
+                Draw(form);
+            }
+        });
+
         // Runs body with IsGameRunning answering running.
         private static void WithGameRunning(bool running, Action body)
         {
@@ -105,30 +256,40 @@ namespace A2GPatch.Tests
                 using (PatchForm form = Form(messages, DialogResult.OK, folder.Path))
                 {
                     Assert.Equal("anstoss2.exe wird direkt gepatcht.", Find<Label>(form, "StatusLabel").Text);
-                    Assert.Equal("Torgrenzen aufheben", GoalsInput(form).Text);
+                    Assert.Equal("Torgrenze auf 15 Tore pro Mannschaft erhöhen", GoalsInput(form).Text);
                     Assert.True(GoalsInput(form).Enabled && ArrowInput(form).Enabled);
                     Assert.False(GoalsInput(form).Checked || ArrowInput(form).Checked);
                     Assert.False(ApplyButton(form).Enabled);
                     // The GOG patches under their heading, greyed out for another release.
                     Label gog = Find<Label>(form, "GogLabel");
-                    Assert.Equal("Nur für die GOG-Version:", gog.Text);
+                    Assert.Equal("Nur für die GOG-Version", gog.Text);
                     Assert.All(new[] { "CopyProtectionInput", "DialogStylesInput", "AnimationEdgeInput" }, name =>
                     {
-                        CheckBox box = Find<CheckBox>(form, name);
-                        Assert.False(box.Enabled);
-                        Assert.True(box.Top > gog.Top);
+                        PatchTile tile = Find<PatchTile>(form, name);
+                        Assert.False(tile.Enabled);
+                        Assert.True(tile.Top > gog.Top);
                     });
                     // Patch 1.01 is for the 2007 CD as well: above the heading, greyed out here too.
-                    Assert.False(Find<CheckBox>(form, "Patch101Input").Enabled);
-                    Assert.True(Find<CheckBox>(form, "Patch101Input").Top < gog.Top);
+                    Assert.False(Find<PatchTile>(form, "Patch101Input").Enabled);
+                    Assert.True(Find<PatchTile>(form, "Patch101Input").Top < gog.Top);
 
+                    // A change gets its dot, the button counts the changes.
                     ArrowInput(form).Checked = true;
                     Assert.True(ApplyButton(form).Enabled);
+                    Assert.True(ArrowInput(form).Pending);
+                    Assert.False(GoalsInput(form).Pending);
+                    Assert.Equal("Übernehmen (1)", ApplyButton(form).Text);
+                    GoalsInput(form).Checked = true;
+                    Assert.Equal("Übernehmen (2)", ApplyButton(form).Text);
+                    GoalsInput(form).Checked = false;
                     ArrowInput(form).Checked = false;
                     Assert.False(ApplyButton(form).Enabled);
+                    Assert.False(ArrowInput(form).Pending);
+                    Assert.Equal("Übernehmen", ApplyButton(form).Text);
 
                     ArrowInput(form).Checked = true;
                     Apply(form);
+                    Assert.False(ArrowInput(form).Pending);
                     Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Arrow));
                     Assert.False(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Goals));
                     Assert.True(ArrowInput(form).Checked);
@@ -166,7 +327,7 @@ namespace A2GPatch.Tests
                     Assert.True(progress.Visible);
                     Assert.Equal("Änderungen werden übernommen …", progressLabel.Text);
                     Assert.All(new[] { "FolderInput", "BrowseButton", "ApplyButton", "CloseButton", "ArrowRepeatInput", "GoalLimitsInput" },
-                        name => Assert.False(form.Controls.Find(name, false).Single().Enabled));
+                        name => Assert.False(form.Controls.Find(name, true).Single().Enabled));
                     using (Bitmap image = new Bitmap(progress.Width, progress.Height))
                         progress.DrawToBitmap(image, new Rectangle(Point.Empty, progress.Size));
                     form.Close();
