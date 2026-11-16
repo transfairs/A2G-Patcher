@@ -72,11 +72,11 @@ namespace A2GPatch
     }
 
     /// <summary>
-    /// A patch for the GOG release. GOG sells the 2007 release by Kalypso, its run.exe taken out of
-    /// the copy protection: that leaves things to fix the other releases don't need, and some of them
-    /// change more than places in the code (the exe grows, other files of the game change). They are
-    /// offered where the exe is patched on disk and the files are GOG's. msvfw32.dll knows only
-    /// <see cref="Patch101"/>, which the 2007 CD release needs as well; the others have no flag.
+    /// A patch that changes more than places in the code (the exe grows, other files of the game change),
+    /// offered where the exe is patched on disk. Most are for the GOG release: GOG sells the 2007 release
+    /// by Kalypso, its run.exe taken out of the copy protection, which leaves things to fix the other
+    /// releases don't need. msvfw32.dll knows only <see cref="Patch101"/>, which the 2007 CD release needs
+    /// as well, and <see cref="InterviewEffects"/> (for every release); the others have no flag.
     /// </summary>
     internal abstract class FilePatch : Patch
     {
@@ -276,8 +276,6 @@ namespace A2GPatch
         internal static readonly string MoveListFile = Path.Combine("ARCHIVES", "MoveList.dat");
         /// <summary>The country files that 1.01 changes.</summary>
         internal static readonly string[] Countries = { Path.Combine("DATA.DEF", "LAENDER.SAV"), Path.Combine("DATA.VER", "LAENDER.SAV") };
-        private const uint Code = 0x60000020;           // IMAGE_SCN_CNT_CODE | MEM_EXECUTE | MEM_READ
-        private const uint Writable = 0x80000000;
 
         /// <summary>The SHA-256 of the event texts of GOG; tests replace it (as the other hashes).</summary>
         internal static string EventsGog = "f7d1b920fe90881a78a949748940185cc0c3bf3276b8511fc4544b723cbf04f5";
@@ -342,38 +340,19 @@ namespace A2GPatch
             if (pe.Sections.Last().Name == SectionName)
                 return FileState.On;
             // The code is linked to where the image ends, and the next section header must fit before the first section's data.
-            bool fits = pe.ImageBase + pe.SizeOfImage == V101Code.Address && pe.SectionTable + 40 * (pe.Sections.Count + 1) <= pe.Sections.Min(s => s.Raw);
+            bool fits = pe.ImageBase + pe.SizeOfImage == V101Code.Address && pe.HasRoomForSection;
             return fits && Hooks.All(h => Holds(image, pe.FileOffset(h.Va), h.Original)) ? FileState.Off : FileState.Unknown;
         }
 
         private static bool Holds(byte[] image, long at, byte[] bytes) => at >= 0 && image.Slice(at, bytes.Length).SequenceEqual(bytes);
 
         /// <summary>
-        /// <paramref name="image"/> with the section added and the places changed. The section's data goes
-        /// behind everything in the file, the signature included. GOG's run.exe has leftovers behind its
-        /// section headers; the 40 bytes the new header overwrites are kept right behind the code, so taking
-        /// the patch back restores the exe to the byte.
+        /// <paramref name="image"/> with the section added (see <see cref="PeFile.AddSection"/>) and the places changed.
         /// </summary>
         internal static byte[] AddProgram(byte[] image)
         {
             PeFile pe = PeFile.Read(image);
-            byte[] code = Convert.FromBase64String(V101Code.Code);
-            long raw = Align(image.Length, pe.FileAlignment);
-            uint rawSize = Align(code.Length + 40, pe.FileAlignment);
-            byte[] result = new byte[raw + rawSize];
-            image.CopyTo(result, 0);
-            code.CopyTo(result, raw);
-            int header = (int)(pe.SectionTable + 40 * pe.Sections.Count);
-            Array.Copy(image, header, result, raw + code.Length, 40);
-            Array.Clear(result, header, 40);
-            Encoding.ASCII.GetBytes(SectionName).CopyTo(result, header);
-            Put(result, header + 8, (uint)code.Length);
-            Put(result, header + 12, pe.SizeOfImage);
-            Put(result, header + 16, rawSize);
-            Put(result, header + 20, (uint)raw);
-            Put(result, header + 36, Code | Writable);
-            BitConverter.GetBytes((ushort)(pe.Sections.Count + 1)).CopyTo(result, pe.OptionalHeader - 18);   // NumberOfSections
-            Put(result, pe.OptionalHeader + 56, pe.SizeOfImage + Align(code.Length, pe.SectionAlignment));
+            byte[] result = PeFile.AddSection(image, SectionName, Convert.FromBase64String(V101Code.Code));
             foreach (Hook hook in Hooks)
                 hook.Patched.CopyTo(result, pe.FileOffset(hook.Va));
             return result;
@@ -383,20 +362,11 @@ namespace A2GPatch
         internal static byte[] RemoveProgram(byte[] image)
         {
             PeFile pe = PeFile.Read(image);
-            PeFile.Section section = pe.Sections.Last();
-            List<PeFile.Section> others = pe.Sections.Take(pe.Sections.Count - 1).ToList();
-            // The file ends with the other sections' data or the signature behind it.
-            long end = Math.Max(others.Max(s => (long)s.Raw + s.RawSize), (long)pe.CertificateAt + pe.CertificateSize);
-            byte[] result = image.Slice(0, (int)end);
+            byte[] result = PeFile.RemoveLastSection(image);
             foreach (Hook hook in Hooks)
                 hook.Original.CopyTo(result, pe.FileOffset(hook.Va));
-            Array.Copy(image, section.Raw + section.VirtualSize, result, pe.SectionTable + 40 * others.Count, 40);
-            BitConverter.GetBytes((ushort)others.Count).CopyTo(result, pe.OptionalHeader - 18);
-            Put(result, pe.OptionalHeader + 56, section.Va);
             return result;
         }
-
-        private static void Put(byte[] image, long at, uint value) => BitConverter.GetBytes(value).CopyTo(image, at);
 
         /// <summary>The event texts with the two texts ending in <paramref name="to"/> instead of <paramref name="from"/>; null if they don't.</summary>
         internal static byte[] ChangeEvents(byte[] data, byte from, byte to)

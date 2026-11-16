@@ -122,6 +122,9 @@ jobs:
           - Knöpfe "A/B" und "i" in der Aufstellung an ihrem Platz: Bildknöpfe übernehmen ihre Größe
             aus nicht gelöschtem Speicher. In der Aufstellung vor dem Spiel landen "A/B" und "i" dann
             verschoben oder außerhalb des Bildschirms (unter Wine gesehen).
+          - Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen ...): Das Spiel
+            liest die Antworten von einer Stelle, an die sie nie geschrieben werden, also bleibt
+            keine Antwort mit Folgen. Mit dem Patch wirken sie so, wie ihre Texte es versprechen.
 
           Nur für die GOG-Version (bei den anderen ausgegraut):
 

@@ -179,8 +179,8 @@ namespace A2GPatch.Tests
                     Assert.True(tile.Top > headings[(int)patch.Group].Bottom);
                     Assert.True((int)patch.Group == headings.Length - 1 || tile.Bottom < headings[(int)patch.Group + 1].Top);
                 }
-                // Six tiles in two rows.
-                Assert.Equal(2, Patch.All.Where(p => p.Group == PatchGroup.Game).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input").Top).Distinct().Count());
+                // Seven tiles in three rows.
+                Assert.Equal(3, Patch.All.Where(p => p.Group == PatchGroup.Game).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input").Top).Distinct().Count());
                 form.Show();
                 Draw(form);
             }
@@ -200,7 +200,7 @@ namespace A2GPatch.Tests
 
                 form.Size = form.MinimumSize;
                 Application.DoEvents();
-                Assert.Equal(6, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(7, game.Select(t => t.Top).Distinct().Count());
                 Assert.True(panel.VerticalScroll.Visible);
                 Assert.False(panel.HorizontalScroll.Visible);
                 Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
@@ -217,7 +217,7 @@ namespace A2GPatch.Tests
 
                 form.Size = SystemInformation.MaxWindowTrackSize;
                 Application.DoEvents();
-                Assert.Equal(2, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(3, game.Select(t => t.Top).Distinct().Count());
                 Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
                 Draw(form);
             }

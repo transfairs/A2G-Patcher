@@ -42,6 +42,11 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   from memory they never cleared before their picture is loaded. In the team lineup before a match, "A/B"
   and "i" are placed by that size, so with old data there they end up shifted or off screen. Seen under
   Wine; on Windows that memory is usually 0, the patch makes sure.
+- **Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)** (bug fix): every answer
+  in an interview is meant to do something (more or fewer fans, a happier or angrier board, the team's
+  morale, a fine), but the game applies the answers from a place they are never written to, so none of
+  them has any effect. With the patch they do what their texts say. It is the same change as A2G-Trainer's
+  "Wirkung der Antworten anwenden", which recognizes the patched game.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -66,7 +71,7 @@ Project page with download: <https://transfairs.github.io/A2G-Patcher/en/> (Germ
 on the [releases page](https://github.com/transfairs/A2G-Patcher/releases).
 
 Sister projects: [A2G-Trainer](https://github.com/transfairs/A2G-Trainer) (its *Spielmechaniken*
-switch lifts the goal limits while the trainer runs; it recognizes A2G-Patch's change) and
+switches lift the goal limits and let interview answers take effect while the trainer runs; it recognizes A2G-Patch's changes) and
 [A2G-Scaler](https://github.com/transfairs/A2G-Scaler).
 
 ## Using it
@@ -237,6 +242,33 @@ mov [esi],vtable / mov eax,esi / pop esi / ret
 The string and vtable addresses differ between the builds and are kept. The constructor lies outside the
 code the 2007 release checks with its CRCs.
 
+**Interviews.** The interview engine (pointer at `0x77f898` in the original exe, its questions from
+`TEXTE\inttext.crn`) works on a heap copy of the interview context `0x77f960` (engine `+0x11C`) and stores
+the chosen answer's two effect pairs (code, value) there, at `+0x14` to `+0x20`. Then `0x4f8a90` applies the
+pairs with `0x4f8a00`, but from the context itself (`push 0x77f960`), whose pairs are never written: every
+answer applies "fans +0" twice. Two codes also don't match the cases of the effect function `0x4f87f0`: the
+texts use 10 for the team's morale (no case) and 12 for a fine in DM (case 12 is the morale change
+`0x5ffa50`). The patch adds the stub of A2G-Trainer's `InterviewEffectsFix` byte for byte (signature
+`A2GINT02`, so the trainer recognizes it and can switch it with the flag at `+8`) and sends two calls there:
+
+```
+push context / call 0x4f8a00                    ->  push context / call stub+20
+case 12: push value / push club / call 0x5ffa50  ->  ... / call stub+C0
+stub+20: flag set, engine and copy there: copy the pairs into the context, 10 -> 12,
+         12 -> 12 with the value marked (0x40 in the high byte); otherwise the pairs 0 / jmp 0x4f8a00
+stub+C0: marked: club+38C (other costs) += DM * [0x78bbb8] / 100 / ret; otherwise jmp 0x5ffa50
+```
+
+A fine is booked as the game books its own (money units = DM times the money factor `0x78bbb8` / 100).
+The engine pointer is read from the code before the call (`mov ecx,[engine]`); it lies 0xC8 bytes before
+the context, the money factor 0xC258 bytes behind it, in all three builds (GOG's and the 2007 CD's context
+is `0x782aa0`). The stub (256 bytes) goes right in front of the cup draw helper's place where that is zero,
+at the end of GOG's `.idata`. The original's `.text` has no room left there, so the original exe gets a
+section of its own, `.a2int` (data behind the end of the file, loaded behind the image, executable and
+writable), which taking the patch back removes again, restoring the exe to the byte. The cup draw patch
+skips that section. In memory, `msvfw32.dll` puts the stub into a `VirtualAlloc` block. Both calls lie
+outside the 2007 release's CRC stretches.
+
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
@@ -357,7 +389,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 - Which patches it applies are two flags bytes (low byte first) after the marker `A2GPatchFlags` in its
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
-  calculation, 1024 patch 1.01, 2048 picture buttons; the build has all on). The other GOG patches have
+  calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews; the build has all on). The other GOG patches have
   no flag: they change files on disk, which the DLL doesn't. An installed copy that differs from the
   embedded one in more than these bytes is from another version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled

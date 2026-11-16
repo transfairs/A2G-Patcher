@@ -142,6 +142,14 @@
       </article>
       <article class="card">
         <div class="card-head">
+          <span class="tag tag-fix">Bug fix</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+        </div>
+        <h3>Interview answers take effect</h3>
+        <p>Every answer in an interview is meant to do something: more or fewer fans, a happier or angrier board, the team’s morale or a fine. But the game reads the answers from a place they are never written to, so none of them has any effect. With the patch they do what their texts promise.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
           <span class="tag tag-gog">GOG only</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
         </div>
@@ -236,7 +244,7 @@
       </details>
       <details>
         <summary>Does it work with A2G-Trainer?</summary>
-        <p>Yes. The <i>Spielmechaniken</i> switch in <a href="https://github.com/transfairs/A2G-Trainer">A2G-Trainer</a> lifts the goal limits while the trainer runs, and recognizes when A2G-Patch has already done so for good.</p>
+        <p>Yes. The <i>Spielmechaniken</i> switches in <a href="https://github.com/transfairs/A2G-Trainer">A2G-Trainer</a> lift the goal limits and let the interview answers take effect while the trainer runs. Both recognize when A2G-Patch has already done so for good.</p>
       </details>
     </div>
   </div>
@@ -311,6 +319,12 @@ helper: GetDC / GetDIBits(…, 128×-32, 16 bit) / ReleaseDC / 5-5-5 → 5-6-5 i
         <summary><b>Picture buttons</b><span>A BITMAP never cleared</span></summary>
         <p>The constructor of the picture button class clears almost all its fields, but not the <code>BITMAP</code> (<code>+0x7C</code> to <code>+0x93</code>) that is only filled when the picture is loaded. The lineup moves “A/B” and “i” to their template position with its width and height before loading the pictures, then aligns them to the bottom right corner. With old data there the window gets huge, and the button ends up shifted or off screen. The patch clears the <code>BITMAP</code> too, in the same 142&nbsp;bytes: the stores beyond <code>+0x7F</code> go through <code>edx</code> = <code>this+0x80</code> and so need one byte of displacement instead of four.</p>
 <pre><code>mov [esi+A4],eax / … / mov [esi+94],eax  →  mov [esi+7C],eax / lea edx,[esi+80] / mov [edx+0…24],eax / mov [edx+30…48],eax / nop ×13</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Interviews</b><span>Two pairs that never arrive</span></summary>
+        <p>The interview engine works on a copy of the interview context and stores the chosen answer’s two effect pairs (code, value) there. They are then applied from the context itself, whose pairs are never written: every answer applies “fans +0” twice. Two codes also don’t match the cases of the effect function: the texts use 10 for the team’s morale (no case) and 12 for a fine in DM (case 12 is the morale). The patch adds the code of A2G-Trainer’s “Wirkung der Antworten anwenden” byte for byte, so the trainer recognizes it, and sends two calls there. A fine is booked as the game books its own, on the club’s other costs. The original has no room left at the end of its code; there the exe gets a section of its own, <code>.a2int</code>, which goes again when the patch is taken back.</p>
+<pre><code>push context / call apply  →  push context / call stub+20   (pairs from the copy, 10 → 12, 12 marked as a fine)
+case 12: call morale       →  call stub+C0                  (marked fine: club+38C += DM × money factor / 100)</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>

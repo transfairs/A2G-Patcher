@@ -22,6 +22,7 @@
 // 512 calculation:  only one of two selections cleared         ->  both cleared (no hang)
 // 1024 patch 1.01: the program of 1.00                         ->  13 places jump to the code of 1.01
 // 2048 buttons:    picture button's BITMAP left uncleared      ->  cleared ("A/B" and "i" in place)
+// 4096 interviews: effects applied from pairs never written    ->  the engine copy's pairs, codes 10 and 12 mapped
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -122,7 +123,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_CALC_INIT    512
 #define FLAG_V101         1024
 #define FLAG_BUTTON_INIT  2048
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x0F";   // all on
+#define FLAG_INTERVIEW    4096
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x1F";   // all on
 #define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -611,6 +613,112 @@ static int PatchV101(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 4096: interviews ----------------------------------------------------------------------------
+
+// As in Patches.cs (InterviewEffects): the game applies an answer's two effect pairs from the interview
+// context, but the engine stores them only in its copy (engine+11C). Both calls go to a stub (that of
+// A2G-Trainer's InterviewEffectsFix, which recognizes it by its signature) that copies the pairs over,
+// sends code 10 (team morale) to case 12 and books code 12 (a fine in DM) on the club's other costs.
+// mov ecx,[engine] / push eax / call / push context / call apply (byte 17) / mov eax,[context+10]
+static const WORD kInterviewApply[] = {
+    0x8B, 0x0D, ANY, ANY, ANY, ANY, 0x50, 0xE8, ANY, ANY, ANY, ANY,
+    0x68, ANY, ANY, ANY, ANY, 0xE8, ANY, ANY, ANY, ANY, 0xA1, ANY, ANY, ANY, ANY };
+// case 12: mov ecx,[esp+50] / mov edx,[esp+5C] / push ecx / push edx / call morale (byte 10) / add esp,8 / ... / ret
+static const WORD kInterviewMorale[] = {
+    0x8B, 0x4C, 0x24, 0x50, 0x8B, 0x54, 0x24, 0x5C, 0x51, 0x52, 0xE8, ANY, ANY, ANY, ANY,
+    0x83, 0xC4, 0x08, 0x5F, 0x5E, 0x83, 0xC4, 0x40, 0xC3 };
+// The first instructions of the effect application and of the morale change.
+static const BYTE kInterviewApplyHead[14] = { 0x53, 0x55, 0x56, 0x8B, 0x74, 0x24, 0x10, 0x57, 0x66, 0x8B, 0x46, 0x74, 0x50, 0xE8 };
+static const BYTE kInterviewMoraleHead[22] = {
+    0x8B, 0x4C, 0x24, 0x04, 0x8B, 0x44, 0x24, 0x08, 0x66, 0x0F, 0xB6, 0x91, 0x9C, 0x00, 0x00, 0x00, 0x03, 0xC2, 0x66, 0x3D, 0xC8, 0x00 };
+#define ENGINE_BEFORE_CONTEXT 0xC8
+#define MONEY_FACTOR_BEHIND_CONTEXT 0xC258
+// The stub as in Patches.cs for the addresses 0, the flag set; the addresses are added at the STUB_* places.
+static const BYTE kInterviewStub[256] = {
+    0x41, 0x32, 0x47, 0x49, 0x4E, 0x54, 0x30, 0x32, 0x01, 0, 0, 0, 0, 0, 0, 0,                  // "A2GINT02", flag 1
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0x80, 0x3D, 0x08, 0x00, 0x00, 0x00, 0x00, 0x74, 0x6D, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x85, 0xC0,   // +20: apply entry
+    0x74, 0x64, 0x8B, 0x80, 0x1C, 0x01, 0x00, 0x00, 0x85, 0xC0, 0x74, 0x5A, 0x8B, 0x48, 0x14, 0x8B,
+    0x50, 0x18, 0x83, 0xF9, 0x0C, 0x75, 0x0E, 0x81, 0xE2, 0xFF, 0xFF, 0xFF, 0x00, 0x81, 0xCA, 0x00,
+    0x00, 0x00, 0x40, 0xEB, 0x07, 0x83, 0xF9, 0x0A, 0x75, 0x02, 0xB1, 0x0C, 0x89, 0x0D, 0x14, 0x00,
+    0x00, 0x00, 0x89, 0x15, 0x18, 0x00, 0x00, 0x00, 0x8B, 0x48, 0x1C, 0x8B, 0x50, 0x20, 0x83, 0xF9,
+    0x0C, 0x75, 0x0E, 0x81, 0xE2, 0xFF, 0xFF, 0xFF, 0x00, 0x81, 0xCA, 0x00, 0x00, 0x00, 0x40, 0xEB,
+    0x07, 0x83, 0xF9, 0x0A, 0x75, 0x02, 0xB1, 0x0C, 0x89, 0x0D, 0x1C, 0x00, 0x00, 0x00, 0x89, 0x15,
+    0x20, 0x00, 0x00, 0x00, 0xEB, 0x1A, 0x31, 0xC9, 0x89, 0x0D, 0x14, 0x00, 0x00, 0x00, 0x89, 0x0D,
+    0x18, 0x00, 0x00, 0x00, 0x89, 0x0D, 0x1C, 0x00, 0x00, 0x00, 0x89, 0x0D, 0x20, 0x00, 0x00, 0x00,
+    0xB8, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0x80, 0x7C, 0x24, 0x0B, 0x40, 0x75, 0x27, 0x8B, 0x44, 0x24, 0x08, 0x25, 0xFF, 0xFF, 0xFF, 0x00,   // +C0: morale entry
+    0x0F, 0xAF, 0x05, 0x00, 0x00, 0x00, 0x00, 0x99, 0xB9, 0x64, 0x00, 0x00, 0x00, 0xF7, 0xF9, 0x8B,
+    0x54, 0x24, 0x04, 0x85, 0xD2, 0x74, 0x06, 0x01, 0x82, 0x8C, 0x03, 0x00, 0x00, 0xC3, 0xB8, 0x00,
+    0x00, 0x00, 0x00, 0xFF, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#define STUB_FLAG 0x22                 // the stub's own address
+#define STUB_ENGINE 0x2A
+#define STUB_APPLY 0xB1
+#define STUB_MONEY_FACTOR 0xD3
+#define STUB_MORALE 0xEF
+#define STUB_APPLY_ENTRY 0x20
+#define STUB_MORALE_ENTRY 0xC0
+static const SIZE_T kInterviewContextRefs[8] = { 0x5E, 0x64, 0x8A, 0x90, 0x9A, 0xA0, 0xA6, 0xAC };
+
+// Adds value to the (unaligned) dword at p.
+static void AddDword(BYTE *p, DWORD value)
+{
+    DWORD d;
+    Copy((BYTE *)&d, p, 4);
+    d += value;
+    Copy(p, (const BYTE *)&d, 4);
+}
+
+// Where the call (E8 rel32) at call leads.
+static BYTE *CallTarget(BYTE *call)
+{
+    LONG rel;
+    Copy((BYTE *)&rel, call + 1, 4);
+    return call + 5 + rel;
+}
+
+// Points the call at call to target.
+static void Redirect(BYTE *call, BYTE *target)
+{
+    LONG rel = (LONG)(target - (call + 5));
+    Write(call + 1, (const BYTE *)&rel, 4);
+}
+
+static int PatchInterview(BYTE *base, SIZE_T size)
+{
+    BYTE *site, *moraleSite;
+    int count = Count(base, size, kInterviewApply, ARRAYSIZE(kInterviewApply), &site);
+    int countMorale = Count(base, size, kInterviewMorale, ARRAYSIZE(kInterviewMorale), &moraleSite);
+    if (count == 0 || countMorale == 0) return NOT_YET;
+    if (count != 1 || countMorale != 1) return DONE;
+
+    DWORD engine, context, field;
+    Copy((BYTE *)&engine, site + 2, 4);
+    Copy((BYTE *)&context, site + 13, 4);
+    Copy((BYTE *)&field, site + 23, 4);
+    if (field != context + 0x10 || engine != context - ENGINE_BEFORE_CONTEXT) return DONE;
+    BYTE *applyCall = site + 17, *moraleCall = moraleSite + 10;
+    BYTE *apply = CallTarget(applyCall), *morale = CallTarget(moraleCall);
+    if (!ReadableAt(apply, sizeof kInterviewApplyHead) || !Equal(apply, kInterviewApplyHead, sizeof kInterviewApplyHead)
+        || !ReadableAt(morale, sizeof kInterviewMoraleHead) || !Equal(morale, kInterviewMoraleHead, sizeof kInterviewMoraleHead)) return DONE;
+
+    BYTE *stub = (BYTE *)VirtualAlloc(NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!stub) return DONE;
+    Copy(stub, kInterviewStub, sizeof kInterviewStub);
+    AddDword(stub + STUB_FLAG, (DWORD)(ULONG_PTR)stub);
+    AddDword(stub + STUB_ENGINE, engine);
+    for (int i = 0; i < ARRAYSIZE(kInterviewContextRefs); i++) AddDword(stub + kInterviewContextRefs[i], context);
+    AddDword(stub + STUB_APPLY, (DWORD)(ULONG_PTR)apply);
+    AddDword(stub + STUB_MONEY_FACTOR, context + MONEY_FACTOR_BEHIND_CONTEXT);
+    AddDword(stub + STUB_MORALE, (DWORD)(ULONG_PTR)morale);
+    FlushInstructionCache(GetCurrentProcess(), stub, sizeof kInterviewStub);
+
+    // The morale entry first: it passes everything unmarked on, so it is harmless on its own.
+    Redirect(moraleCall, stub + STUB_MORALE_ENTRY);
+    Redirect(applyCall, stub + STUB_APPLY_ENTRY);
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 // Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
@@ -627,8 +735,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
     BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT), v101Done = !(flags & FLAG_V101);
-    BOOL buttonDone = !(flags & FLAG_BUTTON_INIT);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone)
+    BOOL buttonDone = !(flags & FLAG_BUTTON_INIT), interviewDone = !(flags & FLAG_INTERVIEW);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -643,6 +751,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!calcDone) calcDone = PatchRewrite(base, size, kCalc, kCalcPatched, ARRAYSIZE(kCalc)) == DONE;
         if (!v101Done) v101Done = PatchV101(base, size) == DONE;
         if (!buttonDone) buttonDone = PatchRewrite(base, size, kButton, kButtonPatched, ARRAYSIZE(kButton)) == DONE;
+        if (!interviewDone) interviewDone = PatchInterview(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

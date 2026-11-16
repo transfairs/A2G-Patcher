@@ -168,20 +168,21 @@ namespace A2GPatch.Tests
                 "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
                 "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
+                "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
             // The GOG-only patches (0) last, as the window lists them under their own heading.
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             Assert.Equal(new[]
             {
                 "Mehr Tore", "Pfeile gedrückt halten", "Videos ohne Absturz", "Langer Windows-Betrieb", "Audiogerät", "Große Festplatten",
-                "Kadergröße", "Bildschirmauflösung", "Pokalauslosung", "Kalkulation", "Patch 1.01", "Aufstellung",
+                "Kadergröße", "Bildschirmauflösung", "Pokalauslosung", "Kalkulation", "Patch 1.01", "Aufstellung", "Interviews",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
             }, Patch.All.Select(p => p.Title));
             PatchGroup s = PatchGroup.System, g = PatchGroup.Game, o = PatchGroup.Gog;
-            Assert.Equal(new[] { g, g, s, s, s, s, g, s, g, s, g, g, o, o, o }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { g, g, s, s, s, s, g, s, g, s, g, g, g, o, o, o }, Patch.All.Select(p => p.Group));
         }
 
         private static readonly Patch Cup = Patch.All[8];

@@ -40,7 +40,7 @@ namespace A2GPatch
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
             new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(), new Patch101(),
-            new PictureButtonInit(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
+            new PictureButtonInit(), new InterviewEffects(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
 
         /// <summary>What the patch does, in a sentence: the text under its tile in the window.</summary>
@@ -754,7 +754,8 @@ namespace A2GPatch
     /// The helper (177 bytes, through the game's own imports of GetDC, GetDIBits and ReleaseDC) goes at
     /// the end of the exe's last executable section, which is zero there: past the end of the original's
     /// code (the loader maps a section's whole raw data), at the end of GOG's import section. Taking the
-    /// patch back zeroes it again. The section of <see cref="Patch101"/> doesn't count: it can go again.
+    /// patch back zeroes it again. The sections of <see cref="Patch101"/> and <see cref="InterviewEffects"/>
+    /// don't count: they can go again.
     /// </summary>
     internal sealed class CupDraw : Patch
     {
@@ -815,6 +816,13 @@ namespace A2GPatch
             return code;
         }
 
+        /// <summary>The last executable section, apart from those of <see cref="Patch101"/> and <see cref="InterviewEffects"/>; null if there's none.</summary>
+        internal static PeFile.Section LastSection(PeFile pe) =>
+            pe.Sections.LastOrDefault(s => (s.Characteristics & Executable) != 0 && s.Name != Patch101.SectionName && s.Name != InterviewEffects.SectionName);
+
+        /// <summary>Where the helper goes in <paramref name="section"/>'s data in the file: at its end, on a 16-byte boundary.</summary>
+        internal static long HelperAt(PeFile.Section section) => (section.Raw + section.RawSize - Helper.Length) & ~15L;
+
         /// <inheritdoc/>
         public override Site[] Find(byte[] image)
         {
@@ -824,12 +832,12 @@ namespace A2GPatch
             PeFile pe = PeFile.Read(image);
             uint[] imports = new[] { "GetBitmapBits", "GetDC", "GetDIBits", "ReleaseDC" }
                 .Select(name => pe != null && pe.Imports.TryGetValue(name, out uint entry) ? entry : 0).ToArray();
-            PeFile.Section last = pe?.Sections.LastOrDefault(s => (s.Characteristics & Executable) != 0 && s.Name != Patch101.SectionName);
+            PeFile.Section last = pe == null ? null : LastSection(pe);
             if (imports.Contains(0u) || last == null)
                 return null;
             bool isPatched = patched.Count == 1;
             long call = (isPatched ? patched[0] : original[0]) + Head.Length;
-            long helper = (last.Raw + last.RawSize - Helper.Length) & ~15L;
+            long helper = HelperAt(last);
             long callVa = pe.VaAt(call), helperVa = pe.VaAt(helper);
             if (callVa < 0 || helperVa < 0)
                 return null;
@@ -847,6 +855,241 @@ namespace A2GPatch
                 new Site { Offset = call, Original = originalCall, Patched = patchedCall, IsPatched = isPatched },
             };
         }
+    }
+
+    /// <summary>
+    /// Lets the answers in interviews take the effect their texts give them. The interview engine (a
+    /// pointer 0xC8 bytes before the interview context) works on a heap copy of the context (engine+11C)
+    /// and stores the chosen answer's two effect pairs (code, value) there, at +14 to +20. The game then
+    /// applies the pairs (FUN_004f8a00 in the original, called with "push context") from the context
+    /// itself, whose pairs are never written: every answer applies "fans +0" twice. Two codes also don't
+    /// match the cases of the effect function (FUN_004f87f0): the texts use 10 for the team's morale (no
+    /// case) and 12 for a fine in DM (case 12 is the morale). The patch adds the code of A2G-Trainer's
+    /// InterviewEffectsFix (Controller/InterviewEffectsFix.cs) byte for byte, so the trainer recognizes it
+    /// by its signature, and sends two calls there:
+    /// <code>
+    ///   push context / call apply                        ->  push context / call stub+20
+    ///   case 12: push value / push club / call morale    ->  ... / call stub+C0
+    ///   stub+20: with [stub+8] set, the engine and its copy there: the copy's pairs into the context,
+    ///            10 -> 12, 12 with the value marked (40 in the high byte); else the pairs 0 / jmp apply
+    ///   stub+C0: marked: club+38C (other costs) += DM * [money factor] / 100 / ret; else jmp morale
+    /// </code>
+    /// The flag at +8 is set; A2G-Trainer switches the effects off and on with it. The money factor lies
+    /// 0xC258 bytes behind the context in every build. The stub (256 bytes) goes right in front of
+    /// <see cref="CupDraw"/>'s helper where that is zero (GOG's import section). The original exe has no
+    /// room there; it gets a section of its own (<see cref="SectionName"/>), which goes again with the patch.
+    /// </summary>
+    internal sealed class InterviewEffects : FilePatch
+    {
+        /// <summary>The name of the section the patch adds where the last executable section has no room.</summary>
+        internal const string SectionName = ".a2int";
+        /// <summary>The size of the stub, and where its two entries are.</summary>
+        internal const int StubSize = 0x100, ApplyEntry = 0x20, MoraleEntry = 0xC0;
+        /// <summary>The distances of the engine pointer (before) and the money factor (behind) to the context.</summary>
+        internal const uint EngineBeforeContext = 0xC8, MoneyFactorBehindContext = 0xC258;
+
+        /// <summary>mov ecx,[engine] / push eax / call (store the answer) / push context / call apply / mov eax,[context+10]</summary>
+        internal static readonly byte?[] ApplyCallPattern =
+        {
+            0x8B, 0x0D, null, null, null, null, 0x50, 0xE8, null, null, null, null,
+            0x68, null, null, null, null, 0xE8, null, null, null, null, 0xA1, null, null, null, null,
+        };
+        private const int EngineAt = 2, ContextAt = 13, ApplyCallAt = 17, ContextFieldAt = 23;
+        /// <summary>Case 12: mov ecx,[esp+50] / mov edx,[esp+5C] / push ecx / push edx / call morale / add esp,8 / pop edi / pop esi / add esp,40 / ret</summary>
+        internal static readonly byte?[] MoraleCallPattern =
+        {
+            0x8B, 0x4C, 0x24, 0x50, 0x8B, 0x54, 0x24, 0x5C, 0x51, 0x52, 0xE8, null, null, null, null,
+            0x83, 0xC4, 0x08, 0x5F, 0x5E, 0x83, 0xC4, 0x40, 0xC3,
+        };
+        private const int MoraleCallAt = 10;
+        /// <summary>The first instructions of the effect application and of the morale change (as A2G-Trainer finds them).</summary>
+        internal static readonly byte[] ApplyHead = { 0x53, 0x55, 0x56, 0x8B, 0x74, 0x24, 0x10, 0x57, 0x66, 0x8B, 0x46, 0x74, 0x50, 0xE8 };
+        internal static readonly byte[] MoraleHead = { 0x8B, 0x4C, 0x24, 0x04, 0x8B, 0x44, 0x24, 0x08, 0x66, 0x0F, 0xB6, 0x91, 0x9C, 0x00, 0x00, 0x00, 0x03, 0xC2, 0x66, 0x3D, 0xC8, 0x00 };
+
+        // A2G-Trainer's InterviewEffectsFix.BuildStub for the addresses 0 (the stub's own at 0), the flag set.
+        private static readonly byte[] Stub = new[]
+        {
+            new byte[] { 0x41, 0x32, 0x47, 0x49, 0x4E, 0x54, 0x30, 0x32, 0x01 },        // "A2GINT02", flag 1
+            new byte[ApplyEntry - 9],
+            new byte[]
+            {
+                0x80, 0x3D, 0x08, 0x00, 0x00, 0x00, 0x00, 0x74, 0x6D,                   // cmp byte [flag],0 / je zero
+                0xA1, 0x00, 0x00, 0x00, 0x00, 0x85, 0xC0, 0x74, 0x64,                   // mov eax,[engine] / test / je zero
+                0x8B, 0x80, 0x1C, 0x01, 0x00, 0x00, 0x85, 0xC0, 0x74, 0x5A,             // mov eax,[eax+11C] (the copy) / test / je zero
+                0x8B, 0x48, 0x14, 0x8B, 0x50, 0x18,                                     // first pair: mov ecx,[eax+14] / mov edx,[eax+18]
+                0x83, 0xF9, 0x0C, 0x75, 0x0E,                                           // cmp ecx,12 / jne morale
+                0x81, 0xE2, 0xFF, 0xFF, 0xFF, 0x00, 0x81, 0xCA, 0x00, 0x00, 0x00, 0x40, // and edx,FFFFFF / or edx,40000000 (marked fine)
+                0xEB, 0x07,                                                             // jmp store
+                0x83, 0xF9, 0x0A, 0x75, 0x02, 0xB1, 0x0C,                               // morale: cmp ecx,10 / jne store / mov cl,12
+                0x89, 0x0D, 0x14, 0x00, 0x00, 0x00, 0x89, 0x15, 0x18, 0x00, 0x00, 0x00, // store: mov [context+14],ecx / mov [context+18],edx
+                0x8B, 0x48, 0x1C, 0x8B, 0x50, 0x20,                                     // second pair, the same
+                0x83, 0xF9, 0x0C, 0x75, 0x0E,
+                0x81, 0xE2, 0xFF, 0xFF, 0xFF, 0x00, 0x81, 0xCA, 0x00, 0x00, 0x00, 0x40,
+                0xEB, 0x07,
+                0x83, 0xF9, 0x0A, 0x75, 0x02, 0xB1, 0x0C,
+                0x89, 0x0D, 0x1C, 0x00, 0x00, 0x00, 0x89, 0x15, 0x20, 0x00, 0x00, 0x00,
+                0xEB, 0x1A,                                                             // jmp done
+                0x31, 0xC9,                                                             // zero: xor ecx,ecx
+                0x89, 0x0D, 0x14, 0x00, 0x00, 0x00, 0x89, 0x0D, 0x18, 0x00, 0x00, 0x00, // mov [context+14..20],ecx
+                0x89, 0x0D, 0x1C, 0x00, 0x00, 0x00, 0x89, 0x0D, 0x20, 0x00, 0x00, 0x00,
+                0xB8, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xE0,                               // done: mov eax,apply / jmp eax
+            },
+            new byte[MoraleEntry - 0xB7],
+            new byte[]
+            {
+                0x80, 0x7C, 0x24, 0x0B, 0x40, 0x75, 0x27,                               // cmp byte [esp+B],40 (marked?) / jne morale
+                0x8B, 0x44, 0x24, 0x08, 0x25, 0xFF, 0xFF, 0xFF, 0x00,                   // mov eax,[esp+8] / and eax,FFFFFF (DM)
+                0x0F, 0xAF, 0x05, 0x00, 0x00, 0x00, 0x00,                               // imul eax,[money factor]
+                0x99, 0xB9, 0x64, 0x00, 0x00, 0x00, 0xF7, 0xF9,                         // cdq / mov ecx,100 / idiv ecx
+                0x8B, 0x54, 0x24, 0x04, 0x85, 0xD2, 0x74, 0x06,                         // mov edx,[esp+4] (club) / test / je return
+                0x01, 0x82, 0x8C, 0x03, 0x00, 0x00,                                     // add [edx+38C],eax (other costs)
+                0xC3,                                                                   // return: ret
+                0xB8, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xE0,                               // morale: mov eax,morale / jmp eax
+            },
+            new byte[StubSize - 0xF5],
+        }.SelectMany(b => b).ToArray();
+
+        // Where the addresses go in the stub: added to what it holds there (the offset within the stub or the context).
+        private const int FlagRef = 0x22, EngineRef = 0x2A, ApplyRef = 0xB1, MoneyFactorRef = 0xD3, MoraleRef = 0xEF;
+        private static readonly int[] ContextRefs = { 0x5E, 0x64, 0x8A, 0x90, 0x9A, 0xA0, 0xA6, 0xAC };
+
+        /// <inheritdoc/>
+        public override string Name => "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)";
+        /// <inheritdoc/>
+        public override string Title => "Interviews";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
+        /// <inheritdoc/>
+        public override ushort Flag => 4096;
+
+        /// <summary>The stub at <paramref name="stub"/> for the given addresses of the game.</summary>
+        internal static byte[] StubBytes(uint stub, uint engine, uint context, uint apply, uint moneyFactor, uint morale)
+        {
+            byte[] code = (byte[])Stub.Clone();
+            void Add(int at, uint value) => BitConverter.GetBytes(BitConverter.ToUInt32(code, at) + value).CopyTo(code, at);
+            Add(FlagRef, stub);
+            Add(EngineRef, engine);
+            foreach (int at in ContextRefs)
+                Add(at, context);
+            Add(ApplyRef, apply);
+            Add(MoneyFactorRef, moneyFactor);
+            Add(MoraleRef, morale);
+            return code;
+        }
+
+        // The two calls and what the patch needs to know about them.
+        private sealed class Places
+        {
+            public PeFile Pe;
+            public long ApplyCall, MoraleCall;          // the calls in the file
+            public uint Engine, Context, Apply, Morale; // the game's addresses
+            public long Stub = -1;                      // where the stub is in the file, if the patch is on
+        }
+
+        // The places in image, the patch on or off; null if they aren't as expected.
+        private static Places Locate(byte[] image)
+        {
+            PeFile pe = PeFile.Read(image);
+            List<long> applyCalls = FindAll(image, ApplyCallPattern).Where(at => U32(image, at + ContextFieldAt) == U32(image, at + ContextAt) + 0x10).ToList();
+            List<long> moraleCalls = FindAll(image, MoraleCallPattern);
+            if (pe == null || applyCalls.Count != 1 || moraleCalls.Count != 1)
+                return null;
+            Places places = new Places
+            {
+                Pe = pe, ApplyCall = applyCalls[0] + ApplyCallAt, MoraleCall = moraleCalls[0] + MoraleCallAt,
+                Engine = U32(image, applyCalls[0] + EngineAt), Context = U32(image, applyCalls[0] + ContextAt),
+            };
+            long applyVa = pe.VaAt(places.ApplyCall), moraleVa = pe.VaAt(places.MoraleCall);
+            if (places.Engine != places.Context - EngineBeforeContext || applyVa < 0 || moraleVa < 0)
+                return null;
+            uint apply = (uint)(applyVa + 5 + BitConverter.ToInt32(image, (int)places.ApplyCall + 1));
+            uint morale = (uint)(moraleVa + 5 + BitConverter.ToInt32(image, (int)places.MoraleCall + 1));
+            if (Holds(image, pe, apply, ApplyHead) && Holds(image, pe, morale, MoraleHead))
+            {
+                places.Apply = apply;
+                places.Morale = morale;
+                return places;
+            }
+
+            // On: both calls lead into one stub, which leads on to the two functions.
+            uint stub = apply - ApplyEntry;
+            byte[] found = image.Slice(Math.Max(0, pe.FileOffset(stub)), StubSize);
+            if (morale != stub + MoraleEntry || pe.FileOffset(stub) < 0 || found.Length != StubSize)
+                return null;
+            places.Apply = BitConverter.ToUInt32(found, ApplyRef);
+            places.Morale = BitConverter.ToUInt32(found, MoraleRef);
+            byte[] expected = StubBytes(stub, places.Engine, places.Context, places.Apply, places.Context + MoneyFactorBehindContext, places.Morale);
+            if (!found.SequenceEqual(expected) || !Holds(image, pe, places.Apply, ApplyHead) || !Holds(image, pe, places.Morale, MoraleHead))
+                return null;
+            places.Stub = pe.FileOffset(stub);
+            return places;
+        }
+
+        private static uint U32(byte[] image, long at) => BitConverter.ToUInt32(image, (int)at);
+
+        // Whether the code at the address va starts with head.
+        private static bool Holds(byte[] image, PeFile pe, uint va, byte[] head) => pe.FileOffset(va) >= 0 && image.Slice(pe.FileOffset(va), head.Length).SequenceEqual(head);
+
+        /// <summary>
+        /// Where the stub goes in <paramref name="image"/>: right in front of <see cref="CupDraw"/>'s helper if
+        /// that is zero, -1 for a section of its own (only if a header fits and the last section isn't
+        /// <see cref="Patch101"/>'s, which has to stay last), null if neither.
+        /// </summary>
+        internal static long? Room(byte[] image, PeFile pe)
+        {
+            PeFile.Section last = CupDraw.LastSection(pe);
+            long at = last == null ? -1 : CupDraw.HelperAt(last) - StubSize;
+            if (last != null && at >= last.Raw && image.Slice(at, StubSize).All(b => b == 0))
+                return at;
+            return pe.HasRoomForSection && pe.Sections.Last().Name != Patch101.SectionName ? -1 : (long?)null;
+        }
+
+        /// <inheritdoc/>
+        public override FileState State(GameFiles files)
+        {
+            Places places = Locate(files.Exe);
+            if (places == null)
+                return FileState.Unknown;
+            if (places.Stub >= 0)
+                return FileState.On;
+            return Room(files.Exe, places.Pe).HasValue ? FileState.Off : FileState.Unknown;
+        }
+
+        /// <inheritdoc/>
+        public override void Switch(GameFiles files, bool on)
+        {
+            Places places = Locate(files.Exe);
+            if ((places.Stub >= 0) == on)
+                return;
+            byte[] image = (byte[])files.Exe.Clone();
+            PeFile pe = places.Pe;
+            if (on)
+            {
+                long at = Room(image, pe).Value;
+                uint stub = at >= 0 ? (uint)pe.VaAt(at) : pe.ImageBase + pe.SizeOfImage;
+                byte[] code = StubBytes(stub, places.Engine, places.Context, places.Apply, places.Context + MoneyFactorBehindContext, places.Morale);
+                if (at >= 0)
+                    code.CopyTo(image, at);
+                else
+                    image = PeFile.AddSection(image, SectionName, code);
+                Call(image, pe, places.ApplyCall, stub + ApplyEntry);
+                Call(image, pe, places.MoraleCall, stub + MoraleEntry);
+            }
+            else
+            {
+                Call(image, pe, places.ApplyCall, places.Apply);
+                Call(image, pe, places.MoraleCall, places.Morale);
+                if (pe.Sections.Last().Name == SectionName)
+                    image = PeFile.RemoveLastSection(image);
+                else
+                    Array.Clear(image, (int)places.Stub, StubSize);
+            }
+            files.Exe = image;
+        }
+
+        // Points the call at the file offset call to target.
+        private static void Call(byte[] image, PeFile pe, long call, uint target) =>
+            BitConverter.GetBytes((int)(target - (pe.VaAt(call) + 5))).CopyTo(image, call + 1);
     }
 
     /// <summary>What the patches need of a 32-bit exe's headers: its sections, where the headers are, and the imports by name.</summary>
@@ -937,6 +1180,58 @@ namespace A2GPatch
             }
             return true;
         }
+
+        /// <summary>Whether one more section header fits before the first section's data.</summary>
+        public bool HasRoomForSection => this.SectionTable + 40 * (this.Sections.Count + 1) <= this.Sections.Min(s => s.Raw);
+
+        /// <summary>
+        /// <paramref name="image"/> with a section <paramref name="name"/> added that holds <paramref name="data"/>
+        /// as executable, writable code, loaded right behind the image. Its data goes behind everything in the
+        /// file, a signature included. GOG's run.exe has leftovers behind its section headers; the 40 bytes the
+        /// new header overwrites are kept right behind the data, so <see cref="RemoveLastSection"/> restores the
+        /// exe to the byte.
+        /// </summary>
+        public static byte[] AddSection(byte[] image, string name, byte[] data)
+        {
+            PeFile pe = Read(image);
+            long raw = FilePatch.Align(image.Length, pe.FileAlignment);
+            uint rawSize = FilePatch.Align(data.Length + 40, pe.FileAlignment);
+            byte[] result = new byte[raw + rawSize];
+            image.CopyTo(result, 0);
+            data.CopyTo(result, raw);
+            int header = (int)(pe.SectionTable + 40 * pe.Sections.Count);
+            Array.Copy(image, header, result, raw + data.Length, 40);
+            Array.Clear(result, header, 40);
+            Encoding.ASCII.GetBytes(name).CopyTo(result, header);
+            Put(result, header + 8, (uint)data.Length);
+            Put(result, header + 12, pe.SizeOfImage);
+            Put(result, header + 16, rawSize);
+            Put(result, header + 20, (uint)raw);
+            Put(result, header + 36, WritableCode);
+            BitConverter.GetBytes((ushort)(pe.Sections.Count + 1)).CopyTo(result, pe.OptionalHeader - 18);   // NumberOfSections
+            Put(result, pe.OptionalHeader + 56, pe.SizeOfImage + FilePatch.Align(data.Length, pe.SectionAlignment));
+            return result;
+        }
+
+        /// <summary><paramref name="image"/> without its last section, as before <see cref="AddSection"/>.</summary>
+        public static byte[] RemoveLastSection(byte[] image)
+        {
+            PeFile pe = Read(image);
+            Section section = pe.Sections.Last();
+            List<Section> others = pe.Sections.Take(pe.Sections.Count - 1).ToList();
+            // The file ends with the other sections' data or the signature behind it.
+            long end = Math.Max(others.Max(s => (long)s.Raw + s.RawSize), (long)pe.CertificateAt + pe.CertificateSize);
+            byte[] result = image.Slice(0, (int)end);
+            Array.Copy(image, section.Raw + section.VirtualSize, result, pe.SectionTable + 40 * others.Count, 40);
+            BitConverter.GetBytes((ushort)others.Count).CopyTo(result, pe.OptionalHeader - 18);
+            Put(result, pe.OptionalHeader + 56, section.Va);
+            return result;
+        }
+
+        // IMAGE_SCN_CNT_CODE | MEM_EXECUTE | MEM_READ | MEM_WRITE
+        private const uint WritableCode = 0xE0000020;
+
+        private static void Put(byte[] image, long at, uint value) => BitConverter.GetBytes(value).CopyTo(image, at);
 
         /// <summary>The address <paramref name="offset"/> in the file is loaded at, or -1 outside every section.</summary>
         public long VaAt(long offset)

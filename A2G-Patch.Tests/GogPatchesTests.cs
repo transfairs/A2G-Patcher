@@ -215,8 +215,8 @@ namespace A2GPatch.Tests
     public class GogPatchesTests
     {
         private static readonly Patch101 V101 = (Patch101)Patch.All[10];
-        private static readonly CopyProtection Protection = (CopyProtection)Patch.All[12];
-        private static readonly DialogStyles Dialogs = (DialogStyles)Patch.All[13];
+        private static readonly CopyProtection Protection = (CopyProtection)Patch.All[13];
+        private static readonly DialogStyles Dialogs = (DialogStyles)Patch.All[14];
 
         private static GameFiles Files(byte[] exe, string folder = null) => new GameFiles(folder ?? Path.GetTempPath(), exe);
 
@@ -251,11 +251,11 @@ namespace A2GPatch.Tests
         }
 
         [Fact]
-        public void FilePatches_HaveNoCodePlaces_NorAFlagExceptPatch101()
+        public void FilePatches_HaveNoCodePlaces_NorAFlagExceptPatch101AndInterviews()
         {
             foreach (FilePatch patch in Patch.All.OfType<FilePatch>())
             {
-                Assert.Equal(patch is Patch101 ? 1024 : 0, patch.Flag);
+                Assert.Equal(patch is Patch101 ? 1024 : patch is InterviewEffects ? 4096 : 0, patch.Flag);
                 Assert.Empty(patch.Patterns);
                 Assert.Null(patch.Find(GameCode.Both()));
             }
@@ -676,7 +676,7 @@ namespace A2GPatch.Tests
 
         // ---- AnimationEdge ----
 
-        private static readonly AnimationEdge Edge = (AnimationEdge)Patch.All[14];
+        private static readonly AnimationEdge Edge = (AnimationEdge)Patch.All[15];
         private static readonly string[][] EdgeImports = { new[] { "USER32.dll", "GetClientRect", "CopyRect" } };
         private static readonly byte[] GogWrapper = new byte[] { 0x4D, 0x5A, 0, 0 }.Concat(AnimationEdge.WrapperName).Concat(new byte[4]).ToArray();
 
