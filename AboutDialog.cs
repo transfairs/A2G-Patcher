@@ -9,7 +9,9 @@ namespace A2GPatch
     /// <summary>About dialog: logo, version, what the program does and links to the project page and GitHub.</summary>
     internal sealed class AboutDialog : Form
     {
+        /// <summary>The project on GitHub, linked in the dialog.</summary>
         internal const string GithubUrl = "https://github.com/transfairs/A2G-Patcher";
+        /// <summary>The project page, linked in the dialog.</summary>
         internal const string SiteUrl = "https://transfairs.github.io/A2G-Patcher/";
 
         private readonly ToolTip tip = new ToolTip();

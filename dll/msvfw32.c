@@ -23,6 +23,8 @@
 // 1024 patch 1.01: the program of 1.00                         ->  13 places jump to the code of 1.01
 // 2048 buttons:    picture button's BITMAP left uncleared      ->  cleared ("A/B" and "i" in place)
 // 4096 interviews: effects applied from pairs never written    ->  the engine copy's pairs, codes 10 and 12 mapped
+// 8192 speeches:   a speech that doesn't fit does nothing      ->  takes its percentages' amounts off
+// 16384 negotiations: monthly halving one byte too low         ->  halves the counters per selling club
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -124,7 +126,9 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_V101         1024
 #define FLAG_BUTTON_INIT  2048
 #define FLAG_INTERVIEW    4096
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x1F";   // all on
+#define FLAG_SPEECH       8192
+#define FLAG_NEGOTIATION  16384
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x7F";   // all on
 #define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -506,6 +510,19 @@ static int PatchCupDraw(BYTE *base, SIZE_T size)
 static const WORD kCalc[] = { 0x66, 0xC7, 0x86, 0x48, 0x0D, 0x01, 0x00, 0x00, 0x00, 0x8B, 0xC6 };           // mov word [esi+10D48],0 / mov eax,esi
 static const WORD kCalcPatched[] = { 0x8B, 0xC6, 0x83, 0xA6, 0x46, 0x0D, 0x01, 0x00, 0x00, 0x90, 0x90 };    // mov eax,esi / and dword [esi+10D46],0
 
+// ---- 16384: negotiation counters ----------------------------------------------------------------
+
+// As in Patches.cs (NegotiationCounter): the monthly club update halves the counters of negotiation
+// dates per human manager at +1081..+1084, not the bytes at +107D..+1080.
+#define NEGOTIATION_CODE(a, b, c, d) \
+    0x8A, 0x8D, a, 0x10, 0x00, 0x00, 0x8A, 0x85, b, 0x10, 0x00, 0x00, \
+    0x8A, 0x9D, c, 0x10, 0x00, 0x00, 0x8A, 0x95, d, 0x10, 0x00, 0x00, \
+    0xD0, 0xE9, 0xD0, 0xE8, 0xD0, 0xEB, 0xD0, 0xEA, 0x55, \
+    0x88, 0x8D, a, 0x10, 0x00, 0x00, 0x88, 0x85, b, 0x10, 0x00, 0x00, \
+    0x88, 0x9D, c, 0x10, 0x00, 0x00, 0x88, 0x95, d, 0x10, 0x00, 0x00
+static const WORD kNegotiation[] = { NEGOTIATION_CODE(0x7D, 0x7E, 0x7F, 0x80) };
+static const WORD kNegotiationPatched[] = { NEGOTIATION_CODE(0x81, 0x82, 0x83, 0x84) };
+
 // ---- 2048: picture buttons -----------------------------------------------------------------------
 
 // As in Patches.cs (PictureButtonInit): the constructor of the picture button class also clears the
@@ -719,6 +736,206 @@ static int PatchInterview(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 8192: speeches -------------------------------------------------------------------------------
+
+// As in Patches.cs (SpeechPenalty): a pre-match speech that doesn't fit the situation weakens the team by
+// its percentages' amounts (the game only shows "unpassend" and takes the use). Three places: the
+// motivation roll's failure (xor edi,edi -> xor ebx,ebx, so it stays without effect), the marking of the
+// team block after the check (+E5 = -number for a speech that doesn't fit) and FUN_004c4bd0, rewritten in
+// its own 176 bytes so a negative number takes the amounts off and leaves the hardness. The function reads
+// the speech table; its address comes from the original code.
+#define ROLL_HEAD 0xE8, ANY, ANY, ANY, ANY
+#define ROLL_TAIL 0xEB, 0x36, 0x6A, 0x04, 0xE8
+static const WORD kSpeechRoll[] = { ROLL_HEAD, 0x33, 0xFF, ROLL_TAIL };       // xor edi,edi
+static const BYTE kSpeechRollPatched[] = { 0x33, 0xDB };                      // xor ebx,ebx
+#define ROLL_AT 5
+
+// lea ecx,[esp+6A0] / call (the message ends), the marking (ebx: a use taken, edi: it works, ebp: the
+// club, [esp+17C0]: the team block), lea ecx,[esp+888].
+#define MARK_HEAD 0x8D, 0x8C, 0x24, 0xA0, 0x06, 0x00, 0x00, 0xE8, ANY, ANY, ANY, ANY
+#define MARK_AT 12
+static const WORD kSpeechMark[] = { MARK_HEAD,
+    0x85, 0xDB,                                 // 00: test ebx, ebx
+    0x74, 0x24,                                 // 02: je 0x28
+    0x85, 0xFF,                                 // 04: test edi, edi
+    0x74, 0x20,                                 // 06: je 0x28
+    0x8B, 0x84, 0x24, 0xC0, 0x17, 0x00, 0x00,   // 08: mov eax, dword ptr [esp + 0x17c0]
+    0xC6, 0x80, 0xE4, 0x00, 0x00, 0x00, 0x01,   // 0F: mov byte ptr [eax + 0xe4], 1
+    0x8A, 0x8D, 0x40, 0x14, 0x00, 0x00,         // 16: mov cl, byte ptr [ebp + 0x1440]
+    0x88, 0x88, 0xE5, 0x00, 0x00, 0x00,         // 1C: mov byte ptr [eax + 0xe5], cl
+    0x66, 0xC7, 0x40, 0x1C, 0x64, 0x00,         // 22: mov word ptr [eax + 0x1c], 0x64
+    0x8D, 0x8C, 0x24, 0x88, 0x08, 0x00, 0x00 };
+// The same 40 bytes, +E5 = -number where it doesn't fit; "cmp ax,imm16" (66 3D) skips the neg cl behind it.
+static const BYTE kSpeechMarkPatched[40] = {
+    0x4B,                                       // 00: dec ebx
+    0x75, 0x25,                                 // 01: jne 0x28
+    0x8B, 0x84, 0x24, 0xC0, 0x17, 0x00, 0x00,   // 03: mov eax, dword ptr [esp + 0x17c0]
+    0x83, 0xE8, 0x80,                           // 0A: sub eax, -0x80
+    0x8A, 0x8D, 0x40, 0x14, 0x00, 0x00,         // 0D: mov cl, byte ptr [ebp + 0x1440]
+    0x85, 0xFF,                                 // 13: test edi, edi
+    0x74, 0x0C,                                 // 15: je 0x23
+    0xC6, 0x40, 0x64, 0x01,                     // 17: mov byte ptr [eax + 0x64], 1
+    0x66, 0xC7, 0x40, 0x9C, 0x64, 0x00,         // 1B: mov word ptr [eax - 0x64], 0x64
+    0x66, 0x3D, 0xF6, 0xD9,                     // 21: cmp ax, 0xd9f6
+    0x88, 0x48, 0x65,                           // 25: mov byte ptr [eax + 0x65], cl
+};
+
+// FUN_004c4bd0 with its padding; ANY: the speech table's addresses (an entry's +10, +C, +D, +E).
+static const WORD kSpeechApply[176] = {
+    0x56,                                       // 00: push esi
+    0x8B, 0x74, 0x24, 0x08,                     // 01: mov esi, dword ptr [esp + 8]
+    0x57,                                       // 05: push edi
+    0x8A, 0x86, 0xE5, 0x00, 0x00, 0x00,         // 06: mov al, byte ptr [esi + 0xe5]
+    0x84, 0xC0,                                 // 0C: test al, al
+    0x0F, 0x84, 0x8F, 0x00, 0x00, 0x00,         // 0E: je 0xa3
+    0x25, 0xFF, 0x00, 0x00, 0x00,               // 14: and eax, 0xff
+    0x8D, 0x3C, 0x80,                           // 19: lea edi, [eax + eax*4]
+    0xC1, 0xE7, 0x02,                           // 1C: shl edi, 2
+    0xF6, 0x87, ANY, ANY, ANY, ANY, 0x01,       // 1F: test byte ptr [edi + 0x6b7d60], 1
+    0x74, 0x22,                                 // 26: je 0x4a
+    0x66, 0x83, 0x7C, 0x24, 0x14, 0x00,         // 28: cmp word ptr [esp + 0x14], 0
+    0x8B, 0x44, 0x24, 0x10,                     // 2E: mov eax, dword ptr [esp + 0x10]
+    0x74, 0x0C,                                 // 32: je 0x40
+    0x66, 0x8B, 0x48, 0x10,                     // 34: mov cx, word ptr [eax + 0x10]
+    0x66, 0x3B, 0x48, 0x0E,                     // 38: cmp cx, word ptr [eax + 0xe]
+    0x7F, 0x65,                                 // 3C: jg 0xa3
+    0xEB, 0x0A,                                 // 3E: jmp 0x4a
+    0x66, 0x8B, 0x50, 0x0E,                     // 40: mov dx, word ptr [eax + 0xe]
+    0x66, 0x3B, 0x50, 0x10,                     // 44: cmp dx, word ptr [eax + 0x10]
+    0x7F, 0x59,                                 // 48: jg 0xa3
+    0x0F, 0xBE, 0x8F, ANY, ANY, ANY, ANY,       // 4A: movsx ecx, byte ptr [edi + 0x6b7d5c]
+    0x0F, 0xBF, 0x46, 0x10,                     // 51: movsx eax, word ptr [esi + 0x10]
+    0x83, 0xC1, 0x64,                           // 55: add ecx, 0x64
+    0x0F, 0xAF, 0xC8,                           // 58: imul ecx, eax
+    0xB8, 0x1F, 0x85, 0xEB, 0x51,               // 5B: mov eax, 0x51eb851f
+    0xF7, 0xE9,                                 // 60: imul ecx
+    0xC1, 0xFA, 0x05,                           // 62: sar edx, 5
+    0x8B, 0xCA,                                 // 65: mov ecx, edx
+    0xB8, 0x1F, 0x85, 0xEB, 0x51,               // 67: mov eax, 0x51eb851f
+    0xC1, 0xE9, 0x1F,                           // 6C: shr ecx, 0x1f
+    0x03, 0xD1,                                 // 6F: add edx, ecx
+    0x66, 0x89, 0x56, 0x10,                     // 71: mov word ptr [esi + 0x10], dx
+    0x0F, 0xBE, 0x8F, ANY, ANY, ANY, ANY,       // 75: movsx ecx, byte ptr [edi + 0x6b7d5d]
+    0x0F, 0xBF, 0x56, 0x16,                     // 7C: movsx edx, word ptr [esi + 0x16]
+    0x83, 0xC1, 0x64,                           // 80: add ecx, 0x64
+    0x0F, 0xAF, 0xCA,                           // 83: imul ecx, edx
+    0xF7, 0xE9,                                 // 86: imul ecx
+    0xC1, 0xFA, 0x05,                           // 88: sar edx, 5
+    0x8B, 0xC2,                                 // 8B: mov eax, edx
+    0xC1, 0xE8, 0x1F,                           // 8D: shr eax, 0x1f
+    0x03, 0xD0,                                 // 90: add edx, eax
+    0x66, 0x89, 0x56, 0x16,                     // 92: mov word ptr [esi + 0x16], dx
+    0x8A, 0x87, ANY, ANY, ANY, ANY,             // 96: mov al, byte ptr [edi + 0x6b7d5e]
+    0x3C, 0x63,                                 // 9C: cmp al, 0x63
+    0x74, 0x03,                                 // 9E: je 0xa3
+    0x88, 0x46, 0x31,                           // A0: mov byte ptr [esi + 0x31], al
+    0x5F,                                       // A3: pop edi
+    0x5E,                                       // A4: pop esi
+    0xC3,                                       // A5: ret
+    0x90,                                       // A6: nop
+    0x90,                                       // A7: nop
+    0x90,                                       // A8: nop
+    0x90,                                       // A9: nop
+    0x90,                                       // AA: nop
+    0x90,                                       // AB: nop
+    0x90,                                       // AC: nop
+    0x90,                                       // AD: nop
+    0x90,                                       // AE: nop
+    0x90,                                       // AF: nop
+};
+// Rewritten: the same for a positive number, the amounts taken off for a negative one; 0: the table.
+static const BYTE kSpeechApplyPatched[176] = {
+    0x56,                                       // 00: push esi
+    0x8B, 0x74, 0x24, 0x08,                     // 01: mov esi, dword ptr [esp + 8]
+    0x57,                                       // 05: push edi
+    0x53,                                       // 06: push ebx
+    0x0F, 0xBE, 0x86, 0xE5, 0x00, 0x00, 0x00,   // 07: movsx eax, byte ptr [esi + 0xe5]
+    0x99,                                       // 0E: cdq
+    0x8B, 0xDA,                                 // 0F: mov ebx, edx
+    0x33, 0xC2,                                 // 11: xor eax, edx
+    0x2B, 0xC2,                                 // 13: sub eax, edx
+    0x74, 0x60,                                 // 15: je 0x77
+    0x8D, 0x3C, 0x80,                           // 17: lea edi, [eax + eax*4]
+    0xC1, 0xE7, 0x02,                           // 1A: shl edi, 2
+    0xF6, 0x87, 0x00, 0x00, 0x00, 0x00, 0x01,   // 1D: test byte ptr [edi], 1
+    0x74, 0x22,                                 // 24: je 0x48
+    0x66, 0x83, 0x7C, 0x24, 0x18, 0x00,         // 26: cmp word ptr [esp + 0x18], 0
+    0x8B, 0x44, 0x24, 0x14,                     // 2C: mov eax, dword ptr [esp + 0x14]
+    0x74, 0x0C,                                 // 30: je 0x3e
+    0x66, 0x8B, 0x48, 0x10,                     // 32: mov cx, word ptr [eax + 0x10]
+    0x66, 0x3B, 0x48, 0x0E,                     // 36: cmp cx, word ptr [eax + 0xe]
+    0x7F, 0x3B,                                 // 3A: jg 0x77
+    0xEB, 0x0A,                                 // 3C: jmp 0x48
+    0x66, 0x8B, 0x50, 0x0E,                     // 3E: mov dx, word ptr [eax + 0xe]
+    0x66, 0x3B, 0x50, 0x10,                     // 42: cmp dx, word ptr [eax + 0x10]
+    0x7F, 0x2F,                                 // 46: jg 0x77
+    0x0F, 0xBE, 0x8F, 0x00, 0x00, 0x00, 0x00,   // 48: movsx ecx, byte ptr [edi]
+    0x8D, 0x46, 0x10,                           // 4F: lea eax, [esi + 0x10]
+    0xE8, 0x24, 0x00, 0x00, 0x00,               // 52: call 0x7b
+    0x0F, 0xBE, 0x8F, 0x00, 0x00, 0x00, 0x00,   // 57: movsx ecx, byte ptr [edi]
+    0x8D, 0x46, 0x16,                           // 5E: lea eax, [esi + 0x16]
+    0xE8, 0x15, 0x00, 0x00, 0x00,               // 61: call 0x7b
+    0x85, 0xDB,                                 // 66: test ebx, ebx
+    0x75, 0x0D,                                 // 68: jne 0x77
+    0x8A, 0x87, 0x00, 0x00, 0x00, 0x00,         // 6A: mov al, byte ptr [edi]
+    0x3C, 0x63,                                 // 70: cmp al, 0x63
+    0x74, 0x03,                                 // 72: je 0x77
+    0x88, 0x46, 0x31,                           // 74: mov byte ptr [esi + 0x31], al
+    0x5B,                                       // 77: pop ebx
+    0x5F,                                       // 78: pop edi
+    0x5E,                                       // 79: pop esi
+    0xC3,                                       // 7A: ret
+    0x85, 0xDB,                                 // 7B: test ebx, ebx
+    0x74, 0x06,                                 // 7D: je 0x85
+    0x85, 0xC9,                                 // 7F: test ecx, ecx
+    0x7C, 0x02,                                 // 81: jl 0x85
+    0xF7, 0xD9,                                 // 83: neg ecx
+    0x50,                                       // 85: push eax
+    0x0F, 0xBF, 0x00,                           // 86: movsx eax, word ptr [eax]
+    0x83, 0xC1, 0x64,                           // 89: add ecx, 0x64
+    0x0F, 0xAF, 0xC8,                           // 8C: imul ecx, eax
+    0xB8, 0x1F, 0x85, 0xEB, 0x51,               // 8F: mov eax, 0x51eb851f
+    0xF7, 0xE9,                                 // 94: imul ecx
+    0xC1, 0xFA, 0x05,                           // 96: sar edx, 5
+    0x8B, 0xCA,                                 // 99: mov ecx, edx
+    0xC1, 0xE9, 0x1F,                           // 9B: shr ecx, 0x1f
+    0x03, 0xD1,                                 // 9E: add edx, ecx
+    0x58,                                       // A0: pop eax
+    0x66, 0x89, 0x10,                           // A1: mov word ptr [eax], dx
+    0xC3,                                       // A4: ret
+    0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC };
+// Where the original and the rewritten function read the speech table: an entry's flags, defence, attack, hardness.
+static const SIZE_T kSpeechApplyRefs[4] = { 0x21, 0x4D, 0x78, 0x98 }, kSpeechPatchedRefs[4] = { 0x1F, 0x4B, 0x5A, 0x6C };
+static const DWORD kSpeechFields[4] = { 0x10, 0x0C, 0x0D, 0x0E };
+
+static int PatchSpeech(BYTE *base, SIZE_T size)
+{
+    BYTE *roll, *mark, *apply, code[sizeof kSpeechApplyPatched];
+    int countRoll = Count(base, size, kSpeechRoll, ARRAYSIZE(kSpeechRoll), &roll);
+    int countMark = Count(base, size, kSpeechMark, ARRAYSIZE(kSpeechMark), &mark);
+    int countApply = Count(base, size, kSpeechApply, ARRAYSIZE(kSpeechApply), &apply);
+    if (countRoll == 0 || countMark == 0 || countApply == 0) return NOT_YET;
+    if (countRoll != 1 || countMark != 1 || countApply != 1) return DONE;
+
+    DWORD table, value;
+    Copy((BYTE *)&table, apply + kSpeechApplyRefs[0], 4);
+    table -= kSpeechFields[0];
+    Copy(code, kSpeechApplyPatched, sizeof code);
+    for (int i = 0; i < 4; i++)
+    {
+        Copy((BYTE *)&value, apply + kSpeechApplyRefs[i], 4);
+        if (value != table + kSpeechFields[i]) return DONE;
+        value = table + kSpeechFields[i];
+        Copy(code + kSpeechPatchedRefs[i], (BYTE *)&value, 4);
+    }
+
+    // The function first: on its own it does what the original does, as nothing marks a negative number yet.
+    Write(apply, code, sizeof code);
+    Write(mark + MARK_AT, kSpeechMarkPatched, sizeof kSpeechMarkPatched);
+    Write(roll + ROLL_AT, kSpeechRollPatched, sizeof kSpeechRollPatched);
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 // Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
@@ -735,8 +952,9 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
     BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT), v101Done = !(flags & FLAG_V101);
-    BOOL buttonDone = !(flags & FLAG_BUTTON_INIT), interviewDone = !(flags & FLAG_INTERVIEW);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone)
+    BOOL buttonDone = !(flags & FLAG_BUTTON_INIT), interviewDone = !(flags & FLAG_INTERVIEW), speechDone = !(flags & FLAG_SPEECH);
+    BOOL negotiationDone = !(flags & FLAG_NEGOTIATION);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -752,6 +970,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!v101Done) v101Done = PatchV101(base, size) == DONE;
         if (!buttonDone) buttonDone = PatchRewrite(base, size, kButton, kButtonPatched, ARRAYSIZE(kButton)) == DONE;
         if (!interviewDone) interviewDone = PatchInterview(base, size) == DONE;
+        if (!speechDone) speechDone = PatchSpeech(base, size) == DONE;
+        if (!negotiationDone) negotiationDone = PatchRewrite(base, size, kNegotiation, kNegotiationPatched, ARRAYSIZE(kNegotiation)) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

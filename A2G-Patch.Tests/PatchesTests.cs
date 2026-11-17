@@ -169,20 +169,22 @@ namespace A2GPatch.Tests
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
                 "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
                 "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
+                "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft",
+                "Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
             // The GOG-only patches (0) last, as the window lists them under their own heading.
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             Assert.Equal(new[]
             {
                 "Mehr Tore", "Pfeile gedrückt halten", "Videos ohne Absturz", "Langer Windows-Betrieb", "Audiogerät", "Große Festplatten",
-                "Kadergröße", "Bildschirmauflösung", "Pokalauslosung", "Kalkulation", "Patch 1.01", "Aufstellung", "Interviews",
+                "Kadergröße", "Bildschirmauflösung", "Pokalauslosung", "Kalkulation", "Patch 1.01", "Aufstellung", "Interviews", "Ansprachen", "Verhandlungssperre",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
             }, Patch.All.Select(p => p.Title));
             PatchGroup s = PatchGroup.System, g = PatchGroup.Game, o = PatchGroup.Gog;
-            Assert.Equal(new[] { g, g, s, s, s, s, g, s, g, s, g, g, g, o, o, o }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { g, g, s, s, s, s, g, s, g, s, g, g, g, g, g, o, o, o }, Patch.All.Select(p => p.Group));
         }
 
         private static readonly Patch Cup = Patch.All[8];
@@ -343,6 +345,29 @@ namespace A2GPatch.Tests
             Assert.Equal("8BC683A6460D0100009090".Hex(), site.Patched);
             Assert.True(Calculation.Find(Apply(GameCode.Exe(CalculationCode), new[] { site })).Single().IsPatched);
             Assert.Null(Calculation.Find(GameCode.Exe(CalculationCode, CalculationCode)));
+        }
+
+        private static readonly Patch Negotiation = Patch.All[14];
+        // The original exe from 0x642DCF (GOG's from 0x647DFF, the 2007 CD's in memory from 0x647BFF): the
+        // monthly club update loads, halves and stores the bytes at +107D..+1080.
+        internal static readonly byte[] NegotiationCode = (
+            "8A8D7D100000" + "8A857E100000" + "8A9D7F100000" + "8A9580100000" + "D0E9D0E8D0EBD0EA" + "55"
+            + "888D7D100000" + "88857E100000" + "889D7F100000" + "889580100000" + "E8432EF4FF").Hex();
+
+        [Fact]
+        public void NegotiationCounter_HalvesTheCountersPerManager_InTheSameBytes()
+        {
+            Site site = Negotiation.Find(GameCode.Exe(NegotiationCode)).Single();
+
+            Assert.Equal(300, site.Offset);
+            Assert.Equal(57, site.Original.Length);
+            Assert.Equal(NegotiationCode.Take(57), site.Original);
+            // Only the eight displacements move by 4: +1081..+1084.
+            Assert.Equal(new[] { 2, 8, 14, 20, 35, 41, 47, 53 }, Enumerable.Range(0, 57).Where(i => site.Original[i] != site.Patched[i]));
+            Assert.Equal(new byte[] { 0x81, 0x82, 0x83, 0x84 }, new[] { 2, 8, 14, 20 }.Select(i => site.Patched[i]));
+            Assert.Equal(new byte[] { 0x81, 0x82, 0x83, 0x84 }, new[] { 35, 41, 47, 53 }.Select(i => site.Patched[i]));
+            Assert.True(Negotiation.Find(Apply(GameCode.Exe(NegotiationCode), new[] { site })).Single().IsPatched);
+            Assert.Null(Negotiation.Find(GameCode.Exe(NegotiationCode, NegotiationCode)));
         }
 
         private static readonly Patch Button = Patch.All[11];

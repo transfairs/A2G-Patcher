@@ -47,6 +47,15 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   morale, a fine), but the game applies the answers from a place they are never written to, so none of
   them has any effect. With the patch they do what their texts say. It is the same change as A2G-Trainer's
   "Wirkung der Antworten anwenden", which recognizes the patched game.
+- **Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft** (optional gameplay change):
+  the game's help warns that a pre-match speech that doesn't fit the situation turns its effect into the
+  negative, but the game only shows a message and takes the use. With the patch such a speech takes its
+  percentages off defence and attack for that match ("+3%" becomes -3 %). A failed roll against the
+  manager's motivation skill and a speech without uses left stay without effect.
+- **Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab** (bug fix): after three
+  negotiation dates with players of the same club, that club "would under no circumstances release" any
+  further player. The game means to halve this count every month, but its code halves the wrong bytes, so
+  the block lasts until the next season. With the patch it wears off month by month as intended.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -269,6 +278,35 @@ writable), which taking the patch back removes again, restoring the exe to the b
 skips that section. In memory, `msvfw32.dll` puts the stub into a `VirtualAlloc` block. Both calls lie
 outside the 2007 release's CRC stretches.
 
+**Pre-match speeches.** The check of the chosen speech `0x4c3a20` decides whether it fits, takes a use and,
+from speech 28 on, rolls against the manager's motivation skill. Only for a speech that works it marks the
+team block (`+0xE4` = 1, `+0xE5` = the number, the factor `+0x1C` = 100), and before each strength
+calculation `0x4c4bd0` applies the percentages of `+0xE5` from the speech table `0x6b7d50` to defence
+(`+0x10`) and attack (`+0x16`) and sets its hardness (`+0x31`). One that doesn't fit only gets a message.
+The patch changes three places; the function is rewritten in its own 176 bytes:
+
+```
+roll failed (0x4c4a74):  xor edi,edi              ->  xor ebx,ebx (as if no use was taken: no effect)
+marking (0x4c4aba):      works: +E4/+E5/+1C       ->  the same; doesn't fit: +E5 = -number
+0x4c4bd0:                percentages of +E5       ->  negative number: their amounts taken off, hardness kept
+```
+
+So "-5/-5 hart" stays -5 % without the hardness, and an overconfidence isn't lifted. The table's address
+differs between the builds and is taken from the code.
+
+**Negotiation counters.** Every club keeps a counter for each human manager (club `+0x1081` + manager
+number 1-4). Arranging a negotiation date with one of its players counts it up to at most 10; from 3 the
+club "would under no circumstances release" the player (text 2626, checks at `0x4cf0e3` and `0x53e55f`).
+The monthly club update `0x642d00` (from `0x642e20` at the month change) halves the counters, but one byte
+too low: it halves `+0x107d` to `+0x1080`, so the real counters only go back to 0 at the season start. The
+patch moves its four loads and four stores to `+0x1081` to `+0x1084` (8 bytes, at `0x642dcf`; GOG
+`0x647dff`, 2007 CD `0x647bff`):
+
+```
+mov cl/al/bl/dl,[ebp+107D..1080] / shr x4 / push ebp / mov [ebp+107D..1080],cl/al/bl/dl
+->  the same with +1081..1084
+```
+
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
@@ -389,8 +427,9 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 - Which patches it applies are two flags bytes (low byte first) after the marker `A2GPatchFlags` in its
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
-  calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews; the build has all on). The other GOG patches have
-  no flag: they change files on disk, which the DLL doesn't. An installed copy that differs from the
+  calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
+  counters; the build has all on). The other GOG patches have no flag: they change files on disk, which
+  the DLL doesn't. An installed copy that differs from the
   embedded one in more than these bytes is from another version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled
   patch's code is in memory, then rewrites it (`VirtualProtect`, `FlushInstructionCache`). Code that

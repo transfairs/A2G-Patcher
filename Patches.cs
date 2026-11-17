@@ -40,7 +40,7 @@ namespace A2GPatch
         {
             new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
             new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(), new Patch101(),
-            new PictureButtonInit(), new InterviewEffects(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
+            new PictureButtonInit(), new InterviewEffects(), new SpeechPenalty(), new NegotiationCounter(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
 
         /// <summary>What the patch does, in a sentence: the text under its tile in the window.</summary>
@@ -902,8 +902,9 @@ namespace A2GPatch
             0x83, 0xC4, 0x08, 0x5F, 0x5E, 0x83, 0xC4, 0x40, 0xC3,
         };
         private const int MoraleCallAt = 10;
-        /// <summary>The first instructions of the effect application and of the morale change (as A2G-Trainer finds them).</summary>
+        /// <summary>The first instructions of the effect application (as A2G-Trainer finds it).</summary>
         internal static readonly byte[] ApplyHead = { 0x53, 0x55, 0x56, 0x8B, 0x74, 0x24, 0x10, 0x57, 0x66, 0x8B, 0x46, 0x74, 0x50, 0xE8 };
+        /// <summary>The first instructions of the morale change (as A2G-Trainer finds it).</summary>
         internal static readonly byte[] MoraleHead = { 0x8B, 0x4C, 0x24, 0x04, 0x8B, 0x44, 0x24, 0x08, 0x66, 0x0F, 0xB6, 0x91, 0x9C, 0x00, 0x00, 0x00, 0x03, 0xC2, 0x66, 0x3D, 0xC8, 0x00 };
 
         // A2G-Trainer's InterviewEffectsFix.BuildStub for the addresses 0 (the stub's own at 0), the flag set.
@@ -1090,6 +1091,311 @@ namespace A2GPatch
         // Points the call at the file offset call to target.
         private static void Call(byte[] image, PeFile pe, long call, uint target) =>
             BitConverter.GetBytes((int)(target - (pe.VaAt(call) + 5))).CopyTo(image, call + 1);
+    }
+
+    /// <summary>
+    /// Lets a pre-match speech that doesn't fit the situation weaken the team, as the game's help says it
+    /// does ("da sich sonst der positive Effekt ins Negative umkehren kann"): the game only shows a message
+    /// ("Die Spieler finden diese Ansprache unpassend.") and takes the use. The check of the chosen speech
+    /// (FUN_004c3a20 in the original) marks the team block only for a speech that works (+E4 = 1, +E5 =
+    /// its number, factor +1C = 100), and before each strength calculation FUN_004c4bd0 applies +E5's
+    /// percentages to defence (+10) and attack (+16) and sets its hardness (+31). The patch:
+    /// <code>
+    ///   motivation roll failed:  xor edi,edi (works no more)        ->  xor ebx,ebx (as if no use was taken)
+    ///   marking the team block:  works, a use taken: +E4/+E5/+1C    ->  the same; a use taken but it
+    ///                                                                    doesn't fit: +E5 = -number
+    ///   FUN_004c4bd0:            the percentages of +E5             ->  a negative number takes their
+    ///                                                                    amounts off and leaves the hardness
+    /// </code>
+    /// So "+3%" becomes -3 %, and "-5/-5 hart" stays -5 % without the hardness. A failed roll against the
+    /// manager's motivation skill stays without effect, and so does a speech without uses left; an
+    /// overconfidence isn't lifted. The function is rewritten in its own 176 bytes (more compact, so the
+    /// sign fits); it reads the game's speech table (0x6B7D50 in the original), whose address the patch
+    /// takes from the code.
+    /// </summary>
+    internal sealed class SpeechPenalty : Patch
+    {
+        /// <summary>The motivation roll's failure: call (the message) / {xor edi,edi} / jmp +36 / push 4 / call.</summary>
+        internal static readonly byte?[] RollHead = { 0xE8, null, null, null, null };
+        /// <summary>What follows the instruction: jmp +36 / push 4 / call.</summary>
+        internal static readonly byte[] RollTail = { 0xEB, 0x36, 0x6A, 0x04, 0xE8 };
+        /// <summary>The instruction: xor edi,edi (the speech works no more), patched xor ebx,ebx (as if no use was taken).</summary>
+        internal static readonly byte[] RollOriginal = { 0x33, 0xFF }, RollPatched = { 0x33, 0xDB };
+
+        /// <summary>Before the marking: lea ecx,[esp+6A0] / call (the message ends).</summary>
+        internal static readonly byte?[] MarkHead = { 0x8D, 0x8C, 0x24, 0xA0, 0x06, 0x00, 0x00, 0xE8, null, null, null, null };
+        /// <summary>After the marking: lea ecx,[esp+888].</summary>
+        internal static readonly byte[] MarkTail = { 0x8D, 0x8C, 0x24, 0x88, 0x08, 0x00, 0x00 };
+
+        /// <summary>ebx: a use was taken (1), edi: the speech works (1), ebp: the club, [esp+17C0]: the team block.</summary>
+        internal static readonly byte[] MarkOriginal =
+        {
+            0x85, 0xDB,                               // 00: test ebx, ebx
+            0x74, 0x24,                               // 02: je 0x28
+            0x85, 0xFF,                               // 04: test edi, edi
+            0x74, 0x20,                               // 06: je 0x28
+            0x8B, 0x84, 0x24, 0xC0, 0x17, 0x00, 0x00, // 08: mov eax, dword ptr [esp + 0x17c0]
+            0xC6, 0x80, 0xE4, 0x00, 0x00, 0x00, 0x01, // 0F: mov byte ptr [eax + 0xe4], 1
+            0x8A, 0x8D, 0x40, 0x14, 0x00, 0x00,       // 16: mov cl, byte ptr [ebp + 0x1440]
+            0x88, 0x88, 0xE5, 0x00, 0x00, 0x00,       // 1C: mov byte ptr [eax + 0xe5], cl
+            0x66, 0xC7, 0x40, 0x1C, 0x64, 0x00,       // 22: mov word ptr [eax + 0x1c], 0x64
+        };
+
+        /// <summary>
+        /// The same marking in the same 40 bytes, and +E5 = -number for a speech that doesn't fit. The team
+        /// block's address is moved by 80 so the offsets fit in a byte, and "cmp ax,imm16" (66 3D) skips the
+        /// "neg cl" behind it.
+        /// </summary>
+        internal static readonly byte[] MarkPatched =
+        {
+            0x4B,                                     // 00: dec ebx
+            0x75, 0x25,                               // 01: jne 0x28
+            0x8B, 0x84, 0x24, 0xC0, 0x17, 0x00, 0x00, // 03: mov eax, dword ptr [esp + 0x17c0]
+            0x83, 0xE8, 0x80,                         // 0A: sub eax, -0x80
+            0x8A, 0x8D, 0x40, 0x14, 0x00, 0x00,       // 0D: mov cl, byte ptr [ebp + 0x1440]
+            0x85, 0xFF,                               // 13: test edi, edi
+            0x74, 0x0C,                               // 15: je 0x23
+            0xC6, 0x40, 0x64, 0x01,                   // 17: mov byte ptr [eax + 0x64], 1
+            0x66, 0xC7, 0x40, 0x9C, 0x64, 0x00,       // 1B: mov word ptr [eax - 0x64], 0x64
+            0x66, 0x3D, 0xF6, 0xD9,                   // 21: cmp ax, 0xd9f6
+            0x88, 0x48, 0x65,                         // 25: mov byte ptr [eax + 0x65], cl
+        };
+
+        /// <summary>FUN_004c4bd0 as the game has it (cdecl: team block, match, home), with its padding; null: the table's addresses.</summary>
+        internal static readonly byte?[] ApplyOriginal =
+        {
+            0x56,                                     // 00: push esi
+            0x8B, 0x74, 0x24, 0x08,                   // 01: mov esi, dword ptr [esp + 8]
+            0x57,                                     // 05: push edi
+            0x8A, 0x86, 0xE5, 0x00, 0x00, 0x00,       // 06: mov al, byte ptr [esi + 0xe5]
+            0x84, 0xC0,                               // 0C: test al, al
+            0x0F, 0x84, 0x8F, 0x00, 0x00, 0x00,       // 0E: je 0xa3
+            0x25, 0xFF, 0x00, 0x00, 0x00,             // 14: and eax, 0xff
+            0x8D, 0x3C, 0x80,                         // 19: lea edi, [eax + eax*4]
+            0xC1, 0xE7, 0x02,                         // 1C: shl edi, 2
+            0xF6, 0x87, null, null, null, null, 0x01, // 1F: test byte ptr [edi + 0x6b7d60], 1
+            0x74, 0x22,                               // 26: je 0x4a
+            0x66, 0x83, 0x7C, 0x24, 0x14, 0x00,       // 28: cmp word ptr [esp + 0x14], 0
+            0x8B, 0x44, 0x24, 0x10,                   // 2E: mov eax, dword ptr [esp + 0x10]
+            0x74, 0x0C,                               // 32: je 0x40
+            0x66, 0x8B, 0x48, 0x10,                   // 34: mov cx, word ptr [eax + 0x10]
+            0x66, 0x3B, 0x48, 0x0E,                   // 38: cmp cx, word ptr [eax + 0xe]
+            0x7F, 0x65,                               // 3C: jg 0xa3
+            0xEB, 0x0A,                               // 3E: jmp 0x4a
+            0x66, 0x8B, 0x50, 0x0E,                   // 40: mov dx, word ptr [eax + 0xe]
+            0x66, 0x3B, 0x50, 0x10,                   // 44: cmp dx, word ptr [eax + 0x10]
+            0x7F, 0x59,                               // 48: jg 0xa3
+            0x0F, 0xBE, 0x8F, null, null, null, null, // 4A: movsx ecx, byte ptr [edi + 0x6b7d5c]
+            0x0F, 0xBF, 0x46, 0x10,                   // 51: movsx eax, word ptr [esi + 0x10]
+            0x83, 0xC1, 0x64,                         // 55: add ecx, 0x64
+            0x0F, 0xAF, 0xC8,                         // 58: imul ecx, eax
+            0xB8, 0x1F, 0x85, 0xEB, 0x51,             // 5B: mov eax, 0x51eb851f
+            0xF7, 0xE9,                               // 60: imul ecx
+            0xC1, 0xFA, 0x05,                         // 62: sar edx, 5
+            0x8B, 0xCA,                               // 65: mov ecx, edx
+            0xB8, 0x1F, 0x85, 0xEB, 0x51,             // 67: mov eax, 0x51eb851f
+            0xC1, 0xE9, 0x1F,                         // 6C: shr ecx, 0x1f
+            0x03, 0xD1,                               // 6F: add edx, ecx
+            0x66, 0x89, 0x56, 0x10,                   // 71: mov word ptr [esi + 0x10], dx
+            0x0F, 0xBE, 0x8F, null, null, null, null, // 75: movsx ecx, byte ptr [edi + 0x6b7d5d]
+            0x0F, 0xBF, 0x56, 0x16,                   // 7C: movsx edx, word ptr [esi + 0x16]
+            0x83, 0xC1, 0x64,                         // 80: add ecx, 0x64
+            0x0F, 0xAF, 0xCA,                         // 83: imul ecx, edx
+            0xF7, 0xE9,                               // 86: imul ecx
+            0xC1, 0xFA, 0x05,                         // 88: sar edx, 5
+            0x8B, 0xC2,                               // 8B: mov eax, edx
+            0xC1, 0xE8, 0x1F,                         // 8D: shr eax, 0x1f
+            0x03, 0xD0,                               // 90: add edx, eax
+            0x66, 0x89, 0x56, 0x16,                   // 92: mov word ptr [esi + 0x16], dx
+            0x8A, 0x87, null, null, null, null,       // 96: mov al, byte ptr [edi + 0x6b7d5e]
+            0x3C, 0x63,                               // 9C: cmp al, 0x63
+            0x74, 0x03,                               // 9E: je 0xa3
+            0x88, 0x46, 0x31,                         // A0: mov byte ptr [esi + 0x31], al
+            0x5F,                                     // A3: pop edi
+            0x5E,                                     // A4: pop esi
+            0xC3,                                     // A5: ret
+            0x90,                                     // A6: nop
+            0x90,                                     // A7: nop
+            0x90,                                     // A8: nop
+            0x90,                                     // A9: nop
+            0x90,                                     // AA: nop
+            0x90,                                     // AB: nop
+            0x90,                                     // AC: nop
+            0x90,                                     // AD: nop
+            0x90,                                     // AE: nop
+            0x90,                                     // AF: nop
+        };
+
+        /// <summary>The function rewritten: the same for a positive number, the amounts taken off for a negative one.</summary>
+        internal static readonly byte?[] ApplyPatched = new byte?[]
+        {
+            0x56,                                     // 00: push esi
+            0x8B, 0x74, 0x24, 0x08,                   // 01: mov esi, dword ptr [esp + 8]
+            0x57,                                     // 05: push edi
+            0x53,                                     // 06: push ebx
+            0x0F, 0xBE, 0x86, 0xE5, 0x00, 0x00, 0x00, // 07: movsx eax, byte ptr [esi + 0xe5]
+            0x99,                                     // 0E: cdq
+            0x8B, 0xDA,                               // 0F: mov ebx, edx
+            0x33, 0xC2,                               // 11: xor eax, edx
+            0x2B, 0xC2,                               // 13: sub eax, edx
+            0x74, 0x60,                               // 15: je 0x77
+            0x8D, 0x3C, 0x80,                         // 17: lea edi, [eax + eax*4]
+            0xC1, 0xE7, 0x02,                         // 1A: shl edi, 2
+            0xF6, 0x87, null, null, null, null, 0x01, // 1D: test byte ptr [edi + 0x6b7d60], 1
+            0x74, 0x22,                               // 24: je 0x48
+            0x66, 0x83, 0x7C, 0x24, 0x18, 0x00,       // 26: cmp word ptr [esp + 0x18], 0
+            0x8B, 0x44, 0x24, 0x14,                   // 2C: mov eax, dword ptr [esp + 0x14]
+            0x74, 0x0C,                               // 30: je 0x3e
+            0x66, 0x8B, 0x48, 0x10,                   // 32: mov cx, word ptr [eax + 0x10]
+            0x66, 0x3B, 0x48, 0x0E,                   // 36: cmp cx, word ptr [eax + 0xe]
+            0x7F, 0x3B,                               // 3A: jg 0x77
+            0xEB, 0x0A,                               // 3C: jmp 0x48
+            0x66, 0x8B, 0x50, 0x0E,                   // 3E: mov dx, word ptr [eax + 0xe]
+            0x66, 0x3B, 0x50, 0x10,                   // 42: cmp dx, word ptr [eax + 0x10]
+            0x7F, 0x2F,                               // 46: jg 0x77
+            0x0F, 0xBE, 0x8F, null, null, null, null, // 48: movsx ecx, byte ptr [edi + 0x6b7d5c]
+            0x8D, 0x46, 0x10,                         // 4F: lea eax, [esi + 0x10]
+            0xE8, 0x24, 0x00, 0x00, 0x00,             // 52: call 0x7b
+            0x0F, 0xBE, 0x8F, null, null, null, null, // 57: movsx ecx, byte ptr [edi + 0x6b7d5d]
+            0x8D, 0x46, 0x16,                         // 5E: lea eax, [esi + 0x16]
+            0xE8, 0x15, 0x00, 0x00, 0x00,             // 61: call 0x7b
+            0x85, 0xDB,                               // 66: test ebx, ebx
+            0x75, 0x0D,                               // 68: jne 0x77
+            0x8A, 0x87, null, null, null, null,       // 6A: mov al, byte ptr [edi + 0x6b7d5e]
+            0x3C, 0x63,                               // 70: cmp al, 0x63
+            0x74, 0x03,                               // 72: je 0x77
+            0x88, 0x46, 0x31,                         // 74: mov byte ptr [esi + 0x31], al
+            0x5B,                                     // 77: pop ebx
+            0x5F,                                     // 78: pop edi
+            0x5E,                                     // 79: pop esi
+            0xC3,                                     // 7A: ret
+            0x85, 0xDB,                               // 7B: test ebx, ebx
+            0x74, 0x06,                               // 7D: je 0x85
+            0x85, 0xC9,                               // 7F: test ecx, ecx
+            0x7C, 0x02,                               // 81: jl 0x85
+            0xF7, 0xD9,                               // 83: neg ecx
+            0x50,                                     // 85: push eax
+            0x0F, 0xBF, 0x00,                         // 86: movsx eax, word ptr [eax]
+            0x83, 0xC1, 0x64,                         // 89: add ecx, 0x64
+            0x0F, 0xAF, 0xC8,                         // 8C: imul ecx, eax
+            0xB8, 0x1F, 0x85, 0xEB, 0x51,             // 8F: mov eax, 0x51eb851f
+            0xF7, 0xE9,                               // 94: imul ecx
+            0xC1, 0xFA, 0x05,                         // 96: sar edx, 5
+            0x8B, 0xCA,                               // 99: mov ecx, edx
+            0xC1, 0xE9, 0x1F,                         // 9B: shr ecx, 0x1f
+            0x03, 0xD1,                               // 9E: add edx, ecx
+            0x58,                                     // A0: pop eax
+            0x66, 0x89, 0x10,                         // A1: mov word ptr [eax], dx
+            0xC3,                                     // A4: ret
+        }.Concat(Enumerable.Repeat((byte?)0xCC, 11)).ToArray();
+
+        /// <summary>
+        /// Where the two functions read the speech table, and what they read there: an entry's flags (+10),
+        /// defence (+C), attack (+D) and hardness (+E).
+        /// </summary>
+        internal static readonly int[] OriginalTableRefs = { 0x21, 0x4D, 0x78, 0x98 }, PatchedTableRefs = { 0x1F, 0x4B, 0x5A, 0x6C };
+        private static readonly uint[] TableFields = { 0x10, 0x0C, 0x0D, 0x0E };
+
+        /// <inheritdoc/>
+        public override string Name => "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft";
+        /// <inheritdoc/>
+        public override string Title => "Ansprachen";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
+        /// <inheritdoc/>
+        public override ushort Flag => 8192;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[]
+        {
+            Between(RollHead, RollOriginal, RollTail), Between(RollHead, RollPatched, RollTail),
+            Between(MarkHead, MarkOriginal, MarkTail), Between(MarkHead, MarkPatched, MarkTail),
+            ApplyOriginal, ApplyPatched,
+        };
+
+        private static byte?[] Between(byte?[] head, byte[] code, byte[] tail) => head.Concat(Exact(code)).Concat(Exact(tail)).ToArray();
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            Site[] sites = { Place(image, RollHead, RollOriginal, RollPatched, RollTail), Place(image, MarkHead, MarkOriginal, MarkPatched, MarkTail), Apply(image) };
+            return sites.Contains(null) ? null : sites;
+        }
+
+        // The block between head and tail, original or patched, where that occurs exactly once.
+        private static Site Place(byte[] image, byte?[] head, byte[] original, byte[] patched, byte[] tail)
+        {
+            List<long> found = FindAll(image, Between(head, original, tail)), foundPatched = FindAll(image, Between(head, patched, tail));
+            if (found.Count + foundPatched.Count != 1)
+                return null;
+            bool isPatched = foundPatched.Count == 1;
+            return new Site { Offset = (isPatched ? foundPatched[0] : found[0]) + head.Length, Original = original, Patched = patched, IsPatched = isPatched };
+        }
+
+        // The function, original or patched, with the table address it reads.
+        private static Site Apply(byte[] image)
+        {
+            List<long> found = FindAll(image, ApplyOriginal), foundPatched = FindAll(image, ApplyPatched);
+            if (found.Count + foundPatched.Count != 1)
+                return null;
+            bool isPatched = foundPatched.Count == 1;
+            long at = isPatched ? foundPatched[0] : found[0];
+            int[] refs = isPatched ? PatchedTableRefs : OriginalTableRefs;
+            uint[] tables = refs.Select((r, i) => BitConverter.ToUInt32(image, (int)at + r) - TableFields[i]).ToArray();
+            if (tables.Distinct().Count() != 1)
+                return null;
+            return new Site
+            {
+                Offset = at, IsPatched = isPatched,
+                Original = WithTable(ApplyOriginal, OriginalTableRefs, tables[0]), Patched = WithTable(ApplyPatched, PatchedTableRefs, tables[0]),
+            };
+        }
+
+        /// <summary>The <paramref name="code"/> reading the speech table at <paramref name="table"/>.</summary>
+        internal static byte[] WithTable(byte?[] code, int[] refs, uint table)
+        {
+            byte[] bytes = code.Select(b => b ?? 0).ToArray();
+            for (int i = 0; i < refs.Length; i++)
+                BitConverter.GetBytes(table + TableFields[i]).CopyTo(bytes, refs[i]);
+            return bytes;
+        }
+    }
+
+    /// <summary>
+    /// Lets the limit of 3 negotiation dates per selling club wear off. Every club keeps a counter for
+    /// each human manager (club +0x1081 + manager number 1-4); arranging a negotiation with one of its
+    /// players counts it up to at most 10, and from 3 the club "would under no circumstances release"
+    /// the player (text 2626, checks at 0x4CF0E3 and 0x53E55F in the original). The monthly club update
+    /// (FUN_00642d00, called from FUN_00642e20 at the month change) is meant to halve the counters, but
+    /// addresses +0x107D to +0x1080, one byte too low: it halves three bytes before them and the
+    /// counter of a manager number 0 that doesn't exist, while the real counters only go back to 0 at
+    /// the season start. The patch moves the four loads and four stores by 4:
+    /// <code>
+    ///   mov cl/al/bl/dl, [ebp+107D..1080] / shr x4 / push ebp / mov [ebp+107D..1080], cl/al/bl/dl
+    ///   ->  the same with +1081..1084
+    /// </code>
+    /// </summary>
+    internal sealed class NegotiationCounter : RewritePatch
+    {
+        private static byte?[] Code(byte first) => Exact(
+            0x8A, 0x8D, first, 0x10, 0x00, 0x00, 0x8A, 0x85, (byte)(first + 1), 0x10, 0x00, 0x00,     // mov cl,[ebp+..] / mov al,[ebp+..]
+            0x8A, 0x9D, (byte)(first + 2), 0x10, 0x00, 0x00, 0x8A, 0x95, (byte)(first + 3), 0x10, 0x00, 0x00,   // mov bl,[ebp+..] / mov dl,[ebp+..]
+            0xD0, 0xE9, 0xD0, 0xE8, 0xD0, 0xEB, 0xD0, 0xEA, 0x55,                                       // shr cl/al/bl/dl,1 / push ebp
+            0x88, 0x8D, first, 0x10, 0x00, 0x00, 0x88, 0x85, (byte)(first + 1), 0x10, 0x00, 0x00,     // mov [ebp+..],cl / mov [ebp+..],al
+            0x88, 0x9D, (byte)(first + 2), 0x10, 0x00, 0x00, 0x88, 0x95, (byte)(first + 3), 0x10, 0x00, 0x00);  // mov [ebp+..],bl / mov [ebp+..],dl
+
+        /// <inheritdoc/>
+        internal override byte?[] OriginalCode => Code(0x7D);
+        /// <inheritdoc/>
+        internal override byte?[] PatchedCode => Code(0x81);
+
+        /// <inheritdoc/>
+        public override string Name => "Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab";
+        /// <inheritdoc/>
+        public override string Title => "Verhandlungssperre";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Game;
+        /// <inheritdoc/>
+        public override ushort Flag => 16384;
     }
 
     /// <summary>What the patches need of a 32-bit exe's headers: its sections, where the headers are, and the imports by name.</summary>

@@ -215,8 +215,8 @@ namespace A2GPatch.Tests
     public class GogPatchesTests
     {
         private static readonly Patch101 V101 = (Patch101)Patch.All[10];
-        private static readonly CopyProtection Protection = (CopyProtection)Patch.All[13];
-        private static readonly DialogStyles Dialogs = (DialogStyles)Patch.All[14];
+        private static readonly CopyProtection Protection = Patch.All.OfType<CopyProtection>().Single();
+        private static readonly DialogStyles Dialogs = Patch.All.OfType<DialogStyles>().Single();
 
         private static GameFiles Files(byte[] exe, string folder = null) => new GameFiles(folder ?? Path.GetTempPath(), exe);
 
@@ -676,7 +676,7 @@ namespace A2GPatch.Tests
 
         // ---- AnimationEdge ----
 
-        private static readonly AnimationEdge Edge = (AnimationEdge)Patch.All[15];
+        private static readonly AnimationEdge Edge = Patch.All.OfType<AnimationEdge>().Single();
         private static readonly string[][] EdgeImports = { new[] { "USER32.dll", "GetClientRect", "CopyRect" } };
         private static readonly byte[] GogWrapper = new byte[] { 0x4D, 0x5A, 0, 0 }.Concat(AnimationEdge.WrapperName).Concat(new byte[4]).ToArray();
 

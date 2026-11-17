@@ -125,6 +125,13 @@ jobs:
           - Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen ...): Das Spiel
             liest die Antworten von einer Stelle, an die sie nie geschrieben werden, also bleibt
             keine Antwort mit Folgen. Mit dem Patch wirken sie so, wie ihre Texte es versprechen.
+          - Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft (optional): Die
+            Spielhilfe warnt davor, das Spiel zieht aber nur den Einsatz ab. Mit dem Patch kostet so
+            eine Ansprache die Mannschaft ihre Prozente in Abwehr und Angriff, für dieses Spiel.
+          - Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab: Nach drei
+            Terminen mit Spielern desselben Vereins gibt der Verein niemanden mehr frei. Das Spiel will
+            die Sperre monatlich abbauen, halbiert aber die falschen Werte, sodass sie bis zur neuen
+            Saison hält. Mit dem Patch lässt sie wie gedacht jeden Monat nach.
 
           Nur für die GOG-Version (bei den anderen ausgegraut):
 
