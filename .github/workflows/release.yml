@@ -138,7 +138,7 @@ jobs:
           - Trainer-Nachwuchs: Geht ein Trainer oder Manager in Rente, rückt ein Ex-Spieler von einer
             Warteliste nach. Dorthin kommen Spieler aber erst, wenn sie mit 36 oder später aufhören,
             also bleibt sie meist leer, und der Rentner kehrt als 30-Jähriger mit Kompetenz 2 zurück.
-            Mit dem Patch kommen Ex-Spieler ab 33 auf die Liste, und ohne einen startet der Nachfolger
+            Mit dem Patch kommen Ex-Spieler ab 33 Jahren auf die Liste, und ohne einen startet der Nachfolger
             mit Kompetenz 3 bis 11, meist um 7. Gilt auch für Co- und Torwarttrainer.
 
           Nur für die GOG-Version (bei den anderen ausgegraut):

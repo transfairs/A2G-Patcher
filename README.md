@@ -65,12 +65,12 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   shows a message and takes the use. With the patch such a speech takes its percentages off defence and
   attack for that match ("+3%" becomes -3 %). A failed roll against the manager's motivation skill and a
   speech without uses left stay without effect.
-- **Neue Trainer: Ex-Spieler ab 33, sonst Kompetenz 3 bis 11 statt 2** ("Trainer-Nachwuchs"): when a
+- **Neue Trainer: Ex-Spieler ab 33 Jahren, sonst Kompetenz 3 bis 11 statt 2** ("Trainer-Nachwuchs"): when a
   trainer or manager of the pool the clubs hire from (co-trainers included) retires, a former player from
   a waiting list takes his place. Players only get on that list if they end their career at 36 or older,
   which outfield players rarely do, so the list stays empty and the retired one comes back under the same
   name, aged 30 with competence 2 (goalkeeper trainers aged 35 with 2). They hardly grow, and in the long
-  run the strong trainers die out. With the patch former players get on the list from 33, and a place
+  run the strong trainers die out. With the patch former players get on the list from age 33, and a place
   without one comes back with competence 3 to 11, most often around 7, so that trainers with competence 15 keep coming.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the

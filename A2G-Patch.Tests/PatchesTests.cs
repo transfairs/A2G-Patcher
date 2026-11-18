@@ -175,7 +175,7 @@ namespace A2GPatch.Tests
                 "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
                 "Torgrenze auf 15 Tore pro Mannschaft erhöhen",
                 "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft",
-                "Neue Trainer: Ex-Spieler ab 33, sonst Kompetenz 3 bis 11 statt 2",
+                "Neue Trainer: Ex-Spieler ab 33 Jahren, sonst Kompetenz 3 bis 11 statt 2",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",

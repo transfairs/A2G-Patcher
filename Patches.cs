@@ -1649,7 +1649,7 @@ namespace A2GPatch
         private const byte PushEbx = 0x53;
 
         /// <inheritdoc/>
-        public override string Name => "Neue Trainer: Ex-Spieler ab 33, sonst Kompetenz 3 bis 11 statt 2";
+        public override string Name => "Neue Trainer: Ex-Spieler ab 33 Jahren, sonst Kompetenz 3 bis 11 statt 2";
         /// <inheritdoc/>
         public override string Title => "Trainer-Nachwuchs";
         /// <inheritdoc/>
