@@ -200,7 +200,7 @@ namespace A2GPatch.Tests
 
                 form.Size = form.MinimumSize;
                 Application.DoEvents();
-                Assert.Equal(5, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(4, game.Select(t => t.Top).Distinct().Count());
                 Assert.True(panel.VerticalScroll.Visible);
                 Assert.False(panel.HorizontalScroll.Visible);
                 Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));

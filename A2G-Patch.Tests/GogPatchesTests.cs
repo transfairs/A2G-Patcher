@@ -255,7 +255,7 @@ namespace A2GPatch.Tests
         {
             foreach (FilePatch patch in Patch.All.OfType<FilePatch>())
             {
-                Assert.Equal(patch is Patch101 ? 1024 : patch is InterviewEffects ? 4096 : 0, patch.Flag);
+                Assert.Equal(patch is Patch101 ? 1024u : patch is InterviewEffects ? 4096u : 0u, patch.Flag);
                 Assert.Empty(patch.Patterns);
                 Assert.Null(patch.Find(GameCode.Both()));
             }

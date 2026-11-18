@@ -4,7 +4,7 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
 
 "Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes and current Windows.
 
-- **Spielfehler** (Behebt: Geldanlagen, Kadergröße, …), one switch for eight bug fixes; each keeps its own places
+- **Spielfehler** (Behebt: Geldanlagen, Kadergröße, …), one switch for nine bug fixes; each keeps its own places
   and DLL flag, and the switch counts as on once one of them is applied (an exe patched by an older
   version keeps its fixes, and applying completes the rest):
   - **Geldanlagen** (Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen): the game takes every
@@ -33,6 +33,8 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
     screen to 640x480 in a way that outlives it; after a crash the desktop stayed at 640x480. With the
     patch Windows restores the resolution itself when the game ends. The GOG release already does this;
     there this fix is left out.
+  - **Langer Windows-Betrieb** (Kein Einfrieren nach über 24 Tagen Windows-Laufzeit): a 3-second wait in a
+    reply sequence turns into weeks once Windows has run for 2^31 ms (Fast Startup keeps the uptime).
 - **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr): the GOG
   release and the 2007 CD release are built from the 1.00 source. The patch brings program and data to the
   official patch 1.01, which the 1999 release contains already, among them the training camp in the winter
@@ -41,8 +43,6 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   crashes when it plays `WM.AVI`, `EM.AVI` or `FINALE.AVI` (e.g. after winning the World Cup), because
   their Indeo codec is gone. With the patch these videos are skipped and the game goes on; with an Indeo
   codec installed they still play.
-- **Kein Einfrieren nach über 24 Tagen Windows-Laufzeit**: a 3-second wait in a reply sequence turns into
-  weeks once Windows has run for 2^31 ms (Fast Startup keeps the uptime).
 - **Ton über das Standard-Audiogerät von Windows**: the game picks the last enumerated sound device instead
   of the default one, so with several outputs (monitor, headset) the sound may go to the wrong one.
 
@@ -65,6 +65,13 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   shows a message and takes the use. With the patch such a speech takes its percentages off defence and
   attack for that match ("+3%" becomes -3 %). A failed roll against the manager's motivation skill and a
   speech without uses left stay without effect.
+- **Neue Trainer: Ex-Spieler ab 33, sonst Kompetenz 3 bis 11 statt 2** ("Trainer-Nachwuchs"): when a
+  trainer or manager of the pool the clubs hire from (co-trainers included) retires, a former player from
+  a waiting list takes his place. Players only get on that list if they end their career at 36 or older,
+  which outfield players rarely do, so the list stays empty and the retired one comes back under the same
+  name, aged 30 with competence 2 (goalkeeper trainers aged 35 with 2). They hardly grow, and in the long
+  run the strong trainers die out. With the patch former players get on the list from 33, and a place
+  without one comes back with competence 3 to 11, most often around 7, so that trainers with competence 15 keep coming.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -346,6 +353,32 @@ Taking it back restores the call to `values`, which lies 0x20 bytes behind `loan
 patch is offered only where the original code shows that). The function lies outside the 2007 release's
 CRC stretches.
 
+**Trainer supply.** Trainers and managers share one pool (1000 places of 32 bytes from `0x87ffa8`: `+4`
+trainer level, `+5` manager level, the higher one is the trade, `+7` age); co-trainers are hired from it,
+goalkeeper trainers have their own table (`0xbf31e8`). At the season change (`0x5cc3d0`, goalkeeper
+trainers `0x5cc9e0`) whoever is unemployed and older than 65 plus up to 2 retires, and his place is taken
+from a waiting list per country group: `0x5a1500` takes the next of 20 entries from `0x826bde`
+(`0x5a15c0`: 10 from `0x826efe`). A player gets on it when he ends his career (`0x5a12f0`) at 36 or older
+with enough games; his competence is 1 + (age - 30) / 3 + random(5) + his strength, at most 12. Players
+usually end their career only when their strength has dropped to 0, outfield players rarely at 36, so in a
+long game the list is empty and the place goes back to the same person: age 30, competence 2 in his trade
+and 1 in the other (goalkeeper trainers 35 and 2). Up to 44 the competence grows by 1 with 20 % a season
+(goalkeeper trainers 50 %), so from 2 nobody gets far, and the strong trainers of the start die out. The
+patch lowers the age to 33 and rewrites both functions in their own bytes (shorter, so a roll fits):
+
+```
+cmp dl,23 / jbe (not on the list)             ->  cmp dl,20
+place back without an entry: competence 2     ->  3 + random(3) + random(3) + random(3) + random(3),
+                                                  3 to 11, most often 7 (1 %, 5 %, 12 %, 20 %, 24 %, ...)
+```
+
+Simulated over 60 seasons with the game's rules (growth, decline from 61, retirement, the per-group
+balancing in `0x5cc740`), this keeps a bell around 7 to 8 with 1 to 2 % at 15; the original ends up with
+nobody above 12. A goalkeeper trainer coming back reaches 15 with about 9 %. The random function
+(`0x645ed0`) is taken from the call right behind the age check (`push 3 / call`), the tables from the
+original code; the places are `0x5a1355`, `0x5a1500` and `0x5a15c0` (GOG `0x5a3b65`, `0x5a3d10`,
+`0x5a3dd0`, the 2007 release the same in memory, outside its CRC stretches).
+
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
@@ -463,11 +496,12 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 
 - All 47 exports of the real `msvfw32.dll` are `jmp` stubs (ordinals kept in `msvfw32.def`). The real
   DLL is loaded lazily on the first call, never in `DllMain` (loader lock).
-- Which patches it applies are two flags bytes (low byte first) after the marker `A2GPatchFlags` in its
+- Which patches it applies are three flags bytes (low byte first) after the marker `A2GPatchFlags` in its
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
-  counters, 32768 investments; the build has all on). The other GOG patches have no flag: they change files on disk, which
+  counters, 32768 investments, 65536 trainer supply; the build has all on). Versions before the third
+  byte had two; the NUL ending their string follows them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the
   embedded one in more than these bytes is from another version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled

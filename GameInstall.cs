@@ -34,8 +34,13 @@ namespace A2GPatch
         /// 2007 CD and GOG releases, run.exe the game).
         /// </summary>
         internal static readonly string[] ExeNames = { "anstoss2.exe", "run.exe" };
-        /// <summary>In A2G-Patch's msvfw32.dll, followed by a NUL and the two flags bytes, low byte first (see dll/msvfw32.c).</summary>
+        /// <summary>In A2G-Patch's msvfw32.dll, followed by a NUL and the flags bytes, low byte first (see dll/msvfw32.c).</summary>
         internal static readonly byte[] DllMarker = Encoding.ASCII.GetBytes("A2GPatchFlags\0");
+        /// <summary>
+        /// The number of flags bytes behind the marker. Versions before the third byte had two; the NUL
+        /// that ends their string follows them, so they read as the same flags with the third byte 0.
+        /// </summary>
+        internal const int FlagsBytes = 3;
 
         /// <summary>The msvfw32.dll to install (embedded at build time, see the csproj); null if this build has none. Tests replace it.</summary>
         internal static Func<byte[]> DllBytes = () => ReadResource("A2GPatch.msvfw32.dll");
@@ -61,7 +66,7 @@ namespace A2GPatch
         // Exe: where each GOG patch stands (those that aren't possible here are missing).
         private readonly Dictionary<FilePatch, FileState> fileStates = new Dictionary<FilePatch, FileState>();
         // Dll: the flags of the installed msvfw32.dll (0 without one).
-        private ushort flags;
+        private uint flags;
 
         /// <summary>The game folder.</summary>
         public string Folder { get; }
@@ -90,7 +95,7 @@ namespace A2GPatch
                 byte[] dll = File.ReadAllBytes(this.DllPath);
                 int marker = MarkerAt(dll);
                 this.ForeignDll = marker < 0;
-                this.flags = marker < 0 ? (ushort)0 : BitConverter.ToUInt16(dll, marker + DllMarker.Length);
+                this.flags = marker < 0 ? 0 : ReadFlags(dll, marker + DllMarker.Length);
                 this.DllOutdated = marker >= 0 && IsOtherVersion(dll, DllBytes());
             }
         }
@@ -105,7 +110,7 @@ namespace A2GPatch
             if (installed.Length != embedded.Length || MarkerAt(installed) != marker)
                 return true;
             int flagsAt = marker + DllMarker.Length;
-            return Enumerable.Range(0, installed.Length).Any(i => i != flagsAt && i != flagsAt + 1 && installed[i] != embedded[i]);
+            return Enumerable.Range(0, installed.Length).Any(i => (i < flagsAt || i >= flagsAt + FlagsBytes) && installed[i] != embedded[i]);
         }
 
         /// <summary>Whether <paramref name="patch"/> can be switched here (the GOG patches never through the DLL).</summary>
@@ -162,11 +167,14 @@ namespace A2GPatch
             return new GameInstall(folder, PatchKind.None, null);
         }
 
+        /// <summary>The flags bytes at <paramref name="at"/> in <paramref name="dll"/>, low byte first.</summary>
+        private static uint ReadFlags(byte[] dll, int at) => (uint)(dll[at] | dll[at + 1] << 8 | dll[at + 2] << 16);
+
         /// <summary>Where the marker starts in <paramref name="dll"/>, or -1 if it isn't A2G-Patch's msvfw32.dll.</summary>
         internal static int MarkerAt(byte[] dll)
         {
             List<long> found = Patch.FindAll(dll, Patch.Exact(DllMarker));
-            return found.Count == 1 && found[0] + DllMarker.Length + 1 < dll.Length ? (int)found[0] : -1;
+            return found.Count == 1 && found[0] + DllMarker.Length + FlagsBytes <= dll.Length ? (int)found[0] : -1;
         }
 
         /// <summary>
@@ -232,7 +240,7 @@ namespace A2GPatch
         {
             if (this.ForeignDll)
                 throw new InvalidOperationException($"Die {DllName} in diesem Ordner gehört nicht zu A2G-Patch.");
-            ushort flags = (ushort)wanted.Aggregate(0, (f, p) => f | p.Flag);
+            uint flags = wanted.Aggregate(0u, (f, p) => f | p.Flag);
             if (flags == 0)
                 File.Delete(this.DllPath);
             else if (flags != this.flags || this.DllOutdated)
@@ -241,7 +249,8 @@ namespace A2GPatch
                 int marker = dll == null ? -1 : MarkerAt(dll);
                 if (marker < 0)
                     throw new InvalidOperationException($"In diesem Build von A2G-Patch fehlt die {DllName}.");
-                BitConverter.GetBytes(flags).CopyTo(dll, marker + DllMarker.Length);
+                for (int i = 0; i < FlagsBytes; i++)
+                    dll[marker + DllMarker.Length + i] = (byte)(flags >> (8 * i));
                 File.WriteAllBytes(this.DllPath, dll);
             }
             this.flags = flags;

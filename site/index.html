@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
-    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ acht Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Laufzeit, Audiogerät). Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen drei Patches nur für die GOG-Version.</p>
+    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ neun Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät). Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen drei Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -127,6 +127,14 @@
       </article>
       <article class="card">
         <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        </div>
+        <h3>Kein Einfrieren nach über 24 Tagen Windows-Laufzeit</h3>
+        <p>Eine Wartepause von 3&nbsp;Sekunden wird zu Wochen, sobald Windows länger als 2<sup>31</sup>&nbsp;ms läuft. Das kommt schneller als gedacht: Der Schnellstart von Windows setzt die Laufzeit beim Herunterfahren nicht zurück.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
           <span class="tag tag-gog">GOG &amp; 2007er-CD</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.3 5.7M4 18v-6h6"/></svg>
         </div>
@@ -140,14 +148,6 @@
         </div>
         <h3>Kein Absturz bei den Videos zu WM, EM und Finale</h3>
         <p>Nach dem WM-Titel stürzt das Spiel ab, weil Windows das Videoformat von <code>WM.AVI</code>, <code>EM.AVI</code> und <code>FINALE.AVI</code> nicht mehr kennt. Der Patch überspringt das Video, das Spiel läuft weiter. Mit installiertem Indeo-Codec laufen die Videos wie gewohnt.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Patch</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
-        </div>
-        <h3>Kein Einfrieren nach über 24 Tagen Windows-Laufzeit</h3>
-        <p>Eine Wartepause von 3&nbsp;Sekunden wird zu Wochen, sobald Windows länger als 2<sup>31</sup>&nbsp;ms läuft. Das kommt schneller als gedacht: Der Schnellstart von Windows setzt die Laufzeit beim Herunterfahren nicht zurück.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -191,6 +191,14 @@
         </div>
         <h3>Unpassende Ansprachen schwächen die Mannschaft</h3>
         <p>Die Spielhilfe warnt, eine Ansprache, die nicht zur Lage passt, könne ihre Wirkung ins Negative umkehren. Das Spiel zeigt aber nur eine Meldung und zieht den Einsatz ab. Mit dem Patch kostet so eine Ansprache die Mannschaft ihre Prozente in Abwehr und Angriff, für dieses Spiel: aus „+3&nbsp;%“ werden −3&nbsp;%. Ein misslungener Wurf gegen die Motivationsfähigkeit bleibt ohne Folgen.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M18 14V6"/><path d="M15 9l3-3 3 3"/></svg>
+        </div>
+        <h3>Trainer-Nachwuchs</h3>
+        <p>Geht ein Trainer oder Manager in Rente, rückt ein Ex-Spieler von einer Warteliste nach. Dorthin kommen Spieler aber erst, wenn sie mit 36 oder später aufhören, und das schaffen Feldspieler selten. Ist die Liste leer, kehrt der Rentner unter seinem Namen als 30-Jähriger mit Kompetenz 2 zurück; auf Dauer sterben die starken Trainer aus. Mit dem Patch kommen Ex-Spieler ab 33 auf die Liste, und ohne einen startet der Nachfolger mit Kompetenz 3 bis 11, meist um 7. So kommen auf Dauer wieder Trainer mit Kompetenz 15 nach. Das gilt auch für Co- und Torwarttrainer.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -371,6 +379,12 @@ Wirkung:          Prozente von +E5       →  negative Nummer: deren Beträge ab
         <summary><b>Geldanlagen</b><span>Wert statt Einlage abgezogen</span></summary>
         <p>Das Spiel speichert den Kontostand nicht, sondern rechnet ihn jedes Mal aus: Grundbetrag des Vereins minus aktueller Wert aller Anlagen plus Kredite plus Buchungen der Saison. Der Grundbetrag bekommt keine Zinsen gutgeschrieben, also senkt jeder Anstieg eines Index den Kontostand um genau diesen Betrag. Beim Auflösen fällt der Abzug weg, und Wert minus Einlage wird zusätzlich als Zinsertrag gebucht. Der Patch zieht die Einlagen statt der Werte ab, in denselben 48 Bytes; das Vermögen bleibt, wie es war. Da nichts gespeichert wird, zeigt das Ausschalten wieder den alten Kontostand.</p>
 <pre><code>Grundbetrag − Werte + Kredite + Buchungen  →  Grundbetrag − Einlagen + Kredite + Buchungen</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Trainer-Nachwuchs</b><span>Eine Warteliste, die leer bleibt</span></summary>
+        <p>Trainer und Manager teilen sich einen Pool (Trainer- und Managerlevel, das höhere ist der Beruf); auch Co-Trainer kommen daher, Torwarttrainer haben eine eigene Tabelle. Zum Saisonwechsel geht in Rente, wer ohne Vertrag älter als 65 bis 67 ist, und sein Platz geht an den nächsten Ex-Spieler einer Warteliste je Ländergruppe (20 Plätze, Torwarttrainer 10). Auf die Liste kommt ein Spieler nur, wenn er mit 36 oder später aufhört; meist hören Spieler erst auf, wenn ihre Stärke auf 0 gefallen ist. Ist die Liste leer, bekommt der Rentner seinen Platz zurück: 30 Jahre, Kompetenz 2 (Torwarttrainer 35 und 2). Bis 44 wächst die Kompetenz je Saison mit 20&nbsp;% um 1 (Torwarttrainer 50&nbsp;%), von 2 aus kommt also niemand weit. Der Patch senkt das Alter auf 33 und schreibt beide Funktionen in ihren eigenen Bytes kürzer neu, sodass ein Wurf hineinpasst. Über 60 Spielzeiten simuliert, hält das eine Glocke um 7 bis 8 mit 1 bis 2&nbsp;% auf Kompetenz 15; ohne Patch steht am Ende niemand mehr über 12.</p>
+<pre><code>cmp dl,23 / jbe (nicht auf die Liste)       →  cmp dl,20
+Platz zurück ohne Eintrag: Kompetenz 2      →  3 + 4 × Zufall(3): 3 bis 11, meist 7</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>

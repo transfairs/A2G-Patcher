@@ -81,7 +81,7 @@ namespace A2GPatch
     internal abstract class FilePatch : Patch
     {
         /// <inheritdoc/>
-        public override ushort Flag => 0;
+        public override uint Flag => 0;
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Gog;
         /// <inheritdoc/>
@@ -329,7 +329,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 1024;
+        public override uint Flag => 1024;
 
         /// <summary>Where the program changes stand in <paramref name="image"/>.</summary>
         internal static FileState ProgramState(byte[] image)

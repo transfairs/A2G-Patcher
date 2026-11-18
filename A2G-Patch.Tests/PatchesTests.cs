@@ -161,32 +161,33 @@ namespace A2GPatch.Tests
         {
             Assert.Equal(new[]
             {
-                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Langer Windows-Betrieb", "Audiogerät",
-                "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen",
+                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät",
+                "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
             }, Patch.All.Select(p => p.Title));
             Assert.Equal(new[]
             {
-                "Behebt: Geldanlagen, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung",
+                "Behebt: Geldanlagen, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb",
                 "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
-                "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit", "Ton über das Standard-Audiogerät von Windows",
+                "Ton über das Standard-Audiogerät von Windows",
                 "Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab",
                 "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
                 "Torgrenze auf 15 Tore pro Mannschaft erhöhen",
                 "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft",
+                "Neue Trainer: Ex-Spieler ab 33, sonst Kompetenz 3 bis 11 statt 2",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
-            Assert.Equal(new ushort[] { 0x8BE2, 1024, 4, 8, 16, 16384, 4096, 1, 8192, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 0x8BEA, 1024, 4, 16, 16384, 4096, 1, 8192, 65536, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
-            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, o, o, o }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { f, f, f, f, b, b, b, b, b, o, o, o }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own; together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;
-            Assert.Equal(new[] { "Geldanlagen", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung" },
+            Assert.Equal(new[] { "Geldanlagen", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb" },
                 bugs.Select(p => p.Title));
             Assert.Equal(new[]
             {
@@ -194,12 +195,13 @@ namespace A2GPatch.Tests
                 "Vereinsnamen bei der Pokalauslosung richtig darstellen", "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Keine falsche Warnung „Festplatte fast voll“ beim Speichern",
                 "Pfeile zählen beim Gedrückthalten weiter", "Desktop-Auflösung auch nach einem Absturz zurückholen",
+                "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit",
             }, bugs.Select(p => p.Name));
-            Assert.Equal(new ushort[] { 32768, 64, 256, 2048, 512, 32, 2, 128 }, bugs.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 32768, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
             Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
-            ushort[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
-            Assert.Equal(16, bits.Length);
-            Assert.Equal(0xFFFF, bits.Aggregate(0, (all, bit) => all | bit));
+            uint[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
+            Assert.Equal(17, bits.Length);
+            Assert.Equal(0x1FFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
         }
 
         private static readonly Patch Cup = Patch.Get<CupDraw>();
@@ -422,6 +424,93 @@ namespace A2GPatch.Tests
             other[8]++;
             Assert.Null(Investment.Find(GameCode.Exe(other)));
             Assert.Null(Investment.Find(new byte[0]));
+        }
+
+        private static readonly Patch Coach = Patch.Get<CoachSupply>();
+        // The original exe from 0x5A1349: the age check (mov dl,[esi+1E] .. cmp dl,23 / jbe) up to the
+        // call of the random function (0x645ED0) at 0x5A139D.
+        internal static readonly byte[] CoachAgeCode = (
+            "8A561E6603868000000080FA230F869E010000668B15606682006683FA017C156683FA0A7D0F0FBFD2663B0455C8296C00"
+            + "7E0DEB06663D2C017E05B90100000085C90F8469010000807E20010F85BC0000006A03E82E4B0A00").Hex();
+        // From 0x5A1500: the next trainer of the group from the waiting list (0x826BDE), or the place back with 1 and 2.
+        internal static readonly byte[] CoachListCode = (
+            "0FBF44240853660FB68818196C000FBFC933C08D0C89C1E1020FBFD003D166833CD5DE6B820000752D40663D14007CE9"
+            + "8B4424088A48058A50043ACAC640071E7E0AC6400502C64004015BC3C6400501C64004025BC30FBFC003C18B4C2408C1E003"
+            + "8A5904668B90DE6B8200668911668B90E06B8200668951028A51053AD38A90E46B82007E118851050FBED28A92E0296C00"
+            + "885104EB0F8851040FBED28A92E0296C008851058A90E26B82005B88510766C780DE6B82000000C3").Hex();
+        // From 0x5A15C0: the same for goalkeeper trainers (0x826EFE), the place back with 35 and 2.
+        internal static readonly byte[] KeeperListCode = (
+            "0FBF442408660FB68818196C000FBFC933C08D0C89D1E10FBFD003D166833CD5FE6E820000751440663D0A007CE98B442404"
+            + "C6400723C6400402C30FBFC003C18B4C2404C1E003668B90FE6E8200668911668B90006F8200668951028A90046F8200"
+            + "8851048A90026F820088510766C780FE6E82000000C3").Hex();
+
+        // The three pieces as far apart as in the exe (0x5A1349, 0x5A1500, 0x5A15C0), from 300 on.
+        internal static byte[] CoachImage(byte[] age = null, byte[] list = null, byte[] keeper = null)
+        {
+            List<byte> image = new List<byte>(Enumerable.Repeat((byte)0xCC, 300));
+            void Put(byte[] piece, int at)
+            {
+                image.AddRange(Enumerable.Repeat((byte)0xCC, 300 + at - image.Count));
+                image.AddRange(piece);
+            }
+            Put(age ?? CoachAgeCode, 0);
+            Put(list ?? CoachListCode, 0x1B7);
+            Put(keeper ?? KeeperListCode, 0x277);
+            image.AddRange(Enumerable.Repeat((byte)0xCC, 16));
+            return image.ToArray();
+        }
+
+        [Fact]
+        public void CoachSupply_LowersTheAge_AndRollsTheCompetence_InTheSameBytes()
+        {
+            byte[] image = CoachImage();
+            Site[] sites = Coach.Find(image);
+
+            Assert.Equal(new long[] { 300 + 12, 300 + 0x1B7, 300 + 0x277 }, sites.Select(s => s.Offset));
+            Assert.All(sites, s => Assert.False(s.IsPatched));
+            Assert.Equal(new byte[] { 35 }, sites[0].Original);
+            Assert.Equal(new byte[] { 32 }, sites[0].Patched);
+            Assert.Equal(CoachListCode, sites[1].Original);
+            Assert.Equal(KeeperListCode, sites[2].Original);
+            // As disassembled at 0x5A1500 and 0x5A15C0: the same tables and lists, the call to 0x645ED0, nops to the end.
+            Assert.Equal((
+                "5356578B7C24100FBF4424140FB68018196C008D0480C1E0058DB0DE6B82006A145966833E00751F83C608E2F5"
+                + "B3036A046A03E898490A0002D858FF0C2475F158B01EB401EB188B0689078A5E0666C70600000FB6C38AA0E0296C00"
+                + "8A46048847078A4F043A4F057C08885F04886705EB06885F058867045F5E5BC3" + string.Concat(Enumerable.Repeat("90", 63))).Hex(),
+                sites[1].Patched);
+            Assert.Equal((
+                "5356578B7C24100FBF4424140FB68018196C006BC0508DB0FE6E82006A0A5966833E00751D83C608E2F5"
+                + "B3036A046A03E8DB480A0002D858FF0C2475F158B023EB0F8B0689078A5E0666C70600008A4604884707885F04"
+                + "5F5E5BC3" + string.Concat(Enumerable.Repeat("90", 29))).Hex(),
+                sites[2].Patched);
+
+            Site[] again = Coach.Find(Apply(image, sites));
+            Assert.All(again, s => Assert.True(s.IsPatched));
+            Assert.Equal(sites.Select(s => s.Original), again.Select(s => s.Original));
+            Assert.Equal(sites.Select(s => s.Patched), again.Select(s => s.Patched));
+
+            // Half applied (the trainers' function only): each place is recognized on its own.
+            Site[] half = Coach.Find(Apply(image, new[] { sites[1] }));
+            Assert.Equal(new[] { false, true, false }, half.Select(s => s.IsPatched));
+            Assert.Equal(sites.Select(s => s.Patched), half.Select(s => s.Patched));
+        }
+
+        [Fact]
+        public void CoachSupply_InUnknownCode_FindsNothing()
+        {
+            byte[] Changed(byte[] code, int at, byte value)
+            {
+                byte[] copy = (byte[])code.Clone();
+                copy[at] = value;
+                return copy;
+            }
+            Assert.Null(Coach.Find(CoachImage(age: new byte[0])));
+            Assert.Null(Coach.Find(CoachImage(age: Changed(CoachAgeCode, 12, 0x24))));    // another age
+            Assert.Null(Coach.Find(CoachImage(list: new byte[0])));
+            Assert.Null(Coach.Find(CoachImage(keeper: new byte[0])));
+            Assert.Null(Coach.Find(CoachImage(age: Changed(CoachAgeCode, 0x53, 4))));      // push 4: not the random call
+            Assert.Null(Coach.Find(CoachImage(keeper: Changed(KeeperListCode, 9, 0x19))));  // another group table
+            Assert.Null(Coach.Find(new byte[0]));
         }
 
         private static readonly Patch Button = Patch.Get<PictureButtonInit>();

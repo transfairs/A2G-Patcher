@@ -38,8 +38,8 @@ namespace A2GPatch
         /// <summary>Every switch, in the order the window lists them; the game's bugs are one (<see cref="GameBugs"/>).</summary>
         public static readonly Patch[] All =
         {
-            new GameBugs(), new Patch101(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(),
-            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(),
+            new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(),
+            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
 
@@ -57,7 +57,7 @@ namespace A2GPatch
         public abstract PatchGroup Group { get; }
 
         /// <summary>Its bits in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
-        public abstract ushort Flag { get; }
+        public abstract uint Flag { get; }
 
         /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
         internal virtual bool IsApplied(Site[] sites) => sites.All(s => s.IsPatched);
@@ -103,7 +103,7 @@ namespace A2GPatch
         internal readonly Patch[] Members =
         {
             new InvestmentBalance(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
-            new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(),
+            new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(), new SleepFreeze(),
         };
 
         /// <inheritdoc/>
@@ -113,7 +113,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => (ushort)this.Members.Aggregate(0, (f, m) => f | m.Flag);
+        public override uint Flag => this.Members.Aggregate(0u, (f, m) => f | m.Flag);
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => this.Members.SelectMany(m => m.Patterns);
 
@@ -162,7 +162,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
-        public override ushort Flag => 1;
+        public override uint Flag => 1;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { Exact(LimitPattern), Exact(HomeBrakePattern), Exact(AwayBrakePattern) };
 
@@ -281,7 +281,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 2;
+        public override uint Flag => 2;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -399,7 +399,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 4;
+        public override uint Flag => 4;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -484,7 +484,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 8;
+        public override uint Flag => 8;
     }
 
     /// <summary>
@@ -512,7 +512,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 32;
+        public override uint Flag => 32;
     }
 
     /// <summary>
@@ -555,7 +555,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 64;
+        public override uint Flag => 64;
     }
 
     /// <summary>
@@ -600,7 +600,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 128;
+        public override uint Flag => 128;
     }
 
     /// <summary>
@@ -628,7 +628,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 512;
+        public override uint Flag => 512;
     }
 
     /// <summary>
@@ -687,7 +687,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 2048;
+        public override uint Flag => 2048;
     }
 
     /// <summary>
@@ -754,7 +754,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 16;
+        public override uint Flag => 16;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -847,7 +847,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 256;
+        public override uint Flag => 256;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -1006,7 +1006,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
-        public override ushort Flag => 4096;
+        public override uint Flag => 4096;
 
         /// <summary>The stub at <paramref name="stub"/> for the given addresses of the game.</summary>
         internal static byte[] StubBytes(uint stub, uint engine, uint context, uint apply, uint moneyFactor, uint morale)
@@ -1348,7 +1348,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
-        public override ushort Flag => 8192;
+        public override uint Flag => 8192;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[]
         {
@@ -1440,7 +1440,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
-        public override ushort Flag => 16384;
+        public override uint Flag => 16384;
     }
 
     /// <summary>
@@ -1512,7 +1512,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
-        public override ushort Flag => 32768;
+        public override uint Flag => 32768;
         /// <inheritdoc/>
         public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
 
@@ -1539,6 +1539,188 @@ namespace A2GPatch
                     return null;
             }
             return new[] { new Site { Offset = at, Original = OriginalBytes(loans, bookings), Patched = PatchedBytes(loans, bookings), IsPatched = isPatched } };
+        }
+    }
+
+    /// <summary>
+    /// Brings the pool of trainers and managers better newcomers. Whoever retires from it (about 66,
+    /// unemployed) makes room for the next former player on a waiting list per country group
+    /// (FUN_005a1500 in the original, 20 places at 0x826BDE; goalkeeper trainers FUN_005a15c0, 10 at
+    /// 0x826EFE). A player only gets on the list if he ends his career at 36 or older (FUN_005a12f0),
+    /// which outfield players rarely do, so the list stays empty and the place goes back to the same
+    /// person: age 30, competence 2 (1 in the other trade), goalkeeper trainers age 35 and 2. They
+    /// grow too little to get far, and in the long run the strong ones die out. The patch:
+    /// <code>
+    ///   former players on the list:   at 36 or older          ->  at 33 or older (cmp dl,23 -> 20)
+    ///   the place back without one:   competence 2             ->  3 + four times random(3), 3 to 11
+    ///                                                              around 7 (in the trade that was higher)
+    /// </code>
+    /// Both functions are rewritten in their own bytes (shorter, so the dice fit) and otherwise do what
+    /// they did. They call the game's random function, which the patch takes from the call right behind
+    /// the age check (push 3 / call random), in the same section as both.
+    /// </summary>
+    internal sealed class CoachSupply : Patch
+    {
+        /// <summary>mov dl,[esi+1E] (the age) / add ax,[esi+80 or 82] / cmp dl,{age} / jbe (not on the list)</summary>
+        private static readonly byte?[] AgePattern =
+        {
+            0x8A, 0x56, 0x1E, 0x66, 0x03, 0x86, null, 0x00, 0x00, 0x00, 0x80, 0xFA, null, 0x0F, 0x86, 0x9E, 0x01, 0x00, 0x00,
+        };
+        private const int AgeAt = 12;
+        /// <summary>The highest age that doesn't get on the list, original and patched.</summary>
+        internal const byte AgeOriginal = 35, AgePatched = 32;
+        /// <summary>push 3 / call random, this far behind the age check.</summary>
+        private static readonly byte[] RandomCall = { 0x6A, 0x03, 0xE8 };
+        private const int RandomCallAt = 0x52;
+
+        // FUN_005a1500: the next former player of the group, or the place back with 1 and 2.
+        private static readonly byte?[] CoachOriginal =
+        {
+            0x0F, 0xBF, 0x44, 0x24, 0x08, 0x53, 0x66, 0x0F, 0xB6, 0x88, null, null, null, null, 0x0F, 0xBF,
+            0xC9, 0x33, 0xC0, 0x8D, 0x0C, 0x89, 0xC1, 0xE1, 0x02, 0x0F, 0xBF, 0xD0, 0x03, 0xD1, 0x66, 0x83,
+            0x3C, 0xD5, null, null, null, null, 0x00, 0x75, 0x2D, 0x40, 0x66, 0x3D, 0x14, 0x00, 0x7C, 0xE9,
+            0x8B, 0x44, 0x24, 0x08, 0x8A, 0x48, 0x05, 0x8A, 0x50, 0x04, 0x3A, 0xCA, 0xC6, 0x40, 0x07, 0x1E,
+            0x7E, 0x0A, 0xC6, 0x40, 0x05, 0x02, 0xC6, 0x40, 0x04, 0x01, 0x5B, 0xC3, 0xC6, 0x40, 0x05, 0x01,
+            0xC6, 0x40, 0x04, 0x02, 0x5B, 0xC3, 0x0F, 0xBF, 0xC0, 0x03, 0xC1, 0x8B, 0x4C, 0x24, 0x08, 0xC1,
+            0xE0, 0x03, 0x8A, 0x59, 0x04, 0x66, 0x8B, 0x90, null, null, null, null, 0x66, 0x89, 0x11, 0x66,
+            0x8B, 0x90, null, null, null, null, 0x66, 0x89, 0x51, 0x02, 0x8A, 0x51, 0x05, 0x3A, 0xD3, 0x8A,
+            0x90, null, null, null, null, 0x7E, 0x11, 0x88, 0x51, 0x05, 0x0F, 0xBE, 0xD2, 0x8A, 0x92, null,
+            null, null, null, 0x88, 0x51, 0x04, 0xEB, 0x0F, 0x88, 0x51, 0x04, 0x0F, 0xBE, 0xD2, 0x8A, 0x92,
+            null, null, null, null, 0x88, 0x51, 0x05, 0x8A, 0x90, null, null, null, null, 0x5B, 0x88, 0x51,
+            0x07, 0x66, 0xC7, 0x80, null, null, null, null, 0x00, 0x00, 0xC3,
+        };
+        private static readonly int[] CoachOriginalPlaces = { 10, 34, 104, 114, 129, 143, 160, 169, 180 };
+
+        // The same, the place back with 3 to 11:
+        //   push ebx / push esi / push edi / mov edi,[esp+10] / movsx eax,word [esp+14] / movzx eax,byte [eax+group] /
+        //   lea eax,[eax+eax*4] / shl eax,5 / lea esi,[eax+list] / push 20 / pop ecx /
+        //   next: cmp word [esi],0 / jne found / add esi,8 / loop next /
+        //   mov bl,3 / push 4 / roll: push 3 / call random / add bl,al / pop eax / dec dword [esp] / jnz roll / pop eax /
+        //   mov al,30 / mov ah,1 / jmp store /
+        //   found: mov eax,[esi] / mov [edi],eax / mov bl,[esi+6] / mov word [esi],0 / movzx eax,bl / mov ah,[eax+table] / mov al,[esi+4] /
+        //   store: mov [edi+7],al / mov cl,[edi+4] / cmp cl,[edi+5] / jl manager / mov [edi+4],bl / mov [edi+5],ah / jmp done /
+        //   manager: mov [edi+5],bl / mov [edi+4],ah / done: pop edi / pop esi / pop ebx / ret / nop...
+        private static readonly byte?[] CoachPatched =
+        {
+            0x53, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x10, 0x0F, 0xBF, 0x44, 0x24, 0x14, 0x0F, 0xB6, 0x80, null,
+            null, null, null, 0x8D, 0x04, 0x80, 0xC1, 0xE0, 0x05, 0x8D, 0xB0, null, null, null, null, 0x6A,
+            0x14, 0x59, 0x66, 0x83, 0x3E, 0x00, 0x75, 0x1F, 0x83, 0xC6, 0x08, 0xE2, 0xF5, 0xB3, 0x03, 0x6A,
+            0x04, 0x6A, 0x03, 0xE8, null, null, null, null, 0x02, 0xD8, 0x58, 0xFF, 0x0C, 0x24, 0x75, 0xF1,
+            0x58, 0xB0, 0x1E, 0xB4, 0x01, 0xEB, 0x18, 0x8B, 0x06, 0x89, 0x07, 0x8A, 0x5E, 0x06, 0x66, 0xC7,
+            0x06, 0x00, 0x00, 0x0F, 0xB6, 0xC3, 0x8A, 0xA0, null, null, null, null, 0x8A, 0x46, 0x04, 0x88,
+            0x47, 0x07, 0x8A, 0x4F, 0x04, 0x3A, 0x4F, 0x05, 0x7C, 0x08, 0x88, 0x5F, 0x04, 0x88, 0x67, 0x05,
+            0xEB, 0x06, 0x88, 0x5F, 0x05, 0x88, 0x67, 0x04, 0x5F, 0x5E, 0x5B, 0xC3, 0x90, 0x90, 0x90, 0x90,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+        };
+        private static readonly int[] CoachPatchedPlaces = { 15, 27, 52, 88 };
+
+        // FUN_005a15c0: the same for goalkeeper trainers, the place back with age 35 and 2.
+        private static readonly byte?[] GoalkeeperOriginal =
+        {
+            0x0F, 0xBF, 0x44, 0x24, 0x08, 0x66, 0x0F, 0xB6, 0x88, null, null, null, null, 0x0F, 0xBF, 0xC9,
+            0x33, 0xC0, 0x8D, 0x0C, 0x89, 0xD1, 0xE1, 0x0F, 0xBF, 0xD0, 0x03, 0xD1, 0x66, 0x83, 0x3C, 0xD5,
+            null, null, null, null, 0x00, 0x75, 0x14, 0x40, 0x66, 0x3D, 0x0A, 0x00, 0x7C, 0xE9, 0x8B, 0x44,
+            0x24, 0x04, 0xC6, 0x40, 0x07, 0x23, 0xC6, 0x40, 0x04, 0x02, 0xC3, 0x0F, 0xBF, 0xC0, 0x03, 0xC1,
+            0x8B, 0x4C, 0x24, 0x04, 0xC1, 0xE0, 0x03, 0x66, 0x8B, 0x90, null, null, null, null, 0x66, 0x89,
+            0x11, 0x66, 0x8B, 0x90, null, null, null, null, 0x66, 0x89, 0x51, 0x02, 0x8A, 0x90, null, null,
+            null, null, 0x88, 0x51, 0x04, 0x8A, 0x90, null, null, null, null, 0x88, 0x51, 0x07, 0x66, 0xC7,
+            0x80, null, null, null, null, 0x00, 0x00, 0xC3,
+        };
+        private static readonly int[] GoalkeeperOriginalPlaces = { 9, 32, 74, 84, 94, 103, 113 };
+
+        // As the trainers' (imul eax,eax,50 / push 10 for the ten places), without the other trade:
+        //   ... / mov al,35 / jmp store / found: ... / store: mov [edi+7],al / mov [edi+4],bl / pop edi / ...
+        private static readonly byte?[] GoalkeeperPatched =
+        {
+            0x53, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x10, 0x0F, 0xBF, 0x44, 0x24, 0x14, 0x0F, 0xB6, 0x80, null,
+            null, null, null, 0x6B, 0xC0, 0x50, 0x8D, 0xB0, null, null, null, null, 0x6A, 0x0A, 0x59, 0x66,
+            0x83, 0x3E, 0x00, 0x75, 0x1D, 0x83, 0xC6, 0x08, 0xE2, 0xF5, 0xB3, 0x03, 0x6A, 0x04, 0x6A, 0x03,
+            0xE8, null, null, null, null, 0x02, 0xD8, 0x58, 0xFF, 0x0C, 0x24, 0x75, 0xF1, 0x58, 0xB0, 0x23,
+            0xEB, 0x0F, 0x8B, 0x06, 0x89, 0x07, 0x8A, 0x5E, 0x06, 0x66, 0xC7, 0x06, 0x00, 0x00, 0x8A, 0x46,
+            0x04, 0x88, 0x47, 0x07, 0x88, 0x5F, 0x04, 0x5F, 0x5E, 0x5B, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+        };
+        private static readonly int[] GoalkeeperPatchedPlaces = { 15, 24, 49 };
+        // push ebx: how both patched functions start (the originals with movsx).
+        private const byte PushEbx = 0x53;
+
+        /// <inheritdoc/>
+        public override string Name => "Neue Trainer: Ex-Spieler ab 33, sonst Kompetenz 3 bis 11 statt 2";
+        /// <inheritdoc/>
+        public override string Title => "Trainer-Nachwuchs";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Balancing;
+        /// <inheritdoc/>
+        public override uint Flag => 65536;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[] { AgePattern, CoachOriginal, CoachPatched, GoalkeeperOriginal, GoalkeeperPatched };
+
+        /// <summary>The bytes of <paramref name="pattern"/> with the values at their places.</summary>
+        private static byte[] Fill(byte?[] pattern, int[] places, params uint[] values)
+        {
+            byte[] code = pattern.Select(b => b ?? 0).ToArray();
+            for (int i = 0; i < places.Length; i++)
+                BitConverter.GetBytes(values[i]).CopyTo(code, places[i]);
+            return code;
+        }
+
+        /// <summary>The trainers' original function for the group table, the waiting lists and the table of the other trade's competence.</summary>
+        internal static byte[] CoachOriginalBytes(uint group, uint list, uint table) =>
+            Fill(CoachOriginal, CoachOriginalPlaces, group, list, list, list + 2, list + 6, table, table, list + 4, list);
+
+        /// <summary>The trainers' patched function; <paramref name="random"/> is the random function's distance to its start.</summary>
+        internal static byte[] CoachPatchedBytes(uint group, uint list, uint table, int random) =>
+            Fill(CoachPatched, CoachPatchedPlaces, group, list, (uint)(random - (CoachPatchedPlaces[2] + 4)), table);
+
+        /// <summary>The goalkeeper trainers' original function for the group table and their waiting lists.</summary>
+        internal static byte[] GoalkeeperOriginalBytes(uint group, uint list) =>
+            Fill(GoalkeeperOriginal, GoalkeeperOriginalPlaces, group, list, list, list + 2, list + 6, list + 4, list);
+
+        /// <summary>The goalkeeper trainers' patched function; <paramref name="random"/> is the random function's distance to its start.</summary>
+        internal static byte[] GoalkeeperPatchedBytes(uint group, uint list, int random) =>
+            Fill(GoalkeeperPatched, GoalkeeperPatchedPlaces, group, list, (uint)(random - (GoalkeeperPatchedPlaces[2] + 4)));
+
+        // Where the one place of either pattern starts, or -1.
+        private static long One(byte[] image, byte?[] original, byte?[] patched)
+        {
+            List<long> found = FindAll(image, original).Concat(FindAll(image, patched)).ToList();
+            return found.Count == 1 ? found[0] : -1;
+        }
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            List<long> ages = FindAll(image, AgePattern).Where(at => image[at + AgeAt] == AgeOriginal || image[at + AgeAt] == AgePatched).ToList();
+            long coach = One(image, CoachOriginal, CoachPatched), keeper = One(image, GoalkeeperOriginal, GoalkeeperPatched);
+            if (ages.Count != 1 || coach < 0 || keeper < 0 || !image.Slice(ages[0] + RandomCallAt, RandomCall.Length).SequenceEqual(RandomCall))
+                return null;
+            long age = ages[0], call = age + RandomCallAt + 2;
+            long random = call + 5 + BitConverter.ToInt32(image, (int)call + 1);
+            uint U32(long at) => BitConverter.ToUInt32(image, (int)at);
+            bool coachPatched = image[coach] == PushEbx, keeperPatched = image[keeper] == PushEbx;
+            int[] places = coachPatched ? new[] { 15, 27, 88 } : new[] { 10, 34, 143 };
+            uint group = U32(coach + places[0]), list = U32(coach + places[1]), table = U32(coach + places[2]);
+            uint keeperList = U32(keeper + (keeperPatched ? 24 : 32));
+            Site[] sites =
+            {
+                new Site { Offset = age + AgeAt, Original = new[] { AgeOriginal }, Patched = new[] { AgePatched }, IsPatched = image[age + AgeAt] == AgePatched },
+                new Site
+                {
+                    Offset = coach, Original = CoachOriginalBytes(group, list, table),
+                    Patched = CoachPatchedBytes(group, list, table, (int)(random - coach)), IsPatched = coachPatched,
+                },
+                new Site
+                {
+                    Offset = keeper, Original = GoalkeeperOriginalBytes(group, keeperList),
+                    Patched = GoalkeeperPatchedBytes(group, keeperList, (int)(random - keeper)), IsPatched = keeperPatched,
+                },
+            };
+            // Each place holds one of its two versions exactly (which also checks that both lists use the same group table).
+            return sites.All(s => image.Slice(s.Offset, s.Original.Length).SequenceEqual(s.IsPatched ? s.Patched : s.Original)) ? sites : null;
         }
     }
 

@@ -26,6 +26,7 @@
 // 8192 speeches:   a speech that doesn't fit does nothing      ->  takes its percentages' amounts off
 // 16384 negotiations: monthly halving one byte too low         ->  halves the counters per selling club
 // 32768 investments: balance minus the investments' values     ->  minus their deposits
+// 65536 trainers:  waiting list from 36, place back with 2     ->  from 33, back with 3 to 11 (around 7)
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -112,7 +113,7 @@ MSVFW_FUNCS(DEFINE_STUB)
 // ---- configuration --------------------------------------------------------------------------------
 
 // The marker lets A2G-Patch.exe recognize its own msvfw32.dll (it never deletes or overwrites someone
-// else's) and find the two flags bytes right after it (low byte first), which it sets on installing.
+// else's) and find the three flags bytes right after it (low byte first), which it sets on installing.
 // volatile and not const, so the compiler keeps it in .data and reads the bytes the exe wrote.
 #define FLAG_GOAL_LIMITS  1
 #define FLAG_ARROW_REPEAT 2
@@ -130,8 +131,9 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_SPEECH       8192
 #define FLAG_NEGOTIATION  16384
 #define FLAG_INVESTMENT   32768
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF";   // all on
-#define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
+#define FLAG_COACH        65536   // the first bit of the third flags byte
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\x01";   // all on
+#define CONFIG_FLAGS ((DWORD)g_config[14] | (DWORD)g_config[15] << 8 | (DWORD)g_config[16] << 16)
 
 // ---- finding and writing code ---------------------------------------------------------------------
 
@@ -983,6 +985,118 @@ static int PatchInvestment(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 65536: trainer supply ------------------------------------------------------------------------
+
+// As in Patches.cs (CoachSupply): former players get on the waiting list for the trainer and manager
+// pool from 33 on (not 36), and a place no former player takes comes back with competence 3 to 11
+// (3 + four times random(3)) instead of 2. Both list functions are rewritten in their own bytes.
+// mov dl,[esi+1E] (the age) / add ax,[esi+80 or 82] / cmp dl,35 / jbe (not on the list)
+static const WORD kCoachAge[] = {
+    0x8A, 0x56, 0x1E, 0x66, 0x03, 0x86, ANY, 0x00, 0x00, 0x00, 0x80, 0xFA, 35, 0x0F, 0x86, 0x9E, 0x01, 0x00, 0x00 };
+#define COACH_AGE_AT 12
+#define COACH_RANDOM_CALL 0x54     // push 3 / call random (E8), the push at 0x52
+// The trainers' and the goalkeeper trainers' function (group table, waiting list, other trade's table).
+static const WORD kCoach[] = {
+    0x0F, 0xBF, 0x44, 0x24, 0x08, 0x53, 0x66, 0x0F, 0xB6, 0x88, ANY, ANY, ANY, ANY, 0x0F, 0xBF,
+    0xC9, 0x33, 0xC0, 0x8D, 0x0C, 0x89, 0xC1, 0xE1, 0x02, 0x0F, 0xBF, 0xD0, 0x03, 0xD1, 0x66, 0x83,
+    0x3C, 0xD5, ANY, ANY, ANY, ANY, 0x00, 0x75, 0x2D, 0x40, 0x66, 0x3D, 0x14, 0x00, 0x7C, 0xE9,
+    0x8B, 0x44, 0x24, 0x08, 0x8A, 0x48, 0x05, 0x8A, 0x50, 0x04, 0x3A, 0xCA, 0xC6, 0x40, 0x07, 0x1E,
+    0x7E, 0x0A, 0xC6, 0x40, 0x05, 0x02, 0xC6, 0x40, 0x04, 0x01, 0x5B, 0xC3, 0xC6, 0x40, 0x05, 0x01,
+    0xC6, 0x40, 0x04, 0x02, 0x5B, 0xC3, 0x0F, 0xBF, 0xC0, 0x03, 0xC1, 0x8B, 0x4C, 0x24, 0x08, 0xC1,
+    0xE0, 0x03, 0x8A, 0x59, 0x04, 0x66, 0x8B, 0x90, ANY, ANY, ANY, ANY, 0x66, 0x89, 0x11, 0x66,
+    0x8B, 0x90, ANY, ANY, ANY, ANY, 0x66, 0x89, 0x51, 0x02, 0x8A, 0x51, 0x05, 0x3A, 0xD3, 0x8A,
+    0x90, ANY, ANY, ANY, ANY, 0x7E, 0x11, 0x88, 0x51, 0x05, 0x0F, 0xBE, 0xD2, 0x8A, 0x92, ANY,
+    ANY, ANY, ANY, 0x88, 0x51, 0x04, 0xEB, 0x0F, 0x88, 0x51, 0x04, 0x0F, 0xBE, 0xD2, 0x8A, 0x92,
+    ANY, ANY, ANY, ANY, 0x88, 0x51, 0x05, 0x8A, 0x90, ANY, ANY, ANY, ANY, 0x5B, 0x88, 0x51,
+    0x07, 0x66, 0xC7, 0x80, ANY, ANY, ANY, ANY, 0x00, 0x00, 0xC3,
+};
+static const WORD kGoalkeeper[] = {
+    0x0F, 0xBF, 0x44, 0x24, 0x08, 0x66, 0x0F, 0xB6, 0x88, ANY, ANY, ANY, ANY, 0x0F, 0xBF, 0xC9,
+    0x33, 0xC0, 0x8D, 0x0C, 0x89, 0xD1, 0xE1, 0x0F, 0xBF, 0xD0, 0x03, 0xD1, 0x66, 0x83, 0x3C, 0xD5,
+    ANY, ANY, ANY, ANY, 0x00, 0x75, 0x14, 0x40, 0x66, 0x3D, 0x0A, 0x00, 0x7C, 0xE9, 0x8B, 0x44,
+    0x24, 0x04, 0xC6, 0x40, 0x07, 0x23, 0xC6, 0x40, 0x04, 0x02, 0xC3, 0x0F, 0xBF, 0xC0, 0x03, 0xC1,
+    0x8B, 0x4C, 0x24, 0x04, 0xC1, 0xE0, 0x03, 0x66, 0x8B, 0x90, ANY, ANY, ANY, ANY, 0x66, 0x89,
+    0x11, 0x66, 0x8B, 0x90, ANY, ANY, ANY, ANY, 0x66, 0x89, 0x51, 0x02, 0x8A, 0x90, ANY, ANY,
+    ANY, ANY, 0x88, 0x51, 0x04, 0x8A, 0x90, ANY, ANY, ANY, ANY, 0x88, 0x51, 0x07, 0x66, 0xC7,
+    0x80, ANY, ANY, ANY, ANY, 0x00, 0x00, 0xC3,
+};
+#define COACH_GROUP 10
+#define COACH_LIST 34
+#define COACH_TABLE 143
+#define KEEPER_GROUP 9
+#define KEEPER_LIST 32
+// The rewritten functions as in Patches.cs, the addresses 0; padded with nops to the originals' length.
+static const BYTE kCoachCode[] = {
+    0x53, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x10, 0x0F, 0xBF, 0x44, 0x24, 0x14, 0x0F, 0xB6, 0x80, 0x00,
+    0x00, 0x00, 0x00, 0x8D, 0x04, 0x80, 0xC1, 0xE0, 0x05, 0x8D, 0xB0, 0x00, 0x00, 0x00, 0x00, 0x6A,
+    0x14, 0x59, 0x66, 0x83, 0x3E, 0x00, 0x75, 0x1F, 0x83, 0xC6, 0x08, 0xE2, 0xF5, 0xB3, 0x03, 0x6A,
+    0x04, 0x6A, 0x03, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x02, 0xD8, 0x58, 0xFF, 0x0C, 0x24, 0x75, 0xF1,
+    0x58, 0xB0, 0x1E, 0xB4, 0x01, 0xEB, 0x18, 0x8B, 0x06, 0x89, 0x07, 0x8A, 0x5E, 0x06, 0x66, 0xC7,
+    0x06, 0x00, 0x00, 0x0F, 0xB6, 0xC3, 0x8A, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x8A, 0x46, 0x04, 0x88,
+    0x47, 0x07, 0x8A, 0x4F, 0x04, 0x3A, 0x4F, 0x05, 0x7C, 0x08, 0x88, 0x5F, 0x04, 0x88, 0x67, 0x05,
+    0xEB, 0x06, 0x88, 0x5F, 0x05, 0x88, 0x67, 0x04, 0x5F, 0x5E, 0x5B, 0xC3,
+};
+static const BYTE kGoalkeeperCode[] = {
+    0x53, 0x56, 0x57, 0x8B, 0x7C, 0x24, 0x10, 0x0F, 0xBF, 0x44, 0x24, 0x14, 0x0F, 0xB6, 0x80, 0x00,
+    0x00, 0x00, 0x00, 0x6B, 0xC0, 0x50, 0x8D, 0xB0, 0x00, 0x00, 0x00, 0x00, 0x6A, 0x0A, 0x59, 0x66,
+    0x83, 0x3E, 0x00, 0x75, 0x1D, 0x83, 0xC6, 0x08, 0xE2, 0xF5, 0xB3, 0x03, 0x6A, 0x04, 0x6A, 0x03,
+    0xE8, 0x00, 0x00, 0x00, 0x00, 0x02, 0xD8, 0x58, 0xFF, 0x0C, 0x24, 0x75, 0xF1, 0x58, 0xB0, 0x23,
+    0xEB, 0x0F, 0x8B, 0x06, 0x89, 0x07, 0x8A, 0x5E, 0x06, 0x66, 0xC7, 0x06, 0x00, 0x00, 0x8A, 0x46,
+    0x04, 0x88, 0x47, 0x07, 0x88, 0x5F, 0x04, 0x5F, 0x5E, 0x5B, 0xC3,
+};
+#define CODE_GROUP 15
+#define CODE_LIST 27
+#define CODE_RANDOM 52
+#define CODE_TABLE 88
+#define KEEPER_CODE_LIST 24
+#define KEEPER_CODE_RANDOM 49
+
+// Puts value at the (unaligned) dword at p.
+static void PutDword(BYTE *p, DWORD value)
+{
+    Copy(p, (const BYTE *)&value, 4);
+}
+
+// Rewrites both functions, then lowers the age.
+static int PatchCoach(BYTE *base, SIZE_T size)
+{
+    BYTE *age, *coach, *keeper;
+    int countAge = Count(base, size, kCoachAge, ARRAYSIZE(kCoachAge), &age);
+    int countCoach = Count(base, size, kCoach, ARRAYSIZE(kCoach), &coach);
+    int countKeeper = Count(base, size, kGoalkeeper, ARRAYSIZE(kGoalkeeper), &keeper);
+    if (countAge == 0 || countCoach == 0 || countKeeper == 0) return NOT_YET;
+    if (countAge != 1 || countCoach != 1 || countKeeper != 1
+        || age[COACH_RANDOM_CALL - 2] != 0x6A || age[COACH_RANDOM_CALL - 1] != 0x03 || age[COACH_RANDOM_CALL] != 0xE8) return DONE;
+
+    BYTE *random = CallTarget(age + COACH_RANDOM_CALL);
+    DWORD group, list, table, keeperGroup, keeperList;
+    Copy((BYTE *)&group, coach + COACH_GROUP, 4);
+    Copy((BYTE *)&list, coach + COACH_LIST, 4);
+    Copy((BYTE *)&table, coach + COACH_TABLE, 4);
+    Copy((BYTE *)&keeperGroup, keeper + KEEPER_GROUP, 4);
+    Copy((BYTE *)&keeperList, keeper + KEEPER_LIST, 4);
+    if (keeperGroup != group) return DONE;
+
+    BYTE code[ARRAYSIZE(kCoach)], keeperCode[ARRAYSIZE(kGoalkeeper)];
+    for (int i = 0; i < ARRAYSIZE(code); i++) code[i] = 0x90;
+    for (int i = 0; i < ARRAYSIZE(keeperCode); i++) keeperCode[i] = 0x90;
+    Copy(code, kCoachCode, sizeof kCoachCode);
+    Copy(keeperCode, kGoalkeeperCode, sizeof kGoalkeeperCode);
+    PutDword(code + CODE_GROUP, group);
+    PutDword(code + CODE_LIST, list);
+    PutDword(code + CODE_RANDOM, (DWORD)(random - (coach + CODE_RANDOM + 4)));
+    PutDword(code + CODE_TABLE, table);
+    PutDword(keeperCode + CODE_GROUP, group);
+    PutDword(keeperCode + KEEPER_CODE_LIST, keeperList);
+    PutDword(keeperCode + KEEPER_CODE_RANDOM, (DWORD)(random - (keeper + KEEPER_CODE_RANDOM + 4)));
+
+    BYTE lowered = 32;
+    Write(coach, code, sizeof code);
+    Write(keeper, keeperCode, sizeof keeperCode);
+    Write(age + COACH_AGE_AT, &lowered, 1);
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 // Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
@@ -993,7 +1107,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
     IMAGE_DOS_HEADER *dos = (IMAGE_DOS_HEADER *)base;
     IMAGE_NT_HEADERS32 *nt = (IMAGE_NT_HEADERS32 *)(base + dos->e_lfanew);
     SIZE_T size = nt->OptionalHeader.SizeOfImage;
-    WORD flags = CONFIG_FLAGS;
+    DWORD flags = CONFIG_FLAGS;
     BOOL goalsDone = !(flags & FLAG_GOAL_LIMITS), arrowDone = !(flags & FLAG_ARROW_REPEAT);
     BOOL videoDone = !(flags & FLAG_VIDEO_CRASH), sleepDone = !(flags & FLAG_SLEEP_FREEZE);
     BOOL soundDone = !(flags & FLAG_DEFAULT_SOUND), diskDone = !(flags & FLAG_DISK_WARNING);
@@ -1001,7 +1115,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT), v101Done = !(flags & FLAG_V101);
     BOOL buttonDone = !(flags & FLAG_BUTTON_INIT), interviewDone = !(flags & FLAG_INTERVIEW), speechDone = !(flags & FLAG_SPEECH);
     BOOL negotiationDone = !(flags & FLAG_NEGOTIATION), investmentDone = !(flags & FLAG_INVESTMENT);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone)
+    BOOL coachDone = !(flags & FLAG_COACH);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -1020,6 +1135,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!speechDone) speechDone = PatchSpeech(base, size) == DONE;
         if (!negotiationDone) negotiationDone = PatchRewrite(base, size, kNegotiation, kNegotiationPatched, ARRAYSIZE(kNegotiation)) == DONE;
         if (!investmentDone) investmentDone = PatchInvestment(base, size) == DONE;
+        if (!coachDone) coachDone = PatchCoach(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

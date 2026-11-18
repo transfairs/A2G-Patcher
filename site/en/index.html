@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>The patches</h2>
-    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes eight of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, uptime, audio device). <b>Balancing</b> changes how the game plays. Three more patches are for the GOG release only.</p>
+    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes nine of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device). <b>Balancing</b> changes how the game plays. Three more patches are for the GOG release only.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -127,6 +127,14 @@
       </article>
       <article class="card">
         <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        </div>
+        <h3>No freeze after more than 24 days of Windows uptime</h3>
+        <p>A 3-second pause turns into weeks once Windows has been running for more than 2<sup>31</sup>&nbsp;ms. That comes sooner than you think: Windows Fast Startup keeps the uptime across a shutdown.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
           <span class="tag tag-gog">GOG &amp; 2007 CD</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.3 5.7M4 18v-6h6"/></svg>
         </div>
@@ -140,14 +148,6 @@
         </div>
         <h3>No crash on the World Cup, European Championship and final videos</h3>
         <p>After winning the World Cup the game crashes, because Windows no longer knows the video format of <code>WM.AVI</code>, <code>EM.AVI</code> and <code>FINALE.AVI</code>. The patch skips the video and the game goes on. With an Indeo codec installed, the videos play as before.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Patch</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
-        </div>
-        <h3>No freeze after more than 24 days of Windows uptime</h3>
-        <p>A 3-second pause turns into weeks once Windows has been running for more than 2<sup>31</sup>&nbsp;ms. That comes sooner than you think: Windows Fast Startup keeps the uptime across a shutdown.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -191,6 +191,14 @@
         </div>
         <h3>Unfitting speeches weaken the team</h3>
         <p>The game’s help warns that a pre-match speech that doesn’t fit the situation can turn its effect into the negative. But the game only shows a message and takes the use. With the patch such a speech costs the team its percentages in defence and attack for that match: “+3&nbsp;%” becomes −3&nbsp;%. A failed roll against the motivation skill stays without effect.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M18 14V6"/><path d="M15 9l3-3 3 3"/></svg>
+        </div>
+        <h3>Trainer supply</h3>
+        <p>When a trainer or manager retires, a former player from a waiting list takes his place. But players only get on that list if they end their career at 36 or later, which outfield players rarely do. With the list empty, the retired one comes back under his name, aged 30 with competence 2; in the long run the strong trainers die out. With the patch former players get on the list from 33, and without one the newcomer starts with competence 3 to 11, most often around 7. So trainers with competence 15 keep coming in the long run. This also goes for co-trainers and goalkeeper trainers.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -371,6 +379,12 @@ effect:       percentages of +E5     →  negative number: their amounts taken o
         <summary><b>Investments</b><span>Value subtracted instead of deposit</span></summary>
         <p>The game doesn’t store the bank balance but works it out each time: the club’s ledger minus the current value of all investments plus the loans plus the season’s bookings. The ledger is never credited with the interest, so every rise of an index lowers the balance by exactly that much. Closing an investment drops the subtraction and books value minus deposit as interest on top. The patch subtracts the deposits instead of the values, in the same 48 bytes; the club’s worth stays as it was. As nothing is stored, switching it off shows the old balance again.</p>
 <pre><code>ledger − values + loans + bookings  →  ledger − deposits + loans + bookings</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Trainer supply</b><span>A waiting list that stays empty</span></summary>
+        <p>Trainers and managers share one pool (trainer and manager level, the higher one is the trade); co-trainers come from it too, goalkeeper trainers have their own table. At the season change whoever is out of contract and older than 65 to 67 retires, and his place goes to the next former player on a waiting list per country group (20 places, goalkeeper trainers 10). A player only gets on it if he ends his career at 36 or later; players mostly end it only once their strength has dropped to 0. With the list empty, the retired one gets his place back: aged 30, competence 2 (goalkeeper trainers 35 and 2). Up to 44 competence grows by 1 with 20&nbsp;% a season (goalkeeper trainers 50&nbsp;%), so from 2 nobody gets far. The patch lowers the age to 33 and rewrites both functions shorter in their own bytes, so a roll fits. Simulated over 60 seasons, this keeps a bell around 7 to 8 with 1 to 2&nbsp;% at 15; without the patch nobody is above 12 in the end.</p>
+<pre><code>cmp dl,23 / jbe (not on the list)           →  cmp dl,20
+place back without an entry: competence 2   →  3 + 4 × random(3): 3 to 11, most often 7</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>
