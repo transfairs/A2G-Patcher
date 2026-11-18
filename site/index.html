@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="patch.png" width="902" height="816" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je eine Kachel mit Schalter pro Patch, in drei Gruppen">
+      <img src="patch.png" width="902" height="759" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je eine Kachel mit Schalter pro Patch, in drei Gruppen">
     </figure>
   </div>
 </section>
@@ -59,50 +59,19 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
+    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ acht Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Laufzeit, Audiogerät). Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen drei Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 15l4-4 4 4M8 9l4-4 4 4"/></svg>
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M6 16v-5M10 16V8M14 16v-6M18 16V5"/></svg>
         </div>
-        <h3>Pfeile zählen beim Gedrückthalten weiter</h3>
-        <p>Unter aktuellem Windows zählen die Pfeilknöpfe bei Zahlenwerten nur ein, zwei Schritte und bleiben dann stehen. Bisher half nur der Kompatibilitätsmodus „Windows&nbsp;98“. Mit dem Patch zählen sie einfach weiter.</p>
+        <h3>Geldanlagen mindern den Kontostand nicht mehr</h3>
+        <p>Jeder Gewinn einer Geldanlage wird vom Kontostand abgezogen: Je besser sie läuft, desto weniger Geld ist auf dem Konto, und desto weniger Zinsen bringt es. Erst beim Auflösen kommt alles auf einmal zurück, was wie doppelte Zinsen aussieht. Mit dem Patch sinkt der Kontostand nur um das eingezahlte Geld, der Gewinn kommt einmal beim Auflösen.</p>
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
-        </div>
-        <h3>Kein Absturz bei den Videos zu WM, EM und Finale</h3>
-        <p>Nach dem WM-Titel stürzt das Spiel ab, weil Windows das Videoformat von <code>WM.AVI</code>, <code>EM.AVI</code> und <code>FINALE.AVI</code> nicht mehr kennt. Der Patch überspringt das Video, das Spiel läuft weiter. Mit installiertem Indeo-Codec laufen die Videos wie gewohnt.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
-        </div>
-        <h3>Kein Einfrieren nach über 24 Tagen Windows-Laufzeit</h3>
-        <p>Eine Wartepause von 3&nbsp;Sekunden wird zu Wochen, sobald Windows länger als 2<sup>31</sup>&nbsp;ms läuft. Das kommt schneller als gedacht: Der Schnellstart von Windows setzt die Laufzeit beim Herunterfahren nicht zurück.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>
-        </div>
-        <h3>Ton über das Standard-Audiogerät von Windows</h3>
-        <p>Das Spiel nimmt das zuletzt gefundene Soundgerät statt des eingestellten. Mit Monitor-Lautsprechern und Headset landet der Ton so leicht auf dem falschen. Mit dem Patch kommt er dort heraus, wo Windows ihn hinschickt.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h6M17 12h.01"/></svg>
-        </div>
-        <h3>Keine falsche Warnung „Festplatte fast voll“</h3>
-        <p>Den freien Platz rechnet das Spiel mit 32&nbsp;Bit aus. Auf großen Platten läuft die Rechnung über, und beim Speichern erscheint ab und zu grundlos die Warnung, die Festplatte sei fast voll.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
+          <span class="tag tag-fix">Spielfehler</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5M17.5 14a5.5 5.5 0 0 1 3 5"/></svg>
         </div>
         <h3>Kader nicht über 30 Spieler wachsen lassen</h3>
@@ -110,15 +79,7 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-        </div>
-        <h3>Desktop-Auflösung auch nach einem Absturz zurückholen</h3>
-        <p>Das Spiel stellt den Bildschirm so auf 640×480 um, dass die Umstellung einen Absturz überdauert. Mit dem Patch stellt Windows die Auflösung selbst wieder her, sobald das Spiel endet. Die GOG-Version macht das schon richtig, dort ist der Schalter ausgegraut.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
+          <span class="tag tag-fix">Spielfehler</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7"/></svg>
         </div>
         <h3>Vereinsnamen bei der Pokalauslosung richtig darstellen</h3>
@@ -126,15 +87,7 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h6"/></svg>
-        </div>
-        <h3>Kein Hänger beim Öffnen der Kalkulation</h3>
-        <p>Der Kalkulationsbildschirm der Vorsaison übernimmt eine seiner zwei Auswahlen aus Speicher, den er nie gelöscht hat. Steht dort ein großer Wert, bleibt er unsichtbar, und das Spiel wartet auf ihn. Unter Wine gesehen; unter Windows ist der Speicher meist 0, der Patch stellt es sicher.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
+          <span class="tag tag-fix">Spielfehler</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="12" y="13" width="6" height="5" rx="1"/><path d="M7 7h6M7 10h4"/></svg>
         </div>
         <h3>Knöpfe „A/B“ und „i“ an ihrem Platz</h3>
@@ -142,27 +95,35 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h6"/></svg>
         </div>
-        <h3>Antworten in Interviews wirken sich aus</h3>
-        <p>Jede Antwort im Interview soll etwas bewirken: mehr oder weniger Fans, einen zufriedeneren oder verärgerten Vorstand, die Moral der Mannschaft oder eine Geldstrafe. Das Spiel liest die Antworten aber von einer Stelle, an die sie nie geschrieben werden, also bleibt jede ohne Folgen. Mit dem Patch wirken sie so, wie ihre Texte es versprechen.</p>
+        <h3>Kein Hänger beim Öffnen der Kalkulation</h3>
+        <p>Der Kalkulationsbildschirm der Vorsaison übernimmt eine seiner zwei Auswahlen aus Speicher, den er nie gelöscht hat. Steht dort ein großer Wert, bleibt er unsichtbar, und das Spiel wartet auf ihn. Unter Wine gesehen; unter Windows ist der Speicher meist 0, der Patch stellt es sicher.</p>
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Fehlerbehebung</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6l2-3 2 3h6"/><path d="M7 8l-3 4 3 4M17 8l3 4-3 4"/></svg>
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h6M17 12h.01"/></svg>
         </div>
-        <h3>Verhandlungssperre baut sich wieder ab</h3>
-        <p>Nach drei Verhandlungsterminen mit Spielern desselben Vereins heißt es, der Verein würde „unter keinen Umständen“ freigeben. Eigentlich soll diese Sperre jeden Monat nachlassen, doch das Spiel halbiert dabei die falschen Werte, und sie hält bis zur nächsten Saison. Mit dem Patch können Sie nach ein, zwei Monaten wieder mit dem Verein über seine Spieler sprechen.</p>
+        <h3>Keine falsche Warnung „Festplatte fast voll“</h3>
+        <p>Den freien Platz rechnet das Spiel mit 32&nbsp;Bit aus. Auf großen Platten läuft die Rechnung über, und beim Speichern erscheint ab und zu grundlos die Warnung, die Festplatte sei fast voll.</p>
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-gog">Nur GOG</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 15l4-4 4 4M8 9l4-4 4 4"/></svg>
         </div>
-        <h3>Keine Kopierschutz-Strafen</h3>
-        <p>GOG verkauft die Fassung von 2007, aus dem Kopierschutz herausgelöst. Dessen Reste schlagen trotzdem an: Ab der zweiten Saison heißen alle Vereine „Raubkopie“, Spieler fallen auf Stärke&nbsp;1, und zehn Selbstprüfungen der <code>run.exe</code> scheitern. Mit dem Patch bestehen alle Prüfungen.</p>
+        <h3>Pfeile zählen beim Gedrückthalten weiter</h3>
+        <p>Unter aktuellem Windows zählen die Pfeilknöpfe bei Zahlenwerten nur ein, zwei Schritte und bleiben dann stehen. Bisher half nur der Kompatibilitätsmodus „Windows&nbsp;98“. Mit dem Patch zählen sie einfach weiter.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        </div>
+        <h3>Desktop-Auflösung auch nach einem Absturz zurückholen</h3>
+        <p>Das Spiel stellt den Bildschirm so auf 640×480 um, dass die Umstellung einen Absturz überdauert. Mit dem Patch stellt Windows die Auflösung selbst wieder her, sobald das Spiel endet. Die GOG-Version macht das schon richtig, dort ist der Schalter ausgegraut.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -171,6 +132,73 @@
         </div>
         <h3>Patch 1.01</h3>
         <p>Die <code>run.exe</code> von GOG und die der 2007er-CD sind aus dem Stand 1.00 gebaut. Der Patch bringt Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999 schon hat: das Trainingslager in der Winterpause, Spielerlisten, neue Spieler und Torhüter, Zähler, Ereignistexte und mehr.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
+        </div>
+        <h3>Kein Absturz bei den Videos zu WM, EM und Finale</h3>
+        <p>Nach dem WM-Titel stürzt das Spiel ab, weil Windows das Videoformat von <code>WM.AVI</code>, <code>EM.AVI</code> und <code>FINALE.AVI</code> nicht mehr kennt. Der Patch überspringt das Video, das Spiel läuft weiter. Mit installiertem Indeo-Codec laufen die Videos wie gewohnt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        </div>
+        <h3>Kein Einfrieren nach über 24 Tagen Windows-Laufzeit</h3>
+        <p>Eine Wartepause von 3&nbsp;Sekunden wird zu Wochen, sobald Windows länger als 2<sup>31</sup>&nbsp;ms läuft. Das kommt schneller als gedacht: Der Schnellstart von Windows setzt die Laufzeit beim Herunterfahren nicht zurück.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+        </div>
+        <h3>Ton über das Standard-Audiogerät von Windows</h3>
+        <p>Das Spiel nimmt das zuletzt gefundene Soundgerät statt des eingestellten. Mit Monitor-Lautsprechern und Headset landet der Ton so leicht auf dem falschen. Mit dem Patch kommt er dort heraus, wo Windows ihn hinschickt.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6l2-3 2 3h6"/><path d="M7 8l-3 4 3 4M17 8l3 4-3 4"/></svg>
+        </div>
+        <h3>Verhandlungssperre baut sich wieder ab</h3>
+        <p>Nach drei Verhandlungsterminen mit Spielern desselben Vereins heißt es, der Verein würde „unter keinen Umständen“ freigeben. Eigentlich soll diese Sperre jeden Monat nachlassen, doch das Spiel halbiert dabei die falschen Werte, und sie hält bis zur nächsten Saison. Mit dem Patch können Sie nach ein, zwei Monaten wieder mit dem Verein über seine Spieler sprechen.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+        </div>
+        <h3>Antworten in Interviews wirken sich aus</h3>
+        <p>Jede Antwort im Interview soll etwas bewirken: mehr oder weniger Fans, einen zufriedeneren oder verärgerten Vorstand, die Moral der Mannschaft oder eine Geldstrafe. Das Spiel liest die Antworten aber von einer Stelle, an die sie nie geschrieben werden, also bleibt jede ohne Folgen. Mit dem Patch wirken sie so, wie ihre Texte es versprechen.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>
+        </div>
+        <h3>Torgrenze auf 15 Tore erhöhen</h3>
+        <p>Das Spiel lässt eine Mannschaft nur treffen, solange sie bis zur Halbzeit unter 6 und danach unter 10 Toren liegt, und halbiert ab 7 Toren ihre Chancen. Der Patch hebt die Grenze auf 15 an und streicht die Bremse.</p>
+        <div class="score" aria-label="Grenze von 10 auf 15 Tore">
+          <span class="old">10</span><span class="arrow">→</span><span class="new">15</span>
+        </div>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H10l-5 4v-4H4z"/><path d="M9 10h6"/></svg>
+        </div>
+        <h3>Unpassende Ansprachen schwächen die Mannschaft</h3>
+        <p>Die Spielhilfe warnt, eine Ansprache, die nicht zur Lage passt, könne ihre Wirkung ins Negative umkehren. Das Spiel zeigt aber nur eine Meldung und zieht den Einsatz ab. Mit dem Patch kostet so eine Ansprache die Mannschaft ihre Prozente in Abwehr und Angriff, für dieses Spiel: aus „+3&nbsp;%“ werden −3&nbsp;%. Ein misslungener Wurf gegen die Motivationsfähigkeit bleibt ohne Folgen.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">Nur GOG</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>Keine Kopierschutz-Strafen</h3>
+        <p>GOG verkauft die Fassung von 2007, aus dem Kopierschutz herausgelöst. Dessen Reste schlagen trotzdem an: Ab der zweiten Saison heißen alle Vereine „Raubkopie“, Spieler fallen auf Stärke&nbsp;1, und zehn Selbstprüfungen der <code>run.exe</code> scheitern. Mit dem Patch bestehen alle Prüfungen.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -187,25 +215,6 @@
         </div>
         <h3>Kein schwarzer Strich an den Animationen</h3>
         <p>Der DirectDraw-Wrapper von GOG (<code>ddraw.dll</code>) zeigt rechts und unten an den Animationen, etwa dem Fallrückzieher im Hauptmenü, eine schwarze Linie. Der Patch füllt sie mit dem Bild. Angeboten nur, wenn die <code>ddraw.dll</code> von GOG im Spielordner liegt.</p>
-      </article>
-      <article class="card card-alt">
-        <div class="card-head">
-          <span class="tag tag-opt">Optional</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H10l-5 4v-4H4z"/><path d="M9 10h6"/></svg>
-        </div>
-        <h3>Unpassende Ansprachen schwächen die Mannschaft</h3>
-        <p>Die Spielhilfe warnt, eine Ansprache, die nicht zur Lage passt, könne ihre Wirkung ins Negative umkehren. Das Spiel zeigt aber nur eine Meldung und zieht den Einsatz ab. Mit dem Patch kostet so eine Ansprache die Mannschaft ihre Prozente in Abwehr und Angriff, für dieses Spiel: aus „+3&nbsp;%“ werden −3&nbsp;%. Ein misslungener Wurf gegen die Motivationsfähigkeit bleibt ohne Folgen.</p>
-      </article>
-      <article class="card card-alt">
-        <div class="card-head">
-          <span class="tag tag-opt">Optional</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>
-        </div>
-        <h3>Torgrenze auf 15 Tore erhöhen</h3>
-        <p>Das Spiel lässt eine Mannschaft nur treffen, solange sie bis zur Halbzeit unter 6 und danach unter 10 Toren liegt, und halbiert ab 7 Toren ihre Chancen. Der Patch hebt die Grenze auf 15 an und streicht die Bremse.</p>
-        <div class="score" aria-label="Grenze von 10 auf 15 Tore">
-          <span class="old">10</span><span class="arrow">→</span><span class="new">15</span>
-        </div>
       </article>
     </div>
   </div>
@@ -357,6 +366,11 @@ Wirkung:          Prozente von +E5       →  negative Nummer: deren Beträge ab
         <summary><b>Verhandlungssperre</b><span>Um ein Byte verrutscht</span></summary>
         <p>Jeder Verein führt für jeden menschlichen Manager einen Zähler (<code>+0x1081</code> + Managernummer 1–4). Jeder vereinbarte Verhandlungstermin mit einem seiner Spieler zählt ihn hoch, bis höchstens 10; ab 3 gibt der Verein niemanden mehr frei. Die monatliche Vereinsaktualisierung soll die Zähler halbieren, greift aber ein Byte zu tief und halbiert <code>+0x107D</code> bis <code>+0x1080</code>, sodass die echten Zähler erst zur neuen Saison auf 0 gehen. Der Patch verschiebt die vier Lade- und vier Speicherbefehle um 4, in denselben Bytes:</p>
 <pre><code>mov cl/al/bl/dl,[ebp+107D..1080] / shr ×4 / mov [ebp+107D..1080],…  →  dasselbe mit +1081..1084</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Geldanlagen</b><span>Wert statt Einlage abgezogen</span></summary>
+        <p>Das Spiel speichert den Kontostand nicht, sondern rechnet ihn jedes Mal aus: Grundbetrag des Vereins minus aktueller Wert aller Anlagen plus Kredite plus Buchungen der Saison. Der Grundbetrag bekommt keine Zinsen gutgeschrieben, also senkt jeder Anstieg eines Index den Kontostand um genau diesen Betrag. Beim Auflösen fällt der Abzug weg, und Wert minus Einlage wird zusätzlich als Zinsertrag gebucht. Der Patch zieht die Einlagen statt der Werte ab, in denselben 48 Bytes; das Vermögen bleibt, wie es war. Da nichts gespeichert wird, zeigt das Ausschalten wieder den alten Kontostand.</p>
+<pre><code>Grundbetrag − Werte + Kredite + Buchungen  →  Grundbetrag − Einlagen + Kredite + Buchungen</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>

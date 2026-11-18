@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="902" height="816" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
+      <img src="../patch.png" width="902" height="759" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
     </figure>
   </div>
 </section>
@@ -59,50 +59,19 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>The patches</h2>
+    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes eight of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, uptime, audio device). <b>Balancing</b> changes how the game plays. Three more patches are for the GOG release only.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 15l4-4 4 4M8 9l4-4 4 4"/></svg>
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M6 16v-5M10 16V8M14 16v-6M18 16V5"/></svg>
         </div>
-        <h3>Arrows keep counting while held down</h3>
-        <p>On current Windows, the arrow buttons for numeric values count one or two steps and then stop. Until now the only cure was the “Windows&nbsp;98” compatibility mode. With the patch they simply keep counting.</p>
+        <h3>Investments no longer drain the balance</h3>
+        <p>Every gain of an investment is taken off the bank balance: the better it does, the less money is in the account, and the less interest it earns. Only closing it brings everything back at once, which looks like double interest. With the patch the balance only goes down by the money paid in, and the gain arrives once when the investment is closed.</p>
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
-        </div>
-        <h3>No crash on the World Cup, European Championship and final videos</h3>
-        <p>After winning the World Cup the game crashes, because Windows no longer knows the video format of <code>WM.AVI</code>, <code>EM.AVI</code> and <code>FINALE.AVI</code>. The patch skips the video and the game goes on. With an Indeo codec installed, the videos play as before.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
-        </div>
-        <h3>No freeze after more than 24 days of Windows uptime</h3>
-        <p>A 3-second pause turns into weeks once Windows has been running for more than 2<sup>31</sup>&nbsp;ms. That comes sooner than you think: Windows Fast Startup keeps the uptime across a shutdown.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>
-        </div>
-        <h3>Sound on the Windows default audio device</h3>
-        <p>The game takes the last sound device it finds instead of the one set in Windows. With monitor speakers and a headset, the sound easily ends up on the wrong one. With the patch it comes out where Windows sends it.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h6M17 12h.01"/></svg>
-        </div>
-        <h3>No false “disk almost full” warning</h3>
-        <p>The game computes the free space in 32&nbsp;bits. On large disks the calculation overflows, and now and then saving brings up the warning that the disk is almost full, for no reason.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
+          <span class="tag tag-fix">Game bug</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5M17.5 14a5.5 5.5 0 0 1 3 5"/></svg>
         </div>
         <h3>Squads no longer grow beyond 30 players</h3>
@@ -110,15 +79,7 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-        </div>
-        <h3>Desktop resolution restored, even after a crash</h3>
-        <p>The game switches the screen to 640×480 in a way that outlives a crash. With the patch, Windows restores the resolution itself as soon as the game ends. The GOG release already gets this right; there the switch is greyed out.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
+          <span class="tag tag-fix">Game bug</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7"/></svg>
         </div>
         <h3>Readable club names in the cup draw</h3>
@@ -126,15 +87,7 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h6"/></svg>
-        </div>
-        <h3>No hang when opening the calculation screen</h3>
-        <p>The preseason calculation screen takes one of its two selections from memory it never cleared. If a large value is there, the screen stays invisible and the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.</p>
-      </article>
-      <article class="card">
-        <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
+          <span class="tag tag-fix">Game bug</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="12" y="13" width="6" height="5" rx="1"/><path d="M7 7h6M7 10h4"/></svg>
         </div>
         <h3>“A/B” and “i” buttons in their place</h3>
@@ -142,27 +95,35 @@
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h6"/></svg>
         </div>
-        <h3>Interview answers take effect</h3>
-        <p>Every answer in an interview is meant to do something: more or fewer fans, a happier or angrier board, the team’s morale or a fine. But the game reads the answers from a place they are never written to, so none of them has any effect. With the patch they do what their texts promise.</p>
+        <h3>No hang when opening the calculation screen</h3>
+        <p>The preseason calculation screen takes one of its two selections from memory it never cleared. If a large value is there, the screen stays invisible and the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.</p>
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-fix">Bug fix</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6l2-3 2 3h6"/><path d="M7 8l-3 4 3 4M17 8l3 4-3 4"/></svg>
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h6M17 12h.01"/></svg>
         </div>
-        <h3>The negotiation block wears off</h3>
-        <p>After three negotiation dates with players of the same club, you are told that club would release no one “under any circumstances”. The block is meant to ease every month, but the game halves the wrong values, so it lasts until the next season. With the patch you can talk to that club about its players again after a month or two.</p>
+        <h3>No false “disk almost full” warning</h3>
+        <p>The game computes the free space in 32&nbsp;bits. On large disks the calculation overflows, and now and then saving brings up the warning that the disk is almost full, for no reason.</p>
       </article>
       <article class="card">
         <div class="card-head">
-          <span class="tag tag-gog">GOG only</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 15l4-4 4 4M8 9l4-4 4 4"/></svg>
         </div>
-        <h3>No copy protection penalties</h3>
-        <p>GOG sells the 2007 release, taken out of its copy protection. What is left of it still strikes: from the second season all clubs are called “Raubkopie” (pirated copy), players drop to strength&nbsp;1, and ten self-checks of <code>run.exe</code> fail. With the patch all checks pass.</p>
+        <h3>Arrows keep counting while held down</h3>
+        <p>On current Windows, the arrow buttons for numeric values count one or two steps and then stop. Until now the only cure was the “Windows&nbsp;98” compatibility mode. With the patch they simply keep counting.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        </div>
+        <h3>Desktop resolution restored, even after a crash</h3>
+        <p>The game switches the screen to 640×480 in a way that outlives a crash. With the patch, Windows restores the resolution itself as soon as the game ends. The GOG release already gets this right; there the switch is greyed out.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -171,6 +132,73 @@
         </div>
         <h3>Patch 1.01</h3>
         <p>The <code>run.exe</code> of GOG and that of the 2007 CD are built from version 1.00. The patch brings program and data up to the official patch 1.01, which the 1999 release already has: the training camp in the winter break, player lists, new players and goalkeepers, counters, event texts and more.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
+        </div>
+        <h3>No crash on the World Cup, European Championship and final videos</h3>
+        <p>After winning the World Cup the game crashes, because Windows no longer knows the video format of <code>WM.AVI</code>, <code>EM.AVI</code> and <code>FINALE.AVI</code>. The patch skips the video and the game goes on. With an Indeo codec installed, the videos play as before.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        </div>
+        <h3>No freeze after more than 24 days of Windows uptime</h3>
+        <p>A 3-second pause turns into weeks once Windows has been running for more than 2<sup>31</sup>&nbsp;ms. That comes sooner than you think: Windows Fast Startup keeps the uptime across a shutdown.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+        </div>
+        <h3>Sound on the Windows default audio device</h3>
+        <p>The game takes the last sound device it finds instead of the one set in Windows. With monitor speakers and a headset, the sound easily ends up on the wrong one. With the patch it comes out where Windows sends it.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6l2-3 2 3h6"/><path d="M7 8l-3 4 3 4M17 8l3 4-3 4"/></svg>
+        </div>
+        <h3>The negotiation block wears off</h3>
+        <p>After three negotiation dates with players of the same club, you are told that club would release no one “under any circumstances”. The block is meant to ease every month, but the game halves the wrong values, so it lasts until the next season. With the patch you can talk to that club about its players again after a month or two.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+        </div>
+        <h3>Interview answers take effect</h3>
+        <p>Every answer in an interview is meant to do something: more or fewer fans, a happier or angrier board, the team’s morale or a fine. But the game reads the answers from a place they are never written to, so none of them has any effect. With the patch they do what their texts promise.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>
+        </div>
+        <h3>Raise the goal limit to 15</h3>
+        <p>The game lets a team score only while it has fewer than 6 goals up to half-time and fewer than 10 after, and halves its chances from 7 goals on. The patch raises the limit to 15 and drops the brake.</p>
+        <div class="score" aria-label="Limit raised from 10 to 15 goals">
+          <span class="old">10</span><span class="arrow">→</span><span class="new">15</span>
+        </div>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H10l-5 4v-4H4z"/><path d="M9 10h6"/></svg>
+        </div>
+        <h3>Unfitting speeches weaken the team</h3>
+        <p>The game’s help warns that a pre-match speech that doesn’t fit the situation can turn its effect into the negative. But the game only shows a message and takes the use. With the patch such a speech costs the team its percentages in defence and attack for that match: “+3&nbsp;%” becomes −3&nbsp;%. A failed roll against the motivation skill stays without effect.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">GOG only</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <h3>No copy protection penalties</h3>
+        <p>GOG sells the 2007 release, taken out of its copy protection. What is left of it still strikes: from the second season all clubs are called “Raubkopie” (pirated copy), players drop to strength&nbsp;1, and ten self-checks of <code>run.exe</code> fail. With the patch all checks pass.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -187,25 +215,6 @@
         </div>
         <h3>No black line on the animations</h3>
         <p>GOG’s DirectDraw wrapper (<code>ddraw.dll</code>) shows a black line along the right and bottom edge of the animations, such as the overhead kick in the main menu. The patch fills it with the picture. Offered only with GOG’s <code>ddraw.dll</code> in the game folder.</p>
-      </article>
-      <article class="card card-alt">
-        <div class="card-head">
-          <span class="tag tag-opt">Optional</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H10l-5 4v-4H4z"/><path d="M9 10h6"/></svg>
-        </div>
-        <h3>Unfitting speeches weaken the team</h3>
-        <p>The game’s help warns that a pre-match speech that doesn’t fit the situation can turn its effect into the negative. But the game only shows a message and takes the use. With the patch such a speech costs the team its percentages in defence and attack for that match: “+3&nbsp;%” becomes −3&nbsp;%. A failed roll against the motivation skill stays without effect.</p>
-      </article>
-      <article class="card card-alt">
-        <div class="card-head">
-          <span class="tag tag-opt">Optional</span>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 4.5h-5L8 10z"/></svg>
-        </div>
-        <h3>Raise the goal limit to 15</h3>
-        <p>The game lets a team score only while it has fewer than 6 goals up to half-time and fewer than 10 after, and halves its chances from 7 goals on. The patch raises the limit to 15 and drops the brake.</p>
-        <div class="score" aria-label="Limit raised from 10 to 15 goals">
-          <span class="old">10</span><span class="arrow">→</span><span class="new">15</span>
-        </div>
       </article>
     </div>
   </div>
@@ -357,6 +366,11 @@ effect:       percentages of +E5     →  negative number: their amounts taken o
         <summary><b>Negotiation block</b><span>One byte off</span></summary>
         <p>Every club keeps a counter for each human manager (<code>+0x1081</code> + manager number 1–4). Each negotiation date arranged with one of its players counts it up, to at most 10; from 3 the club releases no one. The monthly club update is meant to halve the counters, but reaches one byte too low and halves <code>+0x107D</code> to <code>+0x1080</code>, so the real counters only go back to 0 at the next season. The patch moves the four loads and four stores by 4, in the same bytes:</p>
 <pre><code>mov cl/al/bl/dl,[ebp+107D..1080] / shr ×4 / mov [ebp+107D..1080],…  →  the same with +1081..1084</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Investments</b><span>Value subtracted instead of deposit</span></summary>
+        <p>The game doesn’t store the bank balance but works it out each time: the club’s ledger minus the current value of all investments plus the loans plus the season’s bookings. The ledger is never credited with the interest, so every rise of an index lowers the balance by exactly that much. Closing an investment drops the subtraction and books value minus deposit as interest on top. The patch subtracts the deposits instead of the values, in the same 48 bytes; the club’s worth stays as it was. As nothing is stored, switching it off shows the old balance again.</p>
+<pre><code>ledger − values + loans + bookings  →  ledger − deposits + loans + bookings</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>

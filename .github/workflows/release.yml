@@ -85,8 +85,32 @@ jobs:
 
           Patches für Anstoss 2 Gold (Original, GOG und 2007er-CD), im Fenster in drei Gruppen:
 
-          Abstürze und Windows:
+          Patches:
 
+          - Spielfehler, ein Schalter für acht Fehlerbehebungen:
+            - Geldanlagen: Das Spiel zieht jeden Gewinn einer Geldanlage vom Kontostand ab; je
+              besser sie läuft, desto weniger Geld ist auf dem Konto. Erst beim Auflösen kommt alles
+              auf einmal zurück. Mit dem Patch sinkt der Kontostand nur um die Einlage, der Gewinn
+              kommt einmal beim Auflösen.
+            - Kadergröße: Ein Verein mit verliehenen Spielern kann sonst einen 31. Spieler bekommen,
+              der Daten hinter dem Kader überschreibt.
+            - Pokalauslosung: Unter aktuellem Windows und unter Wine erscheinen die Vereinsnamen im
+              Video der Pokalauslosung sonst doppelt so breit, halb so hoch und gepunktet.
+            - Aufstellung: Bildknöpfe übernehmen ihre Größe aus nicht gelöschtem Speicher. In der
+              Aufstellung vor dem Spiel landen "A/B" und "i" dann verschoben oder außerhalb des
+              Bildschirms (unter Wine gesehen).
+            - Kalkulation: Der Bildschirm übernimmt eine seiner zwei Auswahlen aus nicht gelöschtem
+              Speicher. Steht dort ein großer Wert, bleibt er unsichtbar und das Spiel wartet auf
+              ihn (unter Wine gesehen).
+            - Große Festplatten: Keine falsche Warnung "Festplatte fast voll" beim Speichern mehr.
+            - Pfeile gedrückt halten: Die Pfeilknöpfe bei Zahlenwerten zählen unter aktuellem
+              Windows beim Gedrückthalten weiter; der Kompatibilitätsmodus "Windows 98" ist dafür
+              nicht mehr nötig.
+            - Bildschirmauflösung: Nach einem Absturz blieb der Desktop sonst auf 640x480. In der
+              GOG-Version ist das schon behoben.
+          - Patch 1.01 (GOG und 2007er-CD): Beide sind aus dem Stand 1.00 gebaut. Der Patch bringt
+            Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999
+            schon hat, darunter das Trainingslager in der Winterpause.
           - Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen: Ohne den
             Indeo-Codec stürzt das Spiel bei WM.AVI, EM.AVI und FINALE.AVI ab (etwa nach dem
             WM-Titel). Mit dem Patch werden diese Videos übersprungen; mit Indeo-Codec laufen sie
@@ -95,43 +119,21 @@ jobs:
             sonst zu Wochen (der Schnellstart von Windows zählt die Laufzeit weiter).
           - Ton über das Standard-Audiogerät von Windows: Das Spiel nimmt sonst das zuletzt gefundene
             Gerät, bei mehreren Ausgängen (Monitor, Headset) also womöglich das falsche.
-          - Keine falsche Warnung "Festplatte fast voll" beim Speichern: Auf großen Platten kam die
-            Warnung sonst ab und zu ohne Grund.
-          - Desktop-Auflösung auch nach einem Absturz zurückholen: Nach einem Absturz blieb der
-            Desktop sonst auf 640x480. In der GOG-Version ist das schon behoben, dort ist der
-            Schalter ausgegraut.
-          - Kein Hänger beim Öffnen der Kalkulation in der Vorsaison: Der Bildschirm übernimmt eine
-            seiner zwei Auswahlen aus nicht gelöschtem Speicher. Steht dort ein großer Wert, bleibt
-            er unsichtbar und das Spiel wartet auf ihn (unter Wine gesehen).
 
-          Spiel und Bedienung:
+          Balancing:
 
-          - Torgrenze auf 15 Tore pro Mannschaft erhöhen: statt 6 bis zur Halbzeit und 10 bis
-            zum Schluss, keine halbierten Torchancen ab 7 Toren.
-          - Pfeile zählen beim Gedrückthalten weiter: Behebt den Fehler, dass die Pfeilknöpfe bei
-            Zahlenwerten unter aktuellem Windows beim Gedrückthalten nicht weiterzählen. Der
-            Kompatibilitätsmodus "Windows 98" ist dafür nicht mehr nötig.
-          - Kader nicht über 30 Spieler wachsen lassen: Ein Verein mit verliehenen Spielern kann
-            sonst einen 31. Spieler bekommen, der Daten hinter dem Kader überschreibt.
-          - Vereinsnamen bei der Pokalauslosung richtig darstellen: Unter aktuellem Windows und
-            unter Wine erscheinen die Vereinsnamen im Video der Pokalauslosung sonst doppelt so
-            breit, halb so hoch und gepunktet.
-          - Patch 1.01 (GOG und 2007er-CD): Beide sind aus dem Stand 1.00 gebaut. Der Patch bringt
-            Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999
-            schon hat, darunter das Trainingslager in der Winterpause.
-          - Knöpfe "A/B" und "i" in der Aufstellung an ihrem Platz: Bildknöpfe übernehmen ihre Größe
-            aus nicht gelöschtem Speicher. In der Aufstellung vor dem Spiel landen "A/B" und "i" dann
-            verschoben oder außerhalb des Bildschirms (unter Wine gesehen).
-          - Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen ...): Das Spiel
-            liest die Antworten von einer Stelle, an die sie nie geschrieben werden, also bleibt
-            keine Antwort mit Folgen. Mit dem Patch wirken sie so, wie ihre Texte es versprechen.
-          - Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft (optional): Die
-            Spielhilfe warnt davor, das Spiel zieht aber nur den Einsatz ab. Mit dem Patch kostet so
-            eine Ansprache die Mannschaft ihre Prozente in Abwehr und Angriff, für dieses Spiel.
           - Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab: Nach drei
             Terminen mit Spielern desselben Vereins gibt der Verein niemanden mehr frei. Das Spiel will
             die Sperre monatlich abbauen, halbiert aber die falschen Werte, sodass sie bis zur neuen
             Saison hält. Mit dem Patch lässt sie wie gedacht jeden Monat nach.
+          - Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen ...): Das Spiel
+            liest die Antworten von einer Stelle, an die sie nie geschrieben werden, also bleibt
+            keine Antwort mit Folgen. Mit dem Patch wirken sie so, wie ihre Texte es versprechen.
+          - Torgrenze auf 15 Tore pro Mannschaft erhöhen: statt 6 bis zur Halbzeit und 10 bis
+            zum Schluss, keine halbierten Torchancen ab 7 Toren.
+          - Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft: Die Spielhilfe
+            warnt davor, das Spiel zieht aber nur den Einsatz ab. Mit dem Patch kostet so eine
+            Ansprache die Mannschaft ihre Prozente in Abwehr und Angriff, für dieses Spiel.
 
           Nur für die GOG-Version (bei den anderen ausgegraut):
 

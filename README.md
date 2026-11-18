@@ -2,60 +2,69 @@
 
 Patches for **Anstoss 2 Gold**, switched on and off in one small window, one tile each in three groups:
 
-"Abstürze und Windows" (crashes and Windows):
+"Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes and current Windows.
 
-- **Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen** (bug fix): on current
-  Windows the game crashes when it plays `WM.AVI`, `EM.AVI` or `FINALE.AVI` (e.g. after winning the
-  World Cup), because their Indeo codec is gone. With the patch these videos are skipped and the game
-  goes on; with an Indeo codec installed they still play.
-- **Kein Einfrieren nach über 24 Tagen Windows-Laufzeit** (bug fix): a 3-second wait in a reply
-  sequence turns into weeks once Windows has run for 2^31 ms (Fast Startup keeps the uptime).
-- **Ton über das Standard-Audiogerät von Windows** (bug fix): the game picks the last enumerated sound
-  device instead of the default one, so with several outputs (monitor, headset) the sound may go to the
-  wrong one.
-- **Keine falsche Warnung „Festplatte fast voll“ beim Speichern** (bug fix): the free space is computed
-  in 32 bits, so on large disks the warning comes up now and then for no reason.
-- **Desktop-Auflösung auch nach einem Absturz zurückholen** (bug fix): the game switches the screen to
-  640x480 in a way that outlives it; after a crash the desktop stayed at 640x480. With the patch Windows
-  restores the resolution itself when the game ends. The GOG release already does this; there the switch
-  is greyed out.
-- **Kein Hänger beim Öffnen der Kalkulation in der Vorsaison** (bug fix): the calculation screen sets up
-  one of its two selections from memory it never cleared. With a large value there it stays hidden and
-  the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.
+- **Spielfehler** (Behebt: Geldanlagen, Kadergröße, …), one switch for eight bug fixes; each keeps its own places
+  and DLL flag, and the switch counts as on once one of them is applied (an exe patched by an older
+  version keeps its fixes, and applying completes the rest):
+  - **Geldanlagen** (Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen): the game takes every
+    gain of an investment off the bank balance, so the better it does, the less money is in the account
+    (and the less interest it earns, or the more overdraft interest it costs). Closing it brings everything
+    back at once, which looks like double interest. With the patch the balance only goes down by the money
+    paid in, and the gain arrives once when the investment is closed.
+  - **Kadergröße** (Kader nicht über 30 Spieler wachsen lassen): a club with players on loan can get a 31st
+    player, which overwrites data behind the squad array. The patch counts the actual squad too.
+  - **Pokalauslosung** (Vereinsnamen bei der Pokalauslosung richtig darstellen): on current Windows and
+    under Wine, the club names on the sign in the cup draw video come out twice as wide, half as high and
+    dotted.
+  - **Aufstellung** (Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz): picture buttons take their
+    size from memory they never cleared before their picture is loaded. In the team lineup before a match,
+    "A/B" and "i" are placed by that size, so with old data there they end up shifted or off screen. Seen
+    under Wine; on Windows that memory is usually 0, the patch makes sure.
+  - **Kalkulation** (Kein Hänger beim Öffnen der Kalkulation in der Vorsaison): the calculation screen sets
+    up one of its two selections from memory it never cleared. With a large value there it stays hidden
+    and the game waits for it. Seen under Wine; on Windows that memory is usually 0, the patch makes sure.
+  - **Große Festplatten** (Keine falsche Warnung „Festplatte fast voll“ beim Speichern): the free space is
+    computed in 32 bits, so on large disks the warning comes up now and then for no reason.
+  - **Pfeile gedrückt halten** (Pfeile zählen beim Gedrückthalten weiter): on current Windows, the game's
+    arrow buttons for numeric values count one or two steps and then stop while held down. Until now the
+    workaround was to run the game in the "Windows 98" compatibility mode.
+  - **Bildschirmauflösung** (Desktop-Auflösung auch nach einem Absturz zurückholen): the game switches the
+    screen to 640x480 in a way that outlives it; after a crash the desktop stayed at 640x480. With the
+    patch Windows restores the resolution itself when the game ends. The GOG release already does this;
+    there this fix is left out.
+- **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr): the GOG
+  release and the 2007 CD release are built from the 1.00 source. The patch brings program and data to the
+  official patch 1.01, which the 1999 release contains already, among them the training camp in the winter
+  break. Greyed out for the 1999 release.
+- **Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen**: on current Windows the game
+  crashes when it plays `WM.AVI`, `EM.AVI` or `FINALE.AVI` (e.g. after winning the World Cup), because
+  their Indeo codec is gone. With the patch these videos are skipped and the game goes on; with an Indeo
+  codec installed they still play.
+- **Kein Einfrieren nach über 24 Tagen Windows-Laufzeit**: a 3-second wait in a reply sequence turns into
+  weeks once Windows has run for 2^31 ms (Fast Startup keeps the uptime).
+- **Ton über das Standard-Audiogerät von Windows**: the game picks the last enumerated sound device instead
+  of the default one, so with several outputs (monitor, headset) the sound may go to the wrong one.
 
-"Spiel und Bedienung" (game and controls):
+"Balancing": changes to how the game plays.
 
-- **Torgrenze auf 15 Tore pro Mannschaft erhöhen** (optional gameplay change): the match engine lets a team score only while
-  it has fewer than 6 goals up to minute 45 and fewer than 10 after, and halves its chances from 7
-  goals on. The patch raises the limit to 15 (the most the game can store) and drops the halving.
-- **Pfeile zählen beim Gedrückthalten weiter** (bug fix): on current Windows, the game's arrow
-  buttons for numeric values count one or two steps and then stop while held down. Until now the
-  workaround was to run the game in the "Windows 98" compatibility mode.
-- **Kader nicht über 30 Spieler wachsen lassen** (bug fix): a club with players on loan can get a 31st
-  player, which overwrites data behind the squad array. The patch counts the actual squad too.
-- **Vereinsnamen bei der Pokalauslosung richtig darstellen** (bug fix): on current Windows and under
-  Wine, the club names on the sign in the cup draw video come out twice as wide, half as high and dotted.
-- **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr): the GOG release and the 2007 CD release are built
-  from the 1.00 source. The patch brings program and data to the official patch 1.01, which the 1999
-  release contains already, among them the training camp in the winter break. Greyed out for the 1999 release.
-- **Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz** (bug fix): picture buttons take their size
-  from memory they never cleared before their picture is loaded. In the team lineup before a match, "A/B"
-  and "i" are placed by that size, so with old data there they end up shifted or off screen. Seen under
-  Wine; on Windows that memory is usually 0, the patch makes sure.
-- **Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)** (bug fix): every answer
-  in an interview is meant to do something (more or fewer fans, a happier or angrier board, the team's
-  morale, a fine), but the game applies the answers from a place they are never written to, so none of
-  them has any effect. With the patch they do what their texts say. It is the same change as A2G-Trainer's
-  "Wirkung der Antworten anwenden", which recognizes the patched game.
-- **Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft** (optional gameplay change):
-  the game's help warns that a pre-match speech that doesn't fit the situation turns its effect into the
-  negative, but the game only shows a message and takes the use. With the patch such a speech takes its
-  percentages off defence and attack for that match ("+3%" becomes -3 %). A failed roll against the
-  manager's motivation skill and a speech without uses left stay without effect.
-- **Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab** (bug fix): after three
+- **Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab**: after three
   negotiation dates with players of the same club, that club "would under no circumstances release" any
   further player. The game means to halve this count every month, but its code halves the wrong bytes, so
   the block lasts until the next season. With the patch it wears off month by month as intended.
+- **Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)**: every answer in an
+  interview is meant to do something (more or fewer fans, a happier or angrier board, the team's morale, a
+  fine), but the game applies the answers from a place they are never written to, so none of them has any
+  effect. With the patch they do what their texts say. It is the same change as A2G-Trainer's "Wirkung der
+  Antworten anwenden", which recognizes the patched game.
+- **Torgrenze auf 15 Tore pro Mannschaft erhöhen**: the match engine lets a team score only while it has
+  fewer than 6 goals up to minute 45 and fewer than 10 after, and halves its chances from 7 goals on. The
+  patch raises the limit to 15 (the most the game can store) and drops the halving.
+- **Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft**: the game's help warns that a
+  pre-match speech that doesn't fit the situation turns its effect into the negative, but the game only
+  shows a message and takes the use. With the patch such a speech takes its percentages off defence and
+  attack for that match ("+3%" becomes -3 %). A failed roll against the manager's motivation skill and a
+  speech without uses left stay without effect.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -312,6 +321,31 @@ mov cl/al/bl/dl,[ebp+107D..1080] / shr x4 / push ebp / mov [ebp+107D..1080],cl/a
 ->  the same with +1081..1084
 ```
 
+**Investments.** The game doesn't store the bank balance; `0x571060` works it out from the club's finance
+block (club `+0x154`) each time: the ledger `+0` minus the current value of the active investments
+(`0x58bf30`: six slots of 0x10 bytes from `+0xa8`, each worth its base `+4` times today's index over the
+index at purchase) plus the loans (`0x58bf10`) plus the season's bookings (`0x570f80`). The ledger takes no
+interest, so every rise of an index takes as much off the balance, and with it off the daily interest
+(`0x58ba80`, overdraft included). Closing an investment (`0x58bec0`) clears its slot, which gives the value
+back, and books value minus deposit as interest on top. The patch subtracts the deposits (`+0` of each
+slot, written only when buying; the season change `0x58c290` sets only base and index anew) instead of the
+values, in the same 48 bytes (GOG and 2007 CD `0x573310`). The club's worth (ledger + values - loans) stays
+as it was, and as nothing is stored, switching the patch off shows the old balance again:
+
+```
+push esi / mov esi,[esp+8] / push edi / push esi / call values / mov edi,[esi] / add esp,4 / sub edi,eax /
+push esi / call loans / add esp,4 / add edi,eax / push esi / call bookings / add esp,4 / add eax,edi /
+pop edi / pop esi / ret / nop x4
+->
+push esi / mov esi,[esp+8] / push esi / call loans / add eax,[esi] / sub esi,-80 / push 6 / pop ecx /
+next: test byte [esi+33],1 / je skip / sub eax,[esi+28] / skip: add esi,10 / loop next /
+pop esi / push eax / push esi / call bookings / pop ecx / pop ecx / add eax,ecx / pop esi / ret / nop
+```
+
+Taking it back restores the call to `values`, which lies 0x20 bytes behind `loans` in every build (the
+patch is offered only where the original code shows that). The function lies outside the 2007 release's
+CRC stretches.
+
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
@@ -433,7 +467,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
-  counters; the build has all on). The other GOG patches have no flag: they change files on disk, which
+  counters, 32768 investments; the build has all on). The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the
   embedded one in more than these bytes is from another version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled

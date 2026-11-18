@@ -209,7 +209,7 @@ namespace A2GPatch.Tests
                     Assert.Equal(FlatStyle.Flat, browse.FlatStyle);
                     Assert.Equal(Theme.Dark.Button, folder.BackColor);
                     Assert.Same(Theme.Dark, tile.Theme);
-                    Assert.Equal(Theme.Dark.Groups[(int)PatchGroup.Game], tile.Accent);
+                    Assert.Equal(Theme.Dark.Groups[(int)PatchGroup.Balancing], tile.Accent);
                     Assert.Equal(Theme.Dark.ApplyDisabled, Find<Button>(form, "ApplyButton").BackColor);
                     form.Show();
                     Draw(form);
@@ -224,7 +224,7 @@ namespace A2GPatch.Tests
                     Assert.Equal(FlatStyle.Standard, browse.FlatStyle);
                     Assert.True(browse.UseVisualStyleBackColor);
                     Assert.Equal(SystemColors.Window, folder.BackColor);
-                    Assert.Equal(Theme.Light.Groups[(int)PatchGroup.Game], tile.Accent);
+                    Assert.Equal(Theme.Light.Groups[(int)PatchGroup.Balancing], tile.Accent);
                     Draw(form);
 
                     dark = true;

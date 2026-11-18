@@ -214,7 +214,7 @@ namespace A2GPatch.Tests
     [Collection("GameInstall statics")]
     public class GogPatchesTests
     {
-        private static readonly Patch101 V101 = (Patch101)Patch.All[10];
+        private static readonly Patch101 V101 = Patch.Get<Patch101>();
         private static readonly CopyProtection Protection = Patch.All.OfType<CopyProtection>().Single();
         private static readonly DialogStyles Dialogs = Patch.All.OfType<DialogStyles>().Single();
 

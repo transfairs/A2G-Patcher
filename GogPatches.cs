@@ -327,7 +327,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Patch 1.01";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 1024;
 

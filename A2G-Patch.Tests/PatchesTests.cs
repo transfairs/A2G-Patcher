@@ -144,9 +144,9 @@ namespace A2GPatch.Tests
     /// <summary>Tests for the patches: finding their places in original and patched code, and refusing what they don't know.</summary>
     public class PatchesTests
     {
-        private static readonly GoalLimits Goals = (GoalLimits)Patch.All[0];
-        private static readonly ArrowRepeat Arrow = (ArrowRepeat)Patch.All[1];
-        private static readonly VideoCrash Video = (VideoCrash)Patch.All[2];
+        private static readonly GoalLimits Goals = Patch.Get<GoalLimits>();
+        private static readonly ArrowRepeat Arrow = Patch.Get<ArrowRepeat>();
+        private static readonly VideoCrash Video = Patch.Get<VideoCrash>();
 
         private static byte[] Apply(byte[] image, Site[] sites)
         {
@@ -157,37 +157,52 @@ namespace A2GPatch.Tests
         }
 
         [Fact]
-        public void All_HasEveryPatch_WithDistinctFlags()
+        public void All_HasEverySwitch_WithDistinctFlags()
         {
             Assert.Equal(new[]
             {
-                "Torgrenze auf 15 Tore pro Mannschaft erhöhen", "Pfeile zählen beim Gedrückthalten weiter",
+                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Langer Windows-Betrieb", "Audiogerät",
+                "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen",
+                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
+            }, Patch.All.Select(p => p.Title));
+            Assert.Equal(new[]
+            {
+                "Behebt: Geldanlagen, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung",
+                "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit", "Ton über das Standard-Audiogerät von Windows",
-                "Keine falsche Warnung „Festplatte fast voll“ beim Speichern", "Kader nicht über 30 Spieler wachsen lassen",
-                "Desktop-Auflösung auch nach einem Absturz zurückholen", "Vereinsnamen bei der Pokalauslosung richtig darstellen",
-                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
-                "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
-                "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
-                "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft",
                 "Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab",
+                "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
+                "Torgrenze auf 15 Tore pro Mannschaft erhöhen",
+                "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
-            // The GOG-only patches (0) last, as the window lists them under their own heading.
-            Assert.Equal(new ushort[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
+            Assert.Equal(new ushort[] { 0x8BE2, 1024, 4, 8, 16, 16384, 4096, 1, 8192, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
+            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, o, o, o }, Patch.All.Select(p => p.Group));
+
+            // The bugs, each with a bit of its own; together with the switches every bit once.
+            Patch[] bugs = Patch.Get<GameBugs>().Members;
+            Assert.Equal(new[] { "Geldanlagen", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung" },
+                bugs.Select(p => p.Title));
             Assert.Equal(new[]
             {
-                "Mehr Tore", "Pfeile gedrückt halten", "Videos ohne Absturz", "Langer Windows-Betrieb", "Audiogerät", "Große Festplatten",
-                "Kadergröße", "Bildschirmauflösung", "Pokalauslosung", "Kalkulation", "Patch 1.01", "Aufstellung", "Interviews", "Ansprachen", "Verhandlungssperre",
-                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
-            }, Patch.All.Select(p => p.Title));
-            PatchGroup s = PatchGroup.System, g = PatchGroup.Game, o = PatchGroup.Gog;
-            Assert.Equal(new[] { g, g, s, s, s, s, g, s, g, s, g, g, g, g, g, o, o, o }, Patch.All.Select(p => p.Group));
+                "Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen", "Kader nicht über 30 Spieler wachsen lassen",
+                "Vereinsnamen bei der Pokalauslosung richtig darstellen", "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
+                "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Keine falsche Warnung „Festplatte fast voll“ beim Speichern",
+                "Pfeile zählen beim Gedrückthalten weiter", "Desktop-Auflösung auch nach einem Absturz zurückholen",
+            }, bugs.Select(p => p.Name));
+            Assert.Equal(new ushort[] { 32768, 64, 256, 2048, 512, 32, 2, 128 }, bugs.Select(p => p.Flag));
+            Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
+            ushort[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
+            Assert.Equal(16, bits.Length);
+            Assert.Equal(0xFFFF, bits.Aggregate(0, (all, bit) => all | bit));
         }
 
-        private static readonly Patch Cup = Patch.All[8];
+        private static readonly Patch Cup = Patch.Get<CupDraw>();
 
         // The original exe from 0x419ED1: ReleaseDC(NULL, dc), then GetBitmapBits(bitmap, 2000, this+C).
         internal static byte[] CupCall(Dictionary<string, uint> imports, uint? bits = null) =>
@@ -279,14 +294,14 @@ namespace A2GPatch.Tests
         [Fact]
         public void RewritePatches_HaveWildcardsAtTheSamePlaces()
         {
-            foreach (RewritePatch patch in Patch.All.OfType<RewritePatch>())
+            foreach (RewritePatch patch in Patch.Get<GameBugs>().Members.Concat(Patch.All).OfType<RewritePatch>())
             {
                 Assert.Equal(patch.OriginalCode.Length, patch.PatchedCode.Length);
                 Assert.Equal(patch.OriginalCode.Select(b => b == null), patch.PatchedCode.Select(b => b == null));
             }
         }
 
-        private static readonly Patch Display = Patch.All[7];
+        private static readonly Patch Display = Patch.Get<DisplayModeRestore>();
         // The original exe from 0x40FAC5 (rep stosd) to the call at 0x40FB08; the 2007 build has the same bytes.
         internal static readonly byte[] OriginalDisplay = (
             "F3ABBFE00100005352" + "66C786740100009C00" + "66899E76010000" + "C7867801000000005C00" +
@@ -311,7 +326,7 @@ namespace A2GPatch.Tests
             Assert.Null(Display.Find(GameCode.Exe(GogDisplay)));
         }
 
-        private static readonly Patch Squad = Patch.All[6];
+        private static readonly Patch Squad = Patch.Get<SquadLimit>();
         // The original exe at 0x5FCBB0 (GOG and 2007 have the same bytes at 0x601510).
         internal static readonly byte[] SquadCode = "8B44240450E8A6FFFFFF83C40433C9663D1E000F9DC18BC1C390909090909090".Hex();
 
@@ -330,7 +345,7 @@ namespace A2GPatch.Tests
             Assert.Null(Squad.Find(GameCode.Exe(SquadCode, SquadCode)));
         }
 
-        private static readonly Patch Calculation = Patch.All[9];
+        private static readonly Patch Calculation = Patch.Get<CalculationInit>();
         // The original exe at 0x4A513F (GOG's at 0x4A733F): mov word [esi+10D48],0 / mov eax,esi, then pop esi.
         internal static readonly byte[] CalculationCode = "66C786480D010000008BC65E".Hex();
 
@@ -347,7 +362,7 @@ namespace A2GPatch.Tests
             Assert.Null(Calculation.Find(GameCode.Exe(CalculationCode, CalculationCode)));
         }
 
-        private static readonly Patch Negotiation = Patch.All[14];
+        private static readonly Patch Negotiation = Patch.Get<NegotiationCounter>();
         // The original exe from 0x642DCF (GOG's from 0x647DFF, the 2007 CD's in memory from 0x647BFF): the
         // monthly club update loads, halves and stores the bytes at +107D..+1080.
         internal static readonly byte[] NegotiationCode = (
@@ -370,7 +385,46 @@ namespace A2GPatch.Tests
             Assert.Null(Negotiation.Find(GameCode.Exe(NegotiationCode, NegotiationCode)));
         }
 
-        private static readonly Patch Button = Patch.All[11];
+        private static readonly Patch Investment = Patch.Get<InvestmentBalance>();
+        // The original exe from 0x571060 (GOG's from 0x573310): the bank balance, the ledger minus the
+        // investments' values (call 0x58BF30) plus the loans (call 0x58BF10) plus the bookings (call 0x570F80).
+        internal static readonly byte[] InvestmentCode = (
+            "568B7424085756E8C4AE01008B3E83C4042BF8" + "56E897AE010083C40403F8"
+            + "56E8FCFEFFFF83C40403C75F5EC390909090").Hex();
+
+        [Fact]
+        public void InvestmentBalance_SubtractsTheDeposits_InTheSameBytes()
+        {
+            byte[] image = GameCode.Exe(InvestmentCode);
+            Site site = Investment.Find(image).Single();
+
+            Assert.False(site.IsPatched);
+            Assert.Equal(300, site.Offset);
+            Assert.Equal(InvestmentCode, site.Original);
+            // As disassembled at 0x571060: loans (0x58BF10) and bookings (0x570F80) keep their targets.
+            Assert.Equal((
+                "568B74240856E8A5AE0100" + "0306" + "83EE80" + "6A0659"
+                + "F64633017403" + "2B4628" + "83C610" + "E2F2"
+                + "5E5056E8F7FEFFFF" + "595903C15EC390").Hex(), site.Patched);
+
+            Site again = Investment.Find(Apply(image, new[] { site })).Single();
+            Assert.True(again.IsPatched);
+            Assert.Equal(site.Original, again.Original);
+            Assert.Equal(site.Patched, again.Patched);
+        }
+
+        [Fact]
+        public void InvestmentBalance_InUnknownCode_FindsNothing()
+        {
+            Assert.Null(Investment.Find(GameCode.Exe(InvestmentCode, InvestmentCode)));
+            // "values" not 0x20 bytes behind "loans": the original call couldn't be restored.
+            byte[] other = (byte[])InvestmentCode.Clone();
+            other[8]++;
+            Assert.Null(Investment.Find(GameCode.Exe(other)));
+            Assert.Null(Investment.Find(new byte[0]));
+        }
+
+        private static readonly Patch Button = Patch.Get<PictureButtonInit>();
         // The original exe from 0x5BC3B6 (GOG's from 0x5BF0E6, there with CString 0x67C9E8 and vtable 0x6A0A78) to the ret.
         internal static readonly byte[] ButtonCode = (
             "33C0B9E8796700" + "89465C894E58894664894E6089466C894E68" + "8986A4000000" + "89463C" + "66894646" + "66894648"
@@ -394,9 +448,9 @@ namespace A2GPatch.Tests
             Assert.Null(Button.Find(GameCode.Exe(ButtonCode, ButtonCode)));
         }
 
-        private static readonly Patch Sleep = Patch.All[3];
-        private static readonly Patch Sound = Patch.All[4];
-        private static readonly Patch Disk = Patch.All[5];
+        private static readonly Patch Sleep = Patch.Get<SleepFreeze>();
+        private static readonly Patch Sound = Patch.Get<DefaultSoundDevice>();
+        private static readonly Patch Disk = Patch.Get<DiskSpaceWarning>();
 
         // The original exe at 0x59899B (and 0x598BFD with edx), and at 0x5EF42C; GOG's disk check.
         internal static readonly byte[] SleepCode = "2B857C0100003DB80B000089857C0100007D0EB9B80B0000".Hex();

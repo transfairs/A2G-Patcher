@@ -118,7 +118,7 @@ namespace A2GPatch
         public bool IsApplied(Patch patch) =>
             this.Kind == PatchKind.Dll ? (this.flags & patch.Flag) != 0
             : patch is FilePatch file ? this.State(file) == FileState.On || this.State(file) == FileState.Fixed
-            : this.sites.TryGetValue(patch, out Site[] found) && found.All(s => s.IsPatched);
+            : this.sites.TryGetValue(patch, out Site[] found) && patch.IsApplied(found);
 
         private FileState State(FilePatch patch) => this.fileStates.TryGetValue(patch, out FileState state) ? state : FileState.Unknown;
 

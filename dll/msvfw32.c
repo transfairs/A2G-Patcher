@@ -25,6 +25,7 @@
 // 4096 interviews: effects applied from pairs never written    ->  the engine copy's pairs, codes 10 and 12 mapped
 // 8192 speeches:   a speech that doesn't fit does nothing      ->  takes its percentages' amounts off
 // 16384 negotiations: monthly halving one byte too low         ->  halves the counters per selling club
+// 32768 investments: balance minus the investments' values     ->  minus their deposits
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -128,7 +129,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_INTERVIEW    4096
 #define FLAG_SPEECH       8192
 #define FLAG_NEGOTIATION  16384
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\x7F";   // all on
+#define FLAG_INVESTMENT   32768
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF";   // all on
 #define CONFIG_FLAGS ((WORD)(g_config[14] | g_config[15] << 8))
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -945,6 +947,42 @@ static int PatchSpeech(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 32768: investments ---------------------------------------------------------------------------
+
+// As in Patches.cs (InvestmentBalance): the bank balance (ledger - values + loans + bookings) subtracts
+// the investments' deposits instead of their current values. The original calls values, loans and
+// bookings at 7, 20 and 31; values follows loans 0x20 bytes on.
+static const WORD kInvestment[] = {
+    0x56, 0x8B, 0x74, 0x24, 0x08, 0x57, 0x56, 0xE8, ANY, ANY, ANY, ANY, 0x8B, 0x3E, 0x83, 0xC4, 0x04, 0x2B, 0xF8,
+    0x56, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x04, 0x03, 0xF8,
+    0x56, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x04, 0x03, 0xC7, 0x5F, 0x5E, 0xC3, 0x90, 0x90, 0x90, 0x90 };
+// How the patched code starts, to recognize it.
+static const WORD kInvestmentPatchedStart[] = { 0x56, 0x8B, 0x74, 0x24, 0x08, 0x56, 0xE8, ANY, ANY, ANY, ANY, 0x03, 0x06, 0x83, 0xEE, 0x80 };
+
+// Rewrites the 48 bytes: loans plus the ledger minus the active slots' deposits, then plus the bookings.
+static int PatchInvestment(BYTE *base, SIZE_T size)
+{
+    BYTE *site, *patchedSite;
+    int count = Count(base, size, kInvestment, ARRAYSIZE(kInvestment), &site);
+    int countPatched = Count(base, size, kInvestmentPatchedStart, ARRAYSIZE(kInvestmentPatchedStart), &patchedSite);
+    if (count + countPatched == 0) return NOT_YET;
+    if (count != 1 || countPatched != 0 || CallTarget(site + 7) != CallTarget(site + 20) + 0x20) return DONE;
+
+    BYTE code[48] = {
+        0x56, 0x8B, 0x74, 0x24, 0x08, 0x56, 0xE8, 0, 0, 0, 0,   // push esi / mov esi,[esp+8] / push esi / call loans
+        0x03, 0x06, 0x83, 0xEE, 0x80, 0x6A, 0x06, 0x59,         // add eax,[esi] / sub esi,-80 / push 6 / pop ecx
+        0xF6, 0x46, 0x33, 0x01, 0x74, 0x03, 0x2B, 0x46, 0x28,   // next: test byte [esi+33],1 / je skip / sub eax,[esi+28]
+        0x83, 0xC6, 0x10, 0xE2, 0xF2,                           // skip: add esi,10 / loop next
+        0x5E, 0x50, 0x56, 0xE8, 0, 0, 0, 0,                     // pop esi / push eax / push esi / call bookings
+        0x59, 0x59, 0x03, 0xC1, 0x5E, 0xC3, 0x90 };             // pop ecx / pop ecx / add eax,ecx / pop esi / ret / nop
+    LONG loans = (LONG)(CallTarget(site + 20) - (site + 11));
+    LONG bookings = (LONG)(CallTarget(site + 31) - (site + 41));
+    Copy(code + 7, (const BYTE *)&loans, 4);
+    Copy(code + 37, (const BYTE *)&bookings, 4);
+    Write(site, code, sizeof code);
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 // Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
@@ -962,8 +1000,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL squadDone = !(flags & FLAG_SQUAD_LIMIT), displayDone = !(flags & FLAG_DISPLAY_MODE);
     BOOL cupDone = !(flags & FLAG_CUP_DRAW), calcDone = !(flags & FLAG_CALC_INIT), v101Done = !(flags & FLAG_V101);
     BOOL buttonDone = !(flags & FLAG_BUTTON_INIT), interviewDone = !(flags & FLAG_INTERVIEW), speechDone = !(flags & FLAG_SPEECH);
-    BOOL negotiationDone = !(flags & FLAG_NEGOTIATION);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone)
+    BOOL negotiationDone = !(flags & FLAG_NEGOTIATION), investmentDone = !(flags & FLAG_INVESTMENT);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -981,6 +1019,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!interviewDone) interviewDone = PatchInterview(base, size) == DONE;
         if (!speechDone) speechDone = PatchSpeech(base, size) == DONE;
         if (!negotiationDone) negotiationDone = PatchRewrite(base, size, kNegotiation, kNegotiationPatched, ARRAYSIZE(kNegotiation)) == DONE;
+        if (!investmentDone) investmentDone = PatchInvestment(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

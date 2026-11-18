@@ -19,7 +19,7 @@ namespace A2GPatch.Tests
         private static T Find<T>(Form form, string name) where T : Control => (T)form.Controls.Find(name, true).Single();
 
         private static PatchTile GoalsInput(Form form) => Find<PatchTile>(form, "GoalLimitsInput");
-        private static PatchTile ArrowInput(Form form) => Find<PatchTile>(form, "ArrowRepeatInput");
+        private static PatchTile BugsInput(Form form) => Find<PatchTile>(form, "GameBugsInput");
         private static Button ApplyButton(Form form) => Find<Button>(form, "ApplyButton");
 
         private static void Click(Form form, string name) =>
@@ -179,8 +179,8 @@ namespace A2GPatch.Tests
                     Assert.True(tile.Top > headings[(int)patch.Group].Bottom);
                     Assert.True((int)patch.Group == headings.Length - 1 || tile.Bottom < headings[(int)patch.Group + 1].Top);
                 }
-                // Seven tiles in three rows.
-                Assert.Equal(3, Patch.All.Where(p => p.Group == PatchGroup.Game).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input").Top).Distinct().Count());
+                // Five tiles in two rows.
+                Assert.Equal(2, Patch.All.Where(p => p.Group == PatchGroup.Patches).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input").Top).Distinct().Count());
                 form.Show();
                 Draw(form);
             }
@@ -195,12 +195,12 @@ namespace A2GPatch.Tests
             {
                 form.Show();
                 Panel panel = Find<Panel>(form, "TilePanel");
-                PatchTile[] game = Patch.All.Where(p => p.Group == PatchGroup.Game).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
+                PatchTile[] game = Patch.All.Where(p => p.Group == PatchGroup.Patches).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
                 PatchTile[] all = Patch.All.Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
 
                 form.Size = form.MinimumSize;
                 Application.DoEvents();
-                Assert.Equal(9, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(5, game.Select(t => t.Top).Distinct().Count());
                 Assert.True(panel.VerticalScroll.Visible);
                 Assert.False(panel.HorizontalScroll.Visible);
                 Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
@@ -217,7 +217,7 @@ namespace A2GPatch.Tests
 
                 form.Size = SystemInformation.MaxWindowTrackSize;
                 Application.DoEvents();
-                Assert.Equal(3, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(2, game.Select(t => t.Top).Distinct().Count());
                 Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
                 Draw(form);
             }
@@ -257,8 +257,8 @@ namespace A2GPatch.Tests
                 {
                     Assert.Equal("anstoss2.exe wird direkt gepatcht.", Find<Label>(form, "StatusLabel").Text);
                     Assert.Equal("Torgrenze auf 15 Tore pro Mannschaft erhöhen", GoalsInput(form).Text);
-                    Assert.True(GoalsInput(form).Enabled && ArrowInput(form).Enabled);
-                    Assert.False(GoalsInput(form).Checked || ArrowInput(form).Checked);
+                    Assert.True(GoalsInput(form).Enabled && BugsInput(form).Enabled);
+                    Assert.False(GoalsInput(form).Checked || BugsInput(form).Checked);
                     Assert.False(ApplyButton(form).Enabled);
                     // The GOG patches under their heading, greyed out for another release.
                     Label gog = Find<Label>(form, "GogLabel");
@@ -274,28 +274,28 @@ namespace A2GPatch.Tests
                     Assert.True(Find<PatchTile>(form, "Patch101Input").Top < gog.Top);
 
                     // A change gets its dot, the button counts the changes.
-                    ArrowInput(form).Checked = true;
+                    BugsInput(form).Checked = true;
                     Assert.True(ApplyButton(form).Enabled);
-                    Assert.True(ArrowInput(form).Pending);
+                    Assert.True(BugsInput(form).Pending);
                     Assert.False(GoalsInput(form).Pending);
                     Assert.Equal("Übernehmen (1)", ApplyButton(form).Text);
                     GoalsInput(form).Checked = true;
                     Assert.Equal("Übernehmen (2)", ApplyButton(form).Text);
                     GoalsInput(form).Checked = false;
-                    ArrowInput(form).Checked = false;
+                    BugsInput(form).Checked = false;
                     Assert.False(ApplyButton(form).Enabled);
-                    Assert.False(ArrowInput(form).Pending);
+                    Assert.False(BugsInput(form).Pending);
                     Assert.Equal("Übernehmen", ApplyButton(form).Text);
 
-                    ArrowInput(form).Checked = true;
+                    BugsInput(form).Checked = true;
                     Apply(form);
-                    Assert.False(ArrowInput(form).Pending);
-                    Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Arrow));
+                    Assert.False(BugsInput(form).Pending);
+                    Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Bugs));
                     Assert.False(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Goals));
-                    Assert.True(ArrowInput(form).Checked);
+                    Assert.True(BugsInput(form).Checked);
                     Assert.False(ApplyButton(form).Enabled);
 
-                    ArrowInput(form).Checked = false;
+                    BugsInput(form).Checked = false;
                     Apply(form);
                     Assert.Equal(GameCode.Both(), File.ReadAllBytes(folder.File("anstoss2.exe")));
                     Assert.Empty(messages);
@@ -320,13 +320,13 @@ namespace A2GPatch.Tests
 
                     // Busy until the window handles its messages again; the minimum time is covered there too.
                     form.MinimumBusyTime = 50;
-                    ArrowInput(form).Checked = true;
+                    BugsInput(form).Checked = true;
                     Click(form, "ApplyButton");
                     Assert.True(form.Busy);
                     Assert.Equal(BusyState.Busy, progress.State);
                     Assert.True(progress.Visible);
                     Assert.Equal("Änderungen werden übernommen …", progressLabel.Text);
-                    Assert.All(new[] { "FolderInput", "BrowseButton", "ApplyButton", "CloseButton", "ArrowRepeatInput", "GoalLimitsInput" },
+                    Assert.All(new[] { "FolderInput", "BrowseButton", "ApplyButton", "CloseButton", "GameBugsInput", "GoalLimitsInput" },
                         name => Assert.False(form.Controls.Find(name, true).Single().Enabled));
                     using (Bitmap image = new Bitmap(progress.Width, progress.Height))
                         progress.DrawToBitmap(image, new Rectangle(Point.Empty, progress.Size));
@@ -334,7 +334,7 @@ namespace A2GPatch.Tests
                     Assert.False(form.IsDisposed);
 
                     WaitWhileBusy(form);
-                    Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Arrow));
+                    Assert.True(GameInstall.Detect(folder.Path).IsApplied(GameInstallTests.Bugs));
                     Assert.Equal(BusyState.Done, progress.State);
                     Assert.Equal("Änderungen übernommen.", progressLabel.Text);
                     Assert.True(Find<Button>(form, "CloseButton").Enabled && GoalsInput(form).Enabled);
@@ -466,7 +466,7 @@ namespace A2GPatch.Tests
             {
                 Assert.Null(form.Install);
                 Assert.Equal("Kein Spielordner gefunden.", Find<Label>(form, "StatusLabel").Text);
-                Assert.False(GoalsInput(form).Enabled || ArrowInput(form).Enabled);
+                Assert.False(GoalsInput(form).Enabled || BugsInput(form).Enabled);
                 Assert.False(ApplyButton(form).Enabled);
             }
         });
@@ -481,7 +481,7 @@ namespace A2GPatch.Tests
                 using (PatchForm form = Form(new List<string>(), DialogResult.OK, first.Path))
                 {
                     ComboBox folders = Find<ComboBox>(form, "FolderInput");
-                    Assert.False(ArrowInput(form).Enabled);
+                    Assert.False(BugsInput(form).Enabled);
                     string start = null;
                     form.BrowseFolder = s => { start = s; return second.Path + "\\"; };
 
@@ -493,7 +493,7 @@ namespace A2GPatch.Tests
                     Assert.Equal(second.Path, folders.SelectedItem);
                     Assert.Equal(PatchKind.Exe, form.Install.Kind);
                     // Only the arrow fix's code is in this exe.
-                    Assert.True(ArrowInput(form).Enabled);
+                    Assert.True(BugsInput(form).Enabled);
                     Assert.False(GoalsInput(form).Enabled);
 
                     form.BrowseFolder = s => null;
@@ -517,13 +517,13 @@ namespace A2GPatch.Tests
                 using (PatchForm form = Form(new List<string>(), DialogResult.OK, arrowOn.Path, allOff.Path))
                 {
                     Assert.True(form.Install.DllOutdated);
-                    Assert.True(ArrowInput(form).Checked);
+                    Assert.True(BugsInput(form).Checked);
                     Assert.True(ApplyButton(form).Enabled);
 
                     Find<ComboBox>(form, "FolderInput").SelectedIndex = 1;
                     Assert.True(form.Install.DllOutdated);
                     Assert.False(ApplyButton(form).Enabled);
-                    ArrowInput(form).Checked = true;
+                    BugsInput(form).Checked = true;
                     Assert.True(ApplyButton(form).Enabled);
                 }
             }

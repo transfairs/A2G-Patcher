@@ -31,10 +31,11 @@ namespace A2GPatch.Tests
     [Collection("GameInstall statics")]
     public class GameInstallTests
     {
-        internal static readonly Patch Goals = Patch.All[0];
-        internal static readonly Patch Arrow = Patch.All[1];
-        internal static readonly Patch Cup = Patch.All[8];
-        internal static readonly Patch V101 = Patch.All[10];
+        internal static readonly Patch Goals = Patch.Get<GoalLimits>();
+        // The switch of the game's bugs; the test exes hold only some of their code (arrows, cup draw).
+        internal static readonly Patch Bugs = Patch.Get<GameBugs>();
+        internal static readonly Patch Cup = Patch.Get<CupDraw>();
+        internal static readonly Patch V101 = Patch.Get<Patch101>();
         internal static readonly Patch Protection = Patch.All.OfType<CopyProtection>().Single();
         internal static readonly Patch Dialogs = Patch.All.OfType<DialogStyles>().Single();
         internal static readonly Patch[] Gog = { Protection, V101, Dialogs };
@@ -72,21 +73,21 @@ namespace A2GPatch.Tests
                 GameInstall install = GameInstall.Detect(folder.Path);
                 Assert.Equal(PatchKind.Exe, install.Kind);
                 Assert.Equal(folder.File(name), install.ExePath);
-                Assert.True(install.CanApply(Goals) && install.CanApply(Arrow));
-                Assert.False(install.IsApplied(Goals) || install.IsApplied(Arrow));
+                Assert.True(install.CanApply(Goals) && install.CanApply(Bugs));
+                Assert.False(install.IsApplied(Goals) || install.IsApplied(Bugs));
                 // Not GOG's files: none of the GOG patches.
                 Assert.All(Gog, p => Assert.False(install.CanApply(p) || install.IsApplied(p)));
 
-                install.Apply(new[] { Arrow });
+                install.Apply(new[] { Bugs });
                 Assert.Equal(original, File.ReadAllBytes(folder.File(name) + GameInstall.BackupSuffix));
                 GameInstall arrowOnly = GameInstall.Detect(folder.Path);
-                Assert.True(arrowOnly.IsApplied(Arrow));
+                Assert.True(arrowOnly.IsApplied(Bugs));
                 Assert.False(arrowOnly.IsApplied(Goals));
 
-                arrowOnly.Apply(new[] { Arrow, Goals });
+                arrowOnly.Apply(new[] { Bugs, Goals });
                 Assert.True(GameInstall.Detect(folder.Path).IsApplied(Goals));
                 // The same choice again changes nothing.
-                arrowOnly.Apply(new[] { Goals, Arrow });
+                arrowOnly.Apply(new[] { Goals, Bugs });
 
                 GameInstall.Detect(folder.Path).Apply(new Patch[0]);
                 Assert.Equal(original, File.ReadAllBytes(folder.File(name)));
@@ -103,7 +104,7 @@ namespace A2GPatch.Tests
                 GameInstall install = GameInstall.Detect(folder.Path);
 
                 Assert.Equal(PatchKind.Exe, install.Kind);
-                Assert.True(install.CanApply(Arrow));
+                Assert.True(install.CanApply(Bugs));
                 Assert.False(install.CanApply(Goals));
                 Assert.False(install.IsApplied(Goals));
             }
@@ -135,8 +136,8 @@ namespace A2GPatch.Tests
                 byte[] original = TestExe.Build(PatchesTests.CupCode);
                 File.WriteAllBytes(folder.File("anstoss2.exe"), original);
 
-                GameInstall.Detect(folder.Path).Apply(new[] { Cup });
-                Assert.True(GameInstall.Detect(folder.Path).IsApplied(Cup));
+                GameInstall.Detect(folder.Path).Apply(new[] { Bugs });
+                Assert.True(GameInstall.Detect(folder.Path).IsApplied(Bugs));
                 Assert.NotEqual(original, File.ReadAllBytes(folder.File("anstoss2.exe")));
                 GameInstall.Detect(folder.Path).Apply(new Patch[0]);
 
@@ -220,26 +221,25 @@ namespace A2GPatch.Tests
                 GameInstall install = GameInstall.Detect(folder.Path);
                 Assert.Equal(PatchKind.Dll, install.Kind);
                 Assert.Equal(folder.File("run.exe"), install.ExePath);
-                Assert.True(install.CanApply(Goals) && install.CanApply(Arrow));
+                Assert.True(install.CanApply(Goals) && install.CanApply(Bugs));
                 Assert.False(install.ForeignDll);
                 // Of the GOG patches, the DLL knows only patch 1.01.
                 Assert.All(new[] { Protection, Dialogs }, p => Assert.False(install.CanApply(p) || install.IsApplied(p)));
                 Assert.True(install.CanApply(V101) && !install.IsApplied(V101));
 
-                install.Apply(new[] { Arrow });
-                Assert.Equal(2, Flags(folder));
+                install.Apply(new[] { Bugs });
+                Assert.Equal(Bugs.Flag, Flags(folder));
                 GameInstall arrowOnly = GameInstall.Detect(folder.Path);
-                Assert.True(arrowOnly.IsApplied(Arrow));
+                Assert.True(arrowOnly.IsApplied(Bugs));
                 Assert.False(arrowOnly.IsApplied(Goals));
                 // The same choice again changes nothing.
-                arrowOnly.Apply(new[] { Arrow });
+                arrowOnly.Apply(new[] { Bugs });
 
-                arrowOnly.Apply(new[] { Arrow, Goals });
-                Assert.Equal(3, Flags(folder));
-                // The ninth patch's flag is in the second byte.
-                GameInstall.Detect(folder.Path).Apply(new[] { Arrow, Cup });
-                Assert.Equal(0x102, Flags(folder));
-                Assert.True(GameInstall.Detect(folder.Path).IsApplied(Cup));
+                arrowOnly.Apply(new[] { Bugs, Goals });
+                Assert.Equal(Bugs.Flag | Goals.Flag, Flags(folder));
+                // A DLL with only some of the bugs' flags (an older version's choice) counts as the switch on.
+                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x01.."));
+                Assert.True(GameInstall.Detect(folder.Path).IsApplied(Bugs));
 
                 GameInstall.Detect(folder.Path).Apply(new Patch[0]);
                 Assert.False(File.Exists(folder.File(GameInstall.DllName)));
@@ -261,20 +261,20 @@ namespace A2GPatch.Tests
                 GameInstall install = GameInstall.Detect(folder.Path);
                 Assert.Equal(PatchKind.Dll, install.Kind);
 
-                install.Apply(new[] { Arrow, V101 });
-                Assert.Equal(0x402, Flags(folder));
+                install.Apply(new[] { Bugs, V101 });
+                Assert.Equal(Bugs.Flag | V101.Flag, Flags(folder));
                 Assert.True(GameInstall.Detect(folder.Path).IsApplied(V101));
                 Assert.Equal(GogPatchesTests.EventFile('.'), File.ReadAllBytes(folder.File(Patch101.Events)));
                 Assert.Equal(GogPatchesTests.EventFile('.'), File.ReadAllBytes(folder.File(Patch101.EventsShort)));
                 Assert.All(Patch101.Countries, name => Assert.Equal(GogPatchesTests.CountriesFile('4'), File.ReadAllBytes(folder.File(name))));
                 Assert.Equal(MoveList.Build(), File.ReadAllBytes(folder.File(Patch101.MoveListFile)));
                 // The same choice again changes nothing.
-                GameInstall.Detect(folder.Path).Apply(new[] { Arrow, V101 });
-                Assert.Equal(0x402, Flags(folder));
+                GameInstall.Detect(folder.Path).Apply(new[] { Bugs, V101 });
+                Assert.Equal(Bugs.Flag | V101.Flag, Flags(folder));
 
                 // Only patch 1.01 taken back: the DLL stays, the data files are GOG's again.
-                GameInstall.Detect(folder.Path).Apply(new[] { Arrow });
-                Assert.Equal(2, Flags(folder));
+                GameInstall.Detect(folder.Path).Apply(new[] { Bugs });
+                Assert.Equal(Bugs.Flag, Flags(folder));
                 Assert.Equal(GogPatchesTests.EventFile(':'), File.ReadAllBytes(folder.File(Patch101.Events)));
                 Assert.All(Patch101.Countries, name => Assert.Equal(GogPatchesTests.CountriesFile('3'), File.ReadAllBytes(folder.File(name))));
                 Assert.False(File.Exists(folder.File(Patch101.EventsShort)) || File.Exists(folder.File(Patch101.MoveListFile)));
@@ -330,13 +330,13 @@ namespace A2GPatch.Tests
                 File.WriteAllBytes(folder.File(GameInstall.DllName), older);
                 GameInstall install = GameInstall.Detect(folder.Path);
                 Assert.True(install.DllOutdated);
-                Assert.True(install.IsApplied(Arrow));
+                Assert.True(install.IsApplied(Bugs));
                 Assert.Equal("run.exe ist gepackt. Die msvfw32.dll im Ordner stammt von einer anderen Version von A2G-Patch; „Übernehmen“ ersetzt sie.", PatchForm.StatusText(install));
 
-                install.Apply(new[] { Arrow });
+                install.Apply(new[] { Bugs });
 
                 byte[] expected = (byte[])OwnDll.Clone();
-                expected[GameInstall.MarkerAt(expected) + GameInstall.DllMarker.Length] = 2;
+                BitConverter.GetBytes(Bugs.Flag).CopyTo(expected, GameInstall.MarkerAt(expected) + GameInstall.DllMarker.Length);
                 Assert.Equal(expected, File.ReadAllBytes(folder.File(GameInstall.DllName)));
                 Assert.False(install.DllOutdated);
                 Assert.False(GameInstall.Detect(folder.Path).DllOutdated);

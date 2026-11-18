@@ -63,7 +63,7 @@ namespace A2GPatch
             Label description = new Label
             {
                 Text = "Behebt Abstürze und Fehler von Anstoss 2 Gold und bringt ein paar Verbesserungen mit. "
-                    + "Jeder Patch lässt sich einzeln ein- und wieder ausschalten.",
+                    + "Jeder Patch lässt sich wieder ausschalten.",
                 AutoSize = false,
             };
             description.SetBounds(x, this.Px(44), w, this.Px(52));

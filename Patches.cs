@@ -19,10 +19,10 @@ namespace A2GPatch
     /// <summary>The groups of tiles in the window, in this order.</summary>
     internal enum PatchGroup
     {
-        /// <summary>Crashes, hangs, and how the game gets on with today's Windows.</summary>
-        System,
-        /// <summary>What happens in the game and how it is played.</summary>
-        Game,
+        /// <summary>Fixes: the game's plain bugs (one switch) and fixes for particular setups.</summary>
+        Patches,
+        /// <summary>Changes to how the game plays, each a matter of taste.</summary>
+        Balancing,
         /// <summary>Only for GOG's release.</summary>
         Gog,
     }
@@ -35,13 +35,17 @@ namespace A2GPatch
     /// </summary>
     internal abstract class Patch
     {
-        /// <summary>Every patch, in the order the window lists them.</summary>
+        /// <summary>Every switch, in the order the window lists them; the game's bugs are one (<see cref="GameBugs"/>).</summary>
         public static readonly Patch[] All =
         {
-            new GoalLimits(), new ArrowRepeat(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(), new DiskSpaceWarning(),
-            new SquadLimit(), new DisplayModeRestore(), new CupDraw(), new CalculationInit(), new Patch101(),
-            new PictureButtonInit(), new InterviewEffects(), new SpeechPenalty(), new NegotiationCounter(), new CopyProtection(), new DialogStyles(), new AnimationEdge(),
+            new GameBugs(), new Patch101(), new VideoCrash(), new SleepFreeze(), new DefaultSoundDevice(),
+            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(),
+            new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
+
+        /// <summary>The patch of type <typeparamref name="T"/>, a switch of its own or one of the game's bugs.</summary>
+        internal static T Get<T>() where T : Patch =>
+            All.Concat(All.OfType<GameBugs>().SelectMany(b => b.Members)).OfType<T>().Single();
 
         /// <summary>What the patch does, in a sentence: the text under its tile in the window.</summary>
         public abstract string Name { get; }
@@ -52,8 +56,11 @@ namespace A2GPatch
         /// <summary>The group the window shows the tile in.</summary>
         public abstract PatchGroup Group { get; }
 
-        /// <summary>Its bit in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
+        /// <summary>Its bits in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract ushort Flag { get; }
+
+        /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
+        internal virtual bool IsApplied(Site[] sites) => sites.All(s => s.IsPatched);
 
         /// <summary>The patterns that locate the patch; none of them in an exe means its code isn't readable there (packed).</summary>
         public abstract IEnumerable<byte?[]> Patterns { get; }
@@ -81,6 +88,44 @@ namespace A2GPatch
 
         /// <summary>The bytes as a pattern without wildcards.</summary>
         internal static byte?[] Exact(params byte[] bytes) => bytes.Select(b => (byte?)b).ToArray();
+    }
+
+    /// <summary>
+    /// The game's plain bugs, fixed under one switch. Each stays a patch of its own
+    /// with its own places and DLL flag; this one finds the places of those the exe has (the GOG build,
+    /// for one, already restores the display mode itself) and switches them together. It counts as
+    /// applied as soon as one of them is, so an exe that has some of them from an older version keeps
+    /// them, and applying completes the rest.
+    /// </summary>
+    internal sealed class GameBugs : Patch
+    {
+        /// <summary>The bugs, in the order the tile names them.</summary>
+        internal readonly Patch[] Members =
+        {
+            new InvestmentBalance(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
+            new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(),
+        };
+
+        /// <inheritdoc/>
+        public override string Name => "Behebt: " + string.Join(", ", this.Members.Select(m => m.Title));
+        /// <inheritdoc/>
+        public override string Title => "Spielfehler";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override ushort Flag => (ushort)this.Members.Aggregate(0, (f, m) => f | m.Flag);
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => this.Members.SelectMany(m => m.Patterns);
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            Site[] sites = this.Members.Select(m => m.Find(image)).Where(f => f != null).SelectMany(f => f).ToArray();
+            return sites.Length == 0 ? null : sites;
+        }
+
+        /// <inheritdoc/>
+        internal override bool IsApplied(Site[] sites) => sites.Any(s => s.IsPatched);
     }
 
     /// <summary>
@@ -115,7 +160,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Mehr Tore";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
         public override ushort Flag => 1;
         /// <inheritdoc/>
@@ -234,7 +279,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Pfeile gedrückt halten";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 2;
         /// <inheritdoc/>
@@ -352,7 +397,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Videos ohne Absturz";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.System;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 4;
         /// <inheritdoc/>
@@ -437,7 +482,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Langer Windows-Betrieb";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.System;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 8;
     }
@@ -465,7 +510,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Große Festplatten";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.System;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 32;
     }
@@ -508,7 +553,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Kadergröße";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 64;
     }
@@ -553,7 +598,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Bildschirmauflösung";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.System;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 128;
     }
@@ -581,7 +626,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Kalkulation";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.System;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 512;
     }
@@ -640,7 +685,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Aufstellung";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 2048;
     }
@@ -707,7 +752,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Audiogerät";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.System;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 16;
         /// <inheritdoc/>
@@ -800,7 +845,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Pokalauslosung";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override ushort Flag => 256;
         /// <inheritdoc/>
@@ -959,7 +1004,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Interviews";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
         public override ushort Flag => 4096;
 
@@ -1301,7 +1346,7 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Ansprachen";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
         public override ushort Flag => 8192;
         /// <inheritdoc/>
@@ -1393,9 +1438,108 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Verhandlungssperre";
         /// <inheritdoc/>
-        public override PatchGroup Group => PatchGroup.Game;
+        public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
         public override ushort Flag => 16384;
+    }
+
+    /// <summary>
+    /// Keeps the growth of investments off the bank balance. The game doesn't store the balance but
+    /// works it out each time (FUN_00571060 in the original, given the finance block club+0x154):
+    /// the ledger (+0) minus the current value of the active investments (FUN_0058bf30: 6 slots of
+    /// 0x10 bytes from +0xA8, each its base +4 times today's index over the index at purchase) plus the loans
+    /// (FUN_0058bf10) plus the season's bookings (FUN_00570f80). The ledger takes no interest, so every
+    /// rise of an index takes as much off the balance (and its daily interest, overdraft included),
+    /// and closing the investment (FUN_0058bec0) gives the value back and books value minus deposit
+    /// as interest on top: the gain shows twice at once. The patch subtracts the deposits (+0 of each
+    /// slot, which only buying writes; the season change sets only the base and index anew) instead of the values, in the same 48 bytes; the club's
+    /// worth (ledger + values − loans) stays as it was. Nothing is stored, so switching it off shows
+    /// the old balance again.
+    /// <code>
+    ///   push esi / mov esi,[esp+8] / push edi / push esi / call values / mov edi,[esi] / add esp,4 / sub edi,eax /
+    ///   push esi / call loans / add esp,4 / add edi,eax / push esi / call bookings / add esp,4 / add eax,edi /
+    ///   pop edi / pop esi / ret / nop x4
+    /// ->
+    ///   push esi / mov esi,[esp+8] / push esi / call loans / add eax,[esi] / sub esi,-80 / push 6 / pop ecx /
+    ///   next: test byte [esi+33],1 / je skip / sub eax,[esi+28] / skip: add esi,10 / loop next /
+    ///   pop esi / push eax / push esi / call bookings / pop ecx / pop ecx / add eax,ecx / pop esi / ret / nop
+    /// </code>
+    /// Taking it back needs the call to "values" again: that function follows "loans" 0x20 bytes on in
+    /// every build, which the original code must show to be offered.
+    /// </summary>
+    internal sealed class InvestmentBalance : Patch
+    {
+        private static readonly byte?[] OriginalPattern =
+        {
+            0x56, 0x8B, 0x74, 0x24, 0x08, 0x57, 0x56, 0xE8, null, null, null, null, 0x8B, 0x3E, 0x83, 0xC4, 0x04, 0x2B, 0xF8,
+            0x56, 0xE8, null, null, null, null, 0x83, 0xC4, 0x04, 0x03, 0xF8,
+            0x56, 0xE8, null, null, null, null, 0x83, 0xC4, 0x04, 0x03, 0xC7, 0x5F, 0x5E, 0xC3, 0x90, 0x90, 0x90, 0x90,
+        };
+        private const int OriginalValues = 8, OriginalLoans = 21, OriginalBookings = 32;   // the calls' displacements
+
+        private static readonly byte?[] PatchedPattern =
+        {
+            0x56, 0x8B, 0x74, 0x24, 0x08, 0x56, 0xE8, null, null, null, null, 0x03, 0x06, 0x83, 0xEE, 0x80, 0x6A, 0x06, 0x59,
+            0xF6, 0x46, 0x33, 0x01, 0x74, 0x03, 0x2B, 0x46, 0x28, 0x83, 0xC6, 0x10, 0xE2, 0xF2,
+            0x5E, 0x50, 0x56, 0xE8, null, null, null, null, 0x59, 0x59, 0x03, 0xC1, 0x5E, 0xC3, 0x90,
+        };
+        private const int PatchedLoans = 7, PatchedBookings = 37;
+
+        // "values" lies this far behind "loans", seen from the original's two calls.
+        private const int ValuesBehindLoans = 0x20 + (OriginalLoans + 4) - (OriginalValues + 4);
+
+        /// <summary>The bytes of <paramref name="pattern"/> with each pair's displacement written at its place.</summary>
+        private static byte[] Code(byte?[] pattern, params int[] displacementAndPlace)
+        {
+            byte[] code = pattern.Select(b => b ?? 0).ToArray();
+            for (int i = 0; i < displacementAndPlace.Length; i += 2)
+                BitConverter.GetBytes(displacementAndPlace[i]).CopyTo(code, displacementAndPlace[i + 1]);
+            return code;
+        }
+
+        /// <summary>The original code that calls loans and bookings with these displacements (values follows loans).</summary>
+        internal static byte[] OriginalBytes(int loans, int bookings) =>
+            Code(OriginalPattern, loans + ValuesBehindLoans, OriginalValues, loans, OriginalLoans, bookings, OriginalBookings);
+
+        /// <summary>The patched code for the original's displacements of loans and bookings.</summary>
+        internal static byte[] PatchedBytes(int loans, int bookings) =>
+            Code(PatchedPattern, loans + (OriginalLoans - PatchedLoans), PatchedLoans, bookings + (OriginalBookings - PatchedBookings), PatchedBookings);
+
+        /// <inheritdoc/>
+        public override string Name => "Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen";
+        /// <inheritdoc/>
+        public override string Title => "Geldanlagen";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override ushort Flag => 32768;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            List<long> original = FindAll(image, OriginalPattern), patched = FindAll(image, PatchedPattern);
+            if (original.Count + patched.Count != 1)
+                return null;
+            bool isPatched = patched.Count == 1;
+            long at = isPatched ? patched[0] : original[0];
+            int Displacement(int place) => BitConverter.ToInt32(image, (int)at + place);
+            int loans, bookings;
+            if (isPatched)
+            {
+                loans = Displacement(PatchedLoans) - (OriginalLoans - PatchedLoans);
+                bookings = Displacement(PatchedBookings) - (OriginalBookings - PatchedBookings);
+            }
+            else
+            {
+                loans = Displacement(OriginalLoans);
+                bookings = Displacement(OriginalBookings);
+                if (Displacement(OriginalValues) != loans + ValuesBehindLoans)
+                    return null;
+            }
+            return new[] { new Site { Offset = at, Original = OriginalBytes(loans, bookings), Patched = PatchedBytes(loans, bookings), IsPatched = isPatched } };
+        }
     }
 
     /// <summary>What the patches need of a 32-bit exe's headers: its sections, where the headers are, and the imports by name.</summary>
