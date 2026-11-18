@@ -120,6 +120,10 @@ jobs:
             weiterhin.
           - Ton über das Standard-Audiogerät von Windows: Das Spiel nimmt sonst das zuletzt gefundene
             Gerät, bei mehreren Ausgängen (Monitor, Headset) also womöglich das falsche.
+          - Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen: Über 2.147.483.647 DM wird
+            das Vereinskonto nach einer guten Woche zu rund -2,1 Milliarden DM, und der Verein gilt als
+            pleite (Überziehungszinsen, Zwangskredit). Mit dem Patch bleibt es bei 2 Milliarden DM
+            stehen; was darüber hinaus hereinkommt, verfällt.
 
           Balancing:
 

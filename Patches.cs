@@ -38,7 +38,7 @@ namespace A2GPatch
         /// <summary>Every switch, in the order the window lists them; the game's bugs are one (<see cref="GameBugs"/>).</summary>
         public static readonly Patch[] All =
         {
-            new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(),
+            new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new MoneyLimit(),
             new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(),
         };
@@ -1721,6 +1721,148 @@ namespace A2GPatch
             };
             // Each place holds one of its two versions exactly (which also checks that both lists use the same group table).
             return sites.All(s => image.Slice(s.Offset, s.Original.Length).SequenceEqual(s.IsPatched ? s.Patched : s.Original)) ? sites : null;
+        }
+    }
+
+    /// <summary>
+    /// Keeps the club's money from running over. The game books a club's week once, at the end of
+    /// FUN_005722c0 in the original: the ledger at club +0x154 (an Int32, see <see cref="InvestmentBalance"/>)
+    /// plus the week's result after tax, unchecked. Past 2,147,483,647 DM it turns into about -2.1 billion,
+    /// and the game takes the club for broke (overdraft interest, a forced loan). The patch stops the
+    /// ledger at 2,000,000,000 DM: the bank balance adds the week's bookings and the loans to it, so it
+    /// keeps about 147 million DM of room before it could run over itself. A ledger that is higher
+    /// already (set with a trainer) stays as it is and only stops growing; a sum below -2^31 stays at the
+    /// lowest value.
+    /// <para>
+    /// The check needs more bytes than the booking has. The patch makes room in FUN_00572660, the week's
+    /// result: it adds up the same fields as the bookings FUN_00570f80 (given club +0x154), except that
+    /// the bookings also subtract +0x338 (the tax booked) and add +0x33C. Rewritten, it calls the
+    /// bookings and takes those two back (the same result, the same calls in the same order) in 29 of its
+    /// 208 bytes; the check follows, and the booking jumps to it:
+    /// </para>
+    /// <code>
+    ///   week:    mov eax,[esp+4] / add eax,154 / push eax / call bookings / pop ecx / add eax,[ecx+338] /
+    ///            sub eax,[ecx+33C] / ret / nop x3
+    ///   check:   mov ecx,[esi+154] / mov eax,ecx / add eax,edi / jno sum / mov eax,edi / sar eax,31 /
+    ///            xor eax,7FFFFFFF / sum: cmp eax,limit / jle store / cmp eax,ecx / jle store /
+    ///            mov eax,limit / cmp eax,ecx / jge store / mov eax,ecx /
+    ///            store: pop edi / mov [esi+154],eax / pop esi / pop ebx / add esp,24 / ret / nop...
+    ///   booking: mov eax,[esi+154] / add eax,edi / pop edi / mov [esi+154],eax / pop esi / pop ebx /
+    ///            add esp,24 / ret / nop x2   ->  jmp check / nop x18
+    /// </code>
+    /// The bookings lie 0x100 bytes behind the first function the week's result calls, in every build;
+    /// their own three calls give the original's back.
+    /// </summary>
+    internal sealed class MoneyLimit : Patch
+    {
+        /// <summary>The highest ledger the weekly booking leads to.</summary>
+        internal const int Limit = 2000000000;
+
+        /// <summary>The bytes of <paramref name="hex"/> with a wildcard displacement behind each call at <paramref name="calls"/>.</summary>
+        private static byte?[] Code(string hex, params int[] calls)
+        {
+            byte?[] code = hex.Hex().Select(b => (byte?)b).ToArray();
+            foreach (int call in calls)
+                for (int i = 1; i <= 4; i++)
+                    code[call + i] = null;
+            return code;
+        }
+
+        // FUN_00572660: push esi / push edi / lea edi,[eax+154] / call first ... call (0x570F60) ... call (0x570E30) / ... / ret.
+        private static readonly byte?[] WeekOriginal = Code(
+            "8B44240456578DB85401000057E80EE8FFFF8BB73C0200008B97280300008B8F580200002BF28B971803000003F18B8F1C030000"
+            + "03F28B970802000003F18B8F000200002BF28B972C0300002BF18B8F1802000003F28B97100200002BF18B8F540200002BF2"
+            + "8B97AC0100002BF18B8FB40100002BF28B97800100002BF18B8FF80100002BF28B97F00100002BF18B8FDC0100002BF2"
+            + "8B977C0100002BF18B8F7401000003F28B976C01000083C40403F103F2572BF0E845E8FFFF83C4042BF057E80AE7FFFF"
+            + "83C40403F08BC65F5EC3", 0x0D, 0xB6, 0xC1);
+        private static readonly int[] WeekCalls = { 0x0D, 0xB6, 0xC1 };
+
+        // The week's result rewritten (call bookings at 0x0A), the check from 0x20, nops to the original's 208 bytes.
+        private static readonly byte?[] WeekPatched = Code(
+            "8B442404" + "0554010000" + "50" + "E800000000" + "59" + "038138030000" + "2B813C030000" + "C3909090"
+            + "8B8E540100008BC103C7710A8BC7C1F81F35FFFFFF7F3D" + Le(Limit) + "7E0F3BC17E0BB8" + Le(Limit)
+            + "3BC17D028BC15F8986540100005E5B83C424C3"
+            + string.Concat(Enumerable.Repeat("90", 208 - 0x59)), 0x0A);
+        private const int WeekPatchedCall = 0x0A;
+        /// <summary>Where the check starts in the rewritten week's result.</summary>
+        internal const int CheckAt = 0x20;
+
+        // FUN_00570F80, the bookings of the finance block: calls first, ... (0x570F60) ... (0x570E30).
+        private static readonly byte?[] BookingsCode = Code(
+            "568B7424085756E8F4FEFFFF8BBE6C0100008B96800100008B8EB40100002BFA8B96AC0100002BF98B8EDC0100002BFA"
+            + "8B96F80100002BF98B8EF00100002BFA8B967C0100002BF98B8E7401000003FA8B963C02000003F98B8E3803000003FA"
+            + "8B96280300002BF98B8E580200002BFA8B962C03000003F98B8E1802000003FA8B96100200002BF98B8E3C0300002BFA"
+            + "8B960802000003F98B8E000200002BFA8B96180300002BF98B8E1C03000003FA8B965402000083C40403F92BFA562BF8"
+            + "E81BFFFFFF83C4042BF856E8E0FDFFFF83C40403C75F5EC3", 0x07, 0xC0, 0xCB);
+        private static readonly int[] BookingsCalls = { 0x07, 0xC0, 0xCB };
+        private const int BookingsBehindFirst = 0x100;
+
+        // The booking, behind the call that ends the human clubs' statistics (call / add esp,8).
+        private static readonly byte?[] BookingOriginal = Code("E80000000083C408" + "8B865401000003C75F8986540100005E5B83C424C39090", 0);
+        private static readonly byte?[] BookingPatched = Code("E80000000083C408" + "E900000000" + string.Concat(Enumerable.Repeat("90", 18)), 0, 8);
+        private const int BookingAt = 8;
+
+        private static string Le(int value) => string.Concat(BitConverter.GetBytes(value).Select(b => b.ToString("X2")));
+
+        /// <inheritdoc/>
+        public override string Name => "Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen";
+        /// <inheritdoc/>
+        public override string Title => "Kontostand";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 131072;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[] { WeekOriginal, WeekPatched, BookingOriginal, BookingPatched };
+
+        // The bytes of the pattern with the targets of its calls (or jumps) at places.
+        private static byte[] Fill(byte?[] pattern, int[] places, long at, params long[] targets)
+        {
+            byte[] code = pattern.Select(b => b ?? 0).ToArray();
+            for (int i = 0; i < places.Length; i++)
+                BitConverter.GetBytes((int)(targets[i] - (at + places[i] + 5))).CopyTo(code, places[i] + 1);
+            return code;
+        }
+
+        /// <summary>The week's result as the game has it at <paramref name="at"/>, calling first, second and third.</summary>
+        internal static byte[] WeekOriginalBytes(long at, long first, long second, long third) => Fill(WeekOriginal, WeekCalls, at, first, second, third);
+
+        /// <summary>The week's result rewritten at <paramref name="at"/>, calling the bookings at <paramref name="bookings"/>.</summary>
+        internal static byte[] WeekPatchedBytes(long at, long bookings) => Fill(WeekPatched, new[] { WeekPatchedCall }, at, bookings);
+
+        // Where the one place of either pattern starts, or -1.
+        private static long One(byte[] image, byte?[] original, byte?[] patched)
+        {
+            List<long> found = FindAll(image, original).Concat(FindAll(image, patched)).ToList();
+            return found.Count == 1 ? found[0] : -1;
+        }
+
+        // Where the call or jump at at leads.
+        private static long Target(byte[] image, long at) => at + 5 + BitConverter.ToInt32(image, (int)at + 1);
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            long week = One(image, WeekOriginal, WeekPatched), booking = One(image, BookingOriginal, BookingPatched);
+            if (week < 0 || booking < 0)
+                return null;
+            booking += BookingAt;
+            bool weekPatched = image[week + WeekPatchedCall] == 0xE8, bookingPatched = image[booking] == 0xE9;
+            long bookings = weekPatched ? Target(image, week + WeekPatchedCall) : Target(image, week + WeekCalls[0]) + BookingsBehindFirst;
+            if (bookings < 0 || FindAll(image.Slice(bookings, BookingsCode.Length), BookingsCode).Count != 1)
+                return null;
+            long[] calls = BookingsCalls.Select(at => Target(image, bookings + at)).ToArray();
+            if (calls[0] + BookingsBehindFirst != bookings
+                || !weekPatched && !WeekCalls.Select(at => Target(image, week + at)).SequenceEqual(calls)
+                || bookingPatched && Target(image, booking) != week + CheckAt)
+                return null;
+            byte[] jump = new byte[] { 0xE9, 0, 0, 0, 0 }.Concat(Enumerable.Repeat((byte)0x90, 18)).ToArray();
+            BitConverter.GetBytes((int)(week + CheckAt - (booking + 5))).CopyTo(jump, 1);
+            return new[]
+            {
+                new Site { Offset = week, Original = WeekOriginalBytes(week, calls[0], calls[1], calls[2]), Patched = WeekPatchedBytes(week, bookings), IsPatched = weekPatched },
+                new Site { Offset = booking, Original = BookingOriginal.Skip(BookingAt).Select(b => b.Value).ToArray(), Patched = jump, IsPatched = bookingPatched },
+            };
         }
     }
 

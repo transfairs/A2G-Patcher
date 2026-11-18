@@ -45,6 +45,11 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   codec installed they still play.
 - **Ton über das Standard-Audiogerät von Windows**: the game picks the last enumerated sound device instead
   of the default one, so with several outputs (monitor, headset) the sound may go to the wrong one.
+- **Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen** ("Kontostand"): the game keeps a club's
+  money in a 32-bit number. Past 2,147,483,647 DM a profitable week turns it into about -2.1 billion DM,
+  and the game takes the club for broke (overdraft interest, a forced loan). With the patch the weekly
+  booking stops at 2,000,000,000 DM; what the club earns beyond that is lost. The room to the 32-bit limit
+  keeps the shown balance (with the current week's income and the loans) from running over in between.
 
 "Balancing": changes to how the game plays.
 
@@ -353,6 +358,34 @@ Taking it back restores the call to `values`, which lies 0x20 bytes behind `loan
 patch is offered only where the original code shows that). The function lies outside the 2007 release's
 CRC stretches.
 
+**Money limit.** The ledger (club `+0x154`, an Int32) changes almost only once a week: at the end of
+`0x5722c0` the game adds the week's result after tax, unchecked. Past 2^31 - 1 it wraps to about -2.1
+billion, and the balance (see above) with it, which the interest (`0x58ba80`) takes for an overdraft and
+answers with a forced loan. The patch caps the booking at 2,000,000,000 DM; the balance adds the current week's
+bookings and the loans to the ledger, and the remaining 147 million DM keep those from running over. A
+ledger that is higher already (set with a trainer) stays and only stops growing; a sum below -2^31 stays
+at the lowest value. The 23 bytes of the booking are too few for the check, so the patch makes room in the
+week's result `0x572660`: it adds up the same 20 fields as the bookings `0x570f80` (given club `+0x154`),
+which also subtract `+0x338` (the tax booked) and add `+0x33c`. Rewritten as a call of the bookings that
+takes those two back (the same result, the same calls in the same order), it needs 29 of its 208 bytes, and
+the check goes behind it:
+
+```
+week:    mov eax,[esp+4] / add eax,154 / push eax / call bookings / pop ecx / add eax,[ecx+338] /
+         sub eax,[ecx+33C] / ret / nop x3
+check:   mov ecx,[esi+154] / mov eax,ecx / add eax,edi / jno sum / mov eax,edi / sar eax,31 /
+         xor eax,7FFFFFFF / sum: cmp eax,2000000000 / jle store / cmp eax,ecx / jle store /
+         mov eax,2000000000 / cmp eax,ecx / jge store / mov eax,ecx /
+         store: pop edi / mov [esi+154],eax / pop esi / pop ebx / add esp,24 / ret / nop...
+booking: mov eax,[esi+154] / add eax,edi / pop edi / mov [esi+154],eax / pop esi / pop ebx /
+         add esp,24 / ret / nop x2   ->  jmp check / nop x18
+```
+
+The bookings lie 0x100 bytes behind the first function the week's result calls, in every build, and their
+own three calls give the original's back for taking the patch off. Places `0x5724f9` and `0x572660` (GOG
+and 2007 CD `0x5747a9` and `0x574910`, outside the 2007 release's CRC stretches). The few one-off changes
+of the ledger outside the booking stay unchecked.
+
 **Trainer supply.** Trainers and managers share one pool (1000 places of 32 bytes from `0x87ffa8`: `+4`
 trainer level, `+5` manager level, the higher one is the trade, `+7` age); co-trainers are hired from it,
 goalkeeper trainers have their own table (`0xbf31e8`). At the season change (`0x5cc3d0`, goalkeeper
@@ -500,7 +533,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
-  counters, 32768 investments, 65536 trainer supply; the build has all on). Versions before the third
+  counters, 32768 investments, 65536 trainer supply, 131072 money limit; the build has all on). Versions before the third
   byte had two; the NUL ending their string follows them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the
   embedded one in more than these bytes is from another version and gets replaced.

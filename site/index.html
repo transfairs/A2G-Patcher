@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
-    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ neun Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät). Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen drei Patches nur für die GOG-Version.</p>
+    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ neun Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät) sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen drei Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -156,6 +156,17 @@
         </div>
         <h3>Ton über das Standard-Audiogerät von Windows</h3>
         <p>Das Spiel nimmt das zuletzt gefundene Soundgerät statt des eingestellten. Mit Monitor-Lautsprechern und Headset landet der Ton so leicht auf dem falschen. Mit dem Patch kommt er dort heraus, wo Windows ihn hinschickt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>
+        </div>
+        <h3>Kontostand kippt nicht mehr ins Minus</h3>
+        <p>Das Spiel hält das Geld eines Vereins in einer 32-Bit-Zahl. Über 2.147.483.647&nbsp;DM macht eine gute Woche daraus rund −2,1&nbsp;Milliarden, und der Verein gilt als pleite: Überziehungszinsen, Zwangskredit. Mit dem Patch bleibt das Vereinskonto bei 2&nbsp;Milliarden&nbsp;DM stehen; was darüber hinaus hereinkommt, verfällt.</p>
+        <div class="score" aria-label="Obergrenze 2 Milliarden DM">
+          <span class="old">−2,1 Mrd.</span><span class="arrow">→</span><span class="new">2 Mrd.</span>
+        </div>
       </article>
       <article class="card card-alt">
         <div class="card-head">
@@ -379,6 +390,13 @@ Wirkung:          Prozente von +E5       →  negative Nummer: deren Beträge ab
         <summary><b>Geldanlagen</b><span>Wert statt Einlage abgezogen</span></summary>
         <p>Das Spiel speichert den Kontostand nicht, sondern rechnet ihn jedes Mal aus: Grundbetrag des Vereins minus aktueller Wert aller Anlagen plus Kredite plus Buchungen der Saison. Der Grundbetrag bekommt keine Zinsen gutgeschrieben, also senkt jeder Anstieg eines Index den Kontostand um genau diesen Betrag. Beim Auflösen fällt der Abzug weg, und Wert minus Einlage wird zusätzlich als Zinsertrag gebucht. Der Patch zieht die Einlagen statt der Werte ab, in denselben 48 Bytes; das Vermögen bleibt, wie es war. Da nichts gespeichert wird, zeigt das Ausschalten wieder den alten Kontostand.</p>
 <pre><code>Grundbetrag − Werte + Kredite + Buchungen  →  Grundbetrag − Einlagen + Kredite + Buchungen</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Kontostand</b><span>Eine Woche zu viel</span></summary>
+        <p>Das Vereinskonto (Verein <code>+0x154</code>, 32 Bit) ändert sich fast nur einmal pro Woche: Am Ende der Wochenbuchung addiert das Spiel das Wochenergebnis nach Steuern, ohne Prüfung. Über 2<sup>31</sup>&nbsp;−&nbsp;1 kippt es auf rund −2,1&nbsp;Milliarden, und mit ihm der Kontostand, den die Zinsberechnung dann für eine Überziehung hält. Der Patch begrenzt die Buchung auf 2.000.000.000&nbsp;DM. Der angezeigte Kontostand rechnet die Buchungen der laufenden Woche und die Kredite dazu; die übrigen 147&nbsp;Millionen&nbsp;DM halten auch ihn unter der Grenze. Ein Konto, das schon höher steht (etwa per Trainer), bleibt und wächst nur nicht weiter.</p>
+        <p>Für die Prüfung sind die 23&nbsp;Bytes der Buchung zu knapp. Platz schafft die Funktion für das Wochenergebnis: Sie zählt dieselben 20 Felder zusammen wie die Buchungssumme des Kontostands, die nur zusätzlich die gebuchte Steuer abzieht und ein weiteres Feld addiert. Neu geschrieben ruft sie die Buchungssumme auf und nimmt diese zwei zurück, mit demselben Ergebnis in 29 ihrer 208&nbsp;Bytes. Dahinter steht die Prüfung, und die Buchung springt hinein.</p>
+<pre><code>Konto = Konto + Woche                       →  Konto = Konto + Woche, höchstens 2.000.000.000
+Wochenergebnis: 20 Felder einzeln (208 B)  →  Buchungssumme + Steuer − Feld (29 B), dahinter die Prüfung</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Trainer-Nachwuchs</b><span>Eine Warteliste, die leer bleibt</span></summary>

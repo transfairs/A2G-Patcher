@@ -200,7 +200,7 @@ namespace A2GPatch.Tests
 
                 form.Size = form.MinimumSize;
                 Application.DoEvents();
-                Assert.Equal(4, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(5, game.Select(t => t.Top).Distinct().Count());
                 Assert.True(panel.VerticalScroll.Visible);
                 Assert.False(panel.HorizontalScroll.Visible);
                 Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
@@ -512,8 +512,8 @@ namespace A2GPatch.Tests
             {
                 foreach (GameFolder folder in new[] { arrowOn, allOff })
                     File.WriteAllBytes(folder.File("run.exe"), new byte[] { 0x4D, 0x5A });
-                File.WriteAllBytes(arrowOn.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x02\0...."));
-                File.WriteAllBytes(allOff.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x00\0...."));
+                File.WriteAllBytes(arrowOn.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x02\0\0..."));
+                File.WriteAllBytes(allOff.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x00\0\0..."));
                 using (PatchForm form = Form(new List<string>(), DialogResult.OK, arrowOn.Path, allOff.Path))
                 {
                     Assert.True(form.Install.DllOutdated);

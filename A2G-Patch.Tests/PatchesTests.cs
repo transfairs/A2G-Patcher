@@ -161,7 +161,7 @@ namespace A2GPatch.Tests
         {
             Assert.Equal(new[]
             {
-                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät",
+                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Kontostand",
                 "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
             }, Patch.All.Select(p => p.Title));
@@ -171,6 +171,7 @@ namespace A2GPatch.Tests
                 "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Ton über das Standard-Audiogerät von Windows",
+                "Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen",
                 "Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab",
                 "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
                 "Torgrenze auf 15 Tore pro Mannschaft erhöhen",
@@ -181,9 +182,9 @@ namespace A2GPatch.Tests
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
-            Assert.Equal(new uint[] { 0x8BEA, 1024, 4, 16, 16384, 4096, 1, 8192, 65536, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 0x8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
-            Assert.Equal(new[] { f, f, f, f, b, b, b, b, b, o, o, o }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, o, o, o }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own; together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;
@@ -200,8 +201,8 @@ namespace A2GPatch.Tests
             Assert.Equal(new uint[] { 32768, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
             Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
             uint[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
-            Assert.Equal(17, bits.Length);
-            Assert.Equal(0x1FFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
+            Assert.Equal(18, bits.Length);
+            Assert.Equal(0x3FFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
         }
 
         private static readonly Patch Cup = Patch.Get<CupDraw>();
@@ -511,6 +512,93 @@ namespace A2GPatch.Tests
             Assert.Null(Coach.Find(CoachImage(age: Changed(CoachAgeCode, 0x53, 4))));      // push 4: not the random call
             Assert.Null(Coach.Find(CoachImage(keeper: Changed(KeeperListCode, 9, 0x19))));  // another group table
             Assert.Null(Coach.Find(new byte[0]));
+        }
+
+        private static readonly Patch Money = Patch.Get<MoneyLimit>();
+        // The original exe from 0x570F80: the bookings of the finance block (calls 0x570E80, 0x570F60, 0x570E30).
+        internal static readonly byte[] MoneyBookingsCode = (
+            "568B7424085756E8F4FEFFFF8BBE6C0100008B96800100008B8EB40100002BFA8B96AC0100002BF98B8EDC0100002BFA"
+            + "8B96F80100002BF98B8EF00100002BFA8B967C0100002BF98B8E7401000003FA8B963C02000003F98B8E3803000003FA"
+            + "8B96280300002BF98B8E580200002BFA8B962C03000003F98B8E1802000003FA8B96100200002BF98B8E3C0300002BFA"
+            + "8B960802000003F98B8E000200002BFA8B96180300002BF98B8E1C03000003FA8B965402000083C40403F92BFA562BF8"
+            + "E81BFFFFFF83C4042BF856E8E0FDFFFF83C40403C75F5EC3").Hex();
+        // From 0x5724F1: the call that ends the human clubs' statistics, then the booking to the function's end.
+        internal static readonly byte[] MoneyBookingCode = ("E86AC8000083C408" + "8B865401000003C75F8986540100005E5B83C424C39090").Hex();
+        // From 0x572660: the week's result, calling the same three functions.
+        internal static readonly byte[] MoneyWeekCode = (
+            "8B44240456578DB85401000057E80EE8FFFF8BB73C0200008B97280300008B8F580200002BF28B971803000003F18B8F1C030000"
+            + "03F28B970802000003F18B8F000200002BF28B972C0300002BF18B8F1802000003F28B97100200002BF18B8F540200002BF2"
+            + "8B97AC0100002BF18B8FB40100002BF28B97800100002BF18B8FF80100002BF28B97F00100002BF18B8FDC0100002BF2"
+            + "8B977C0100002BF18B8F7401000003F28B976C01000083C40403F103F2572BF0E845E8FFFF83C4042BF057E80AE7FFFF"
+            + "83C40403F08BC65F5EC3").Hex();
+        private const int MoneyBookingsAt = 400, MoneyBookingAt = MoneyBookingsAt + 0x5724F1 - 0x570F80, MoneyWeekAt = MoneyBookingsAt + 0x572660 - 0x570F80;
+
+        // The three pieces as far apart as in the exe (0x570F80, 0x5724F1, 0x572660), from 400 on.
+        internal static byte[] MoneyImage(byte[] bookings = null, byte[] booking = null, byte[] week = null)
+        {
+            byte[] image = Enumerable.Repeat((byte)0xCC, MoneyWeekAt + 208 + 16).ToArray();
+            (bookings ?? MoneyBookingsCode).CopyTo(image, MoneyBookingsAt);
+            (booking ?? MoneyBookingCode).CopyTo(image, MoneyBookingAt);
+            (week ?? MoneyWeekCode).CopyTo(image, MoneyWeekAt);
+            return image;
+        }
+
+        private static byte[] Changed(byte[] code, int at, byte value)
+        {
+            byte[] copy = (byte[])code.Clone();
+            copy[at] = value;
+            return copy;
+        }
+
+        [Fact]
+        public void MoneyLimit_ChecksTheBooking_InTheWeeksResultsBytes()
+        {
+            byte[] image = MoneyImage();
+            Site[] sites = Money.Find(image);
+
+            Assert.Equal(new long[] { MoneyWeekAt, MoneyBookingAt + 8 }, sites.Select(s => s.Offset));
+            Assert.All(sites, s => Assert.False(s.IsPatched));
+            Assert.Equal(MoneyWeekCode, sites[0].Original);
+            Assert.Equal(MoneyBookingCode.Skip(8), sites[1].Original);
+            // As disassembled at 0x572660: call 0x570F80, the check from 0x572680 with the limit 0x77359400.
+            Assert.Equal((
+                "8B4424040554010000" + "50E811E9FFFF59" + "038138030000" + "2B813C030000" + "C3909090"
+                + "8B8E540100008BC103C7710A" + "8BC7C1F81F35FFFFFF7F" + "3D009435777E0F3BC17E0B"
+                + "B8009435773BC17D028BC1" + "5F8986540100005E5B83C424C3" + string.Concat(Enumerable.Repeat("90", 208 - 0x59))).Hex(),
+                sites[0].Patched);
+            // At 0x5724F9: jmp 0x572680.
+            Assert.Equal(("E982010000" + string.Concat(Enumerable.Repeat("90", 18))).Hex(), sites[1].Patched);
+            Assert.Equal(2000000000, MoneyLimit.Limit);
+
+            Site[] again = Money.Find(Apply(image, sites));
+            Assert.All(again, s => Assert.True(s.IsPatched));
+            Assert.Equal(sites.Select(s => s.Original), again.Select(s => s.Original));
+            Assert.Equal(sites.Select(s => s.Patched), again.Select(s => s.Patched));
+
+            // Half applied: each place is recognized on its own.
+            Assert.Equal(new[] { true, false }, Money.Find(Apply(image, new[] { sites[0] })).Select(s => s.IsPatched));
+            Assert.Equal(new[] { false, true }, Money.Find(Apply(image, new[] { sites[1] })).Select(s => s.IsPatched));
+        }
+
+        [Fact]
+        public void MoneyLimit_InUnknownCode_FindsNothing()
+        {
+            Assert.Null(Money.Find(MoneyImage(week: new byte[0])));
+            Assert.Null(Money.Find(MoneyImage(booking: new byte[0])));
+            Assert.Null(Money.Find(MoneyImage().Concat(MoneyWeekCode).ToArray()));
+            // The first call elsewhere: no bookings 0x100 behind it, or none at all before the image.
+            Assert.Null(Money.Find(MoneyImage(week: Changed(MoneyWeekCode, 0x0E, 0x0F))));
+            Assert.Null(Money.Find(MoneyImage(week: Changed(MoneyWeekCode, 0x11, 0x80))));
+            // The week's result calling another second function than the bookings.
+            Assert.Null(Money.Find(MoneyImage(week: Changed(MoneyWeekCode, 0xB7, 0x46))));
+            Assert.Null(Money.Find(MoneyImage(bookings: Changed(MoneyBookingsCode, 0x0E, 0x6D))));
+
+            Site[] sites = Money.Find(MoneyImage());
+            byte[] patched = Apply(MoneyImage(), sites);
+            // Patched: the bookings' first call no longer 0x100 before them, or the jump not to the check.
+            Assert.Null(Money.Find(Changed(patched, MoneyBookingsAt + 8, 0xF5)));
+            Assert.Null(Money.Find(Changed(patched, MoneyBookingAt + 9, 0x83)));
+            Assert.Null(Money.Find(new byte[0]));
         }
 
         private static readonly Patch Button = Patch.Get<PictureButtonInit>();
