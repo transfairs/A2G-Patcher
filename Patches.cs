@@ -56,7 +56,7 @@ namespace A2GPatch
         /// <summary>The group the window shows the tile in.</summary>
         public abstract PatchGroup Group { get; }
 
-        /// <summary>Its bits in the two flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
+        /// <summary>Its bits in the three flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract uint Flag { get; }
 
         /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
