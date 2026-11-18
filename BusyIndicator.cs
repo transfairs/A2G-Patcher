@@ -36,6 +36,9 @@ namespace A2GPatch
             this.Disposed += (s, e) => this.timer.Dispose();
         }
 
+        /// <summary>The colours of ring, arc and tick.</summary>
+        public Theme Theme { get; set; } = Theme.Light;
+
         /// <summary>Where the arc starts, in degrees; advances while busy.</summary>
         internal int Angle { get; private set; }
 
@@ -67,7 +70,7 @@ namespace A2GPatch
             RectangleF box = new RectangleF(pen / 2, pen / 2, this.Width - pen, this.Height - pen);
             if (this.state == BusyState.Done)
             {
-                using (Pen tick = new Pen(Color.FromArgb(0x10, 0x8A, 0x3E), pen) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
+                using (Pen tick = new Pen(this.Theme.Done, pen) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
                     e.Graphics.DrawLines(tick, new[]
                     {
                         new PointF(box.Left + box.Width * 0.08f, box.Top + box.Height * 0.55f),
@@ -76,9 +79,9 @@ namespace A2GPatch
                     });
                 return;
             }
-            using (Pen track = new Pen(SystemColors.ControlLight, pen))
+            using (Pen track = new Pen(this.Theme.Ring, pen))
                 e.Graphics.DrawEllipse(track, box);
-            using (Pen arc = new Pen(SystemColors.Highlight, pen) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            using (Pen arc = new Pen(this.Theme.Arc, pen) { StartCap = LineCap.Round, EndCap = LineCap.Round })
                 e.Graphics.DrawArc(arc, box, this.Angle, 100);
         }
     }

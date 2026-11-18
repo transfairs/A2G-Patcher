@@ -179,13 +179,14 @@ static int Count(BYTE *base, SIZE_T size, const WORD *pattern, SIZE_T n, BYTE **
     return count;
 }
 
-// memcmp and memcpy without the CRT.
+// memcmp without the CRT.
 static BOOL Equal(const BYTE *a, const BYTE *b, SIZE_T n)
 {
     while (n--) if (*a++ != *b++) return FALSE;
     return TRUE;
 }
 
+// memcpy without the CRT.
 static void Copy(BYTE *dst, const BYTE *src, SIZE_T n)
 {
     while (n--) *dst++ = *src++;
@@ -231,6 +232,7 @@ static int LimitBytes(const BYTE *site, BYTE *patched)
     return -1;
 }
 
+// Sets the limit to 15 and turns both jle into jmp; NOT_YET until all three places are in memory.
 static int PatchGoalLimits(BYTE *base, SIZE_T size)
 {
     BYTE *limit, *home, *away;
@@ -272,6 +274,7 @@ static const WORD kArrowPatchedStart[] = {
     0xC7, 0x86, 0xF0, 0x00, 0x00, 0x00, 0x3C, 0x00, 0x00, 0x00,             // mov [esi+F0],60
     0xA1 };
 
+// Rewrites the branch so the step is marked pending before it is posted.
 static int PatchArrowRepeat(BYTE *base, SIZE_T size)
 {
     BYTE *site, *patchedSite;
@@ -320,6 +323,7 @@ static const WORD kVideoPatchedStart[] = {
     0x8D, 0x86, 0x64, 0x80, 0x00, 0x00, 0x50, 0xC7, 0x00, 0x28, 0x00, 0x00, 0x00,
     0x8B, 0x4F, 0x40, 0x89, 0x48, 0x04, 0x8B, 0x4F, 0x44, 0x89, 0x48, 0x08 };
 
+// Rewrites the 75 bytes so a failed AVIStreamGetFrameOpen takes the release path.
 static int PatchVideoCrash(BYTE *base, SIZE_T size)
 {
     BYTE *site, *patchedSite;
@@ -386,6 +390,7 @@ static int PatchOpcode(BYTE *base, SIZE_T size, const WORD *code, SIZE_T n, SIZE
 static const WORD kSound[] = { 0x56, 0x68, ANY, ANY, ANY, ANY, 0x68, ANY, ANY, ANY, ANY, SOUND_TAIL };
 static const WORD kSoundPatched[] = { 0x56, 0x68, ANY, ANY, ANY, ANY, 0x56, 0x90, 0x90, 0x90, 0x90, SOUND_TAIL };
 
+// Replaces "push &guid" with "push esi" (NULL) if both pointer mentions and the GUID agree.
 static int PatchSound(BYTE *base, SIZE_T size)
 {
     BYTE *site, *patchedSite;
@@ -472,6 +477,7 @@ static const BYTE kCupHelper[177] = {
     0x00 };
 static const SIZE_T kCupOperands[3] = { 66, 92, 103 };
 
+// Copies the helper into fresh memory with its three import cells and points the call at it.
 static int PatchCupDraw(BYTE *base, SIZE_T size)
 {
     BYTE *site, *patchedSite;
@@ -593,6 +599,7 @@ static BOOL ReadableAt(const BYTE *p, SIZE_T n)
     return p + n <= (const BYTE *)mbi.BaseAddress + mbi.RegionSize;
 }
 
+// Copies the 1.01 code into fresh memory and writes its places, once every place holds its original bytes.
 static int PatchV101(BYTE *base, SIZE_T size)
 {
     if (base != (BYTE *)IMAGE_BASE) return DONE;
@@ -701,6 +708,7 @@ static void Redirect(BYTE *call, BYTE *target)
     Write(call + 1, (const BYTE *)&rel, 4);
 }
 
+// Copies the stub into fresh memory, fills in the game's addresses and redirects both calls to it.
 static int PatchInterview(BYTE *base, SIZE_T size)
 {
     BYTE *site, *moraleSite;
@@ -908,6 +916,7 @@ static const BYTE kSpeechApplyPatched[176] = {
 static const SIZE_T kSpeechApplyRefs[4] = { 0x21, 0x4D, 0x78, 0x98 }, kSpeechPatchedRefs[4] = { 0x1F, 0x4B, 0x5A, 0x6C };
 static const DWORD kSpeechFields[4] = { 0x10, 0x0C, 0x0D, 0x0E };
 
+// Rewrites the speech function with the table address taken over, then the mark and the roll.
 static int PatchSpeech(BYTE *base, SIZE_T size)
 {
     BYTE *roll, *mark, *apply, code[sizeof kSpeechApplyPatched];

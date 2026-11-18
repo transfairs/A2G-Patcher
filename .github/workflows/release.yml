@@ -162,6 +162,8 @@ jobs:
             Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Die Datendateien
             von Patch 1.01 ändert A2G-Patch direkt, Ausschalten stellt sie wieder her. Manche
             Virenscanner schlagen bei dieser DLL an, weil sie eine System-DLL ersetzt.
+          - "Darstellung" oben im Fenster wählt hell, dunkel oder "Wie Windows" (Voreinstellung, folgt
+            dem App-Modus von Windows).
           - Liegt das Spiel unter "Programme", fragt A2G-Patch nach Administratorrechten.
           - Voraussetzungen: Windows XP (SP3) oder neuer, .NET Framework 4.0 oder neuer.
 

@@ -24,7 +24,7 @@ namespace A2GPatch.Tests
         [Fact]
         public void ShowsNameVersionLogoAndLinks() => StaThread.Run(() =>
         {
-            using (AboutDialog dialog = new AboutDialog())
+            using (AboutDialog dialog = new AboutDialog(Theme.Light))
             {
                 Assert.Equal("Über A2G-Patch", dialog.Text);
                 Assert.Equal("A2G-Patch", dialog.Controls["TitleLabel"].Text);
@@ -46,7 +46,7 @@ namespace A2GPatch.Tests
             {
                 StaThread.Run(() =>
                 {
-                    using (AboutDialog dialog = new AboutDialog())
+                    using (AboutDialog dialog = new AboutDialog(Theme.Light))
                         ClickAll(dialog);
                 });
             }
@@ -69,7 +69,7 @@ namespace A2GPatch.Tests
             {
                 StaThread.Run(() =>
                 {
-                    using (AboutDialog dialog = new AboutDialog())
+                    using (AboutDialog dialog = new AboutDialog(Theme.Light))
                     {
                         LinkLabel label = dialog.Controls.OfType<LinkLabel>().First();
                         // A message box with only OK closes on Escape (Cancel).

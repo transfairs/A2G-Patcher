@@ -174,7 +174,7 @@ namespace A2GPatch.Tests
                     PatchTile tile = Find<PatchTile>(form, patch.GetType().Name + "Input");
                     Assert.Equal(patch.Title, tile.Title);
                     Assert.Equal(patch.Name, tile.Text);
-                    Assert.Equal(PatchForm.GroupColors[(int)patch.Group], tile.Accent);
+                    Assert.Equal(form.Theme.Groups[(int)patch.Group], tile.Accent);
                     // Below its own heading, above the next one.
                     Assert.True(tile.Top > headings[(int)patch.Group].Bottom);
                     Assert.True((int)patch.Group == headings.Length - 1 || tile.Bottom < headings[(int)patch.Group + 1].Top);

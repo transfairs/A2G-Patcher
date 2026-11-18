@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -18,14 +19,14 @@ namespace A2GPatch
     /// </summary>
     internal sealed class PatchForm : Form
     {
+        /// <summary>The entries of the "Darstellung" menu, by <see cref="ThemeChoice"/>.</summary>
+        internal static readonly string[] ThemeTitles = { "Wie Windows", "Hell", "Dunkel" };
         /// <summary>The headings of the groups, by <see cref="PatchGroup"/>.</summary>
         internal static readonly string[] GroupTitles = { "Abstürze und Windows", "Spiel und Bedienung", "Nur für die GOG-Version" };
-        /// <summary>The groups' colours (blue, the pitch's green, GOG's purple), by <see cref="PatchGroup"/>.</summary>
-        internal static readonly Color[] GroupColors = { Color.FromArgb(0x1F, 0x6F, 0xB2), Color.FromArgb(0x1E, 0x8E, 0x4E), Color.FromArgb(0x7B, 0x4F, 0xC0) };
-        private static readonly Color Page = Color.FromArgb(0xF4, 0xF6, 0xF5), Line = Color.FromArgb(0xDD, 0xE2, 0xDF),
-            Grass = Color.FromArgb(0x1B, 0x7A, 0x45), DarkGrass = Color.FromArgb(0x0C, 0x4D, 0x2A),
-            Apply = Color.FromArgb(0x1E, 0x8E, 0x4E), ApplyHover = Color.FromArgb(0x18, 0x78, 0x41), ApplyDown = Color.FromArgb(0x12, 0x62, 0x35),
-            ApplyDisabled = Color.FromArgb(0xD3, 0xD9, 0xD6);
+        // The banner and the apply button look the same in both themes.
+        private static readonly Color Grass = Color.FromArgb(0x1B, 0x7A, 0x45), DarkGrass = Color.FromArgb(0x0C, 0x4D, 0x2A),
+            Apply = Color.FromArgb(0x1E, 0x8E, 0x4E), ApplyHover = Color.FromArgb(0x18, 0x78, 0x41), ApplyDown = Color.FromArgb(0x12, 0x62, 0x35);
+        private const int WmSettingChange = 0x1A;
         private const int Width96 = 900, MinWidth96 = 480, Margin96 = 16, Gap96 = 10, TileHeight96 = 70, MinTileWidth96 = 240, MaxColumns = 3;
 
         private readonly ComboBox folderInput;
@@ -36,10 +37,13 @@ namespace A2GPatch
         private readonly Dictionary<Patch, PatchTile> switches = new Dictionary<Patch, PatchTile>();
         private readonly List<KeyValuePair<Label, PatchTile[]>> groups = new List<KeyValuePair<Label, PatchTile[]>>();
         private readonly ToolTip tips = new ToolTip();
+        private readonly ContextMenuStrip themeMenu = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true };
         private readonly float scale;
         private readonly int bannerHeight;
         private GameInstall install;
         private bool busy;
+        private Theme theme;
+        private ThemeChoice themeChoice;
 
         /// <summary>
         /// How long the indicator turns at least, in milliseconds: patching takes a moment only, and a
@@ -62,10 +66,13 @@ namespace A2GPatch
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Font = SystemFonts.MessageBoxFont;
             this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
-            this.BackColor = Page;
             this.DoubleBuffered = true;
             this.ResizeRedraw = true;
-            this.Disposed += (s, e) => this.tips.Dispose();
+            this.Disposed += (s, e) =>
+            {
+                this.tips.Dispose();
+                this.themeMenu.Dispose();
+            };
 
             // Laid out for 96 dpi and scaled to the screen's (the program is dpiAware, see app.manifest).
             // Header and footer stick to the window's edges; the tiles scroll in between and arrange
@@ -111,6 +118,19 @@ namespace A2GPatch
             this.tips.SetToolTip(aboutLink, "Version und Links zum Projekt");
             this.Controls.Add(aboutLink);
 
+            // "Darstellung" left of it: a menu of light, dark or as Windows says.
+            LinkLabel themeLink = new LinkLabel
+            {
+                Name = "ThemeLink", Text = "Darstellung", AutoSize = true, BackColor = Color.Transparent, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                LinkColor = Color.White, ActiveLinkColor = Color.White, VisitedLinkColor = Color.White, LinkBehavior = LinkBehavior.HoverUnderline,
+            };
+            themeLink.Location = new Point(aboutLink.Left - this.Px(16) - themeLink.PreferredWidth, aboutLink.Top);
+            foreach (ThemeChoice choice in Enum.GetValues(typeof(ThemeChoice)))
+                this.themeMenu.Items.Add(new ToolStripMenuItem(ThemeTitles[(int)choice], null, (s, e) => this.ChooseTheme(choice)) { Name = choice + "Theme" });
+            themeLink.LinkClicked += (s, e) => this.themeMenu.Show(themeLink, 0, themeLink.Height);
+            this.tips.SetToolTip(themeLink, "Hell, dunkel oder wie Windows");
+            this.Controls.Add(themeLink);
+
             // The tiles by group, in the order of Patch.All within a group, in a panel that scrolls.
             this.tilePanel = new TilePanel
             {
@@ -123,7 +143,7 @@ namespace A2GPatch
                 Label heading = new Label
                 {
                     Name = group + "Label", Text = GroupTitles[(int)group], AutoSize = true,
-                    Font = new Font(this.Font, FontStyle.Bold), ForeColor = GroupColors[(int)group],
+                    Font = new Font(this.Font, FontStyle.Bold),
                 };
                 this.tilePanel.Controls.Add(heading);
                 List<PatchTile> tiles = new List<PatchTile>();
@@ -131,7 +151,7 @@ namespace A2GPatch
                 {
                     PatchTile tile = new PatchTile
                     {
-                        Name = patch.GetType().Name + "Input", Title = patch.Title, Text = patch.Name, Accent = GroupColors[(int)group],
+                        Name = patch.GetType().Name + "Input", Title = patch.Title, Text = patch.Name,
                         AccessibleName = patch.Title, AccessibleDescription = patch.Name,
                     };
                     tile.CheckedChanged += (s, e) =>
@@ -166,7 +186,7 @@ namespace A2GPatch
             this.applyButton.FlatAppearance.BorderSize = 0;
             this.applyButton.FlatAppearance.MouseOverBackColor = ApplyHover;
             this.applyButton.FlatAppearance.MouseDownBackColor = ApplyDown;
-            this.applyButton.EnabledChanged += (s, e) => this.applyButton.BackColor = this.applyButton.Enabled ? Apply : ApplyDisabled;
+            this.applyButton.EnabledChanged += (s, e) => this.applyButton.BackColor = this.applyButton.Enabled ? Apply : this.theme.ApplyDisabled;
             this.progress = new BusyIndicator
             {
                 Name = "Progress", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
@@ -179,6 +199,8 @@ namespace A2GPatch
             };
             this.Controls.AddRange(new Control[] { this.progress, this.progressLabel, this.applyButton, this.closeButton });
             this.CancelButton = this.closeButton;
+            this.themeChoice = Theme.LoadChoice();
+            this.ApplyTheme(Theme.For(this.themeChoice));
 
             // As tall as the tiles need at full width, but no larger than the screen; the user may
             // shrink it down to one column with a few tiles in view.
@@ -196,6 +218,11 @@ namespace A2GPatch
             this.ShowMessage = (text, buttons) => MessageBox.Show(this, text, this.Text, buttons, buttons == MessageBoxButtons.OK ? MessageBoxIcon.Warning : MessageBoxIcon.Question);
 
             this.folderInput.SelectedIndexChanged += (s, e) => this.LoadFolder();
+            this.folderInput.HandleCreated += (s, e) =>
+            {
+                if (this.theme.IsDark)
+                    this.StyleFolderInput();
+            };
             this.browseButton.Click += (s, e) => this.Browse();
             this.applyButton.Click += (s, e) => this.ApplyChoice();
             this.closeButton.Click += (s, e) => this.Close();
@@ -213,6 +240,70 @@ namespace A2GPatch
 
         /// <summary>Whether the switches are being applied right now.</summary>
         internal bool Busy => this.busy;
+
+        /// <summary>The colours the window is drawn in: light or dark, as chosen or as Windows' app mode says.</summary>
+        internal Theme Theme => this.theme;
+
+        /// <summary>The "Darstellung" menu.</summary>
+        internal ContextMenuStrip ThemeMenu => this.themeMenu;
+
+        /// <summary>Switches to light, dark or Windows' app mode and remembers it for the next start.</summary>
+        internal void ChooseTheme(ThemeChoice choice)
+        {
+            this.themeChoice = choice;
+            Theme.SaveChoice(choice);
+            this.ApplyTheme(Theme.For(choice));
+        }
+
+        // Colours everything for the theme; the frame and the scroll bars once they have a window handle.
+        private void ApplyTheme(Theme theme)
+        {
+            this.theme = theme;
+            this.BackColor = theme.Page;
+            this.ForeColor = theme.Text;
+            theme.Style(this.folderInput);
+            theme.Style(this.browseButton);
+            theme.Style(this.closeButton);
+            this.applyButton.BackColor = this.applyButton.Enabled ? Apply : theme.ApplyDisabled;
+            for (int group = 0; group < this.groups.Count; group++)
+            {
+                this.groups[group].Key.ForeColor = theme.Groups[group];
+                foreach (PatchTile tile in this.groups[group].Value)
+                {
+                    tile.Accent = theme.Groups[group];
+                    tile.Theme = theme;
+                }
+            }
+            this.progress.Theme = theme;
+            theme.Style(this.themeMenu);
+            foreach (ToolStripMenuItem item in this.themeMenu.Items)
+                item.Checked = item.Name == this.themeChoice + "Theme";
+            this.tilePanel.Dark = theme.IsDark;
+            if (this.folderInput.IsHandleCreated)
+                this.StyleFolderInput();
+            if (this.IsHandleCreated)
+                Theme.StyleTitleBar(this.Handle, theme.IsDark);
+            this.Invalidate(true);
+        }
+
+        // The closed folder list as Windows draws it, dark or light (BackColor only reaches the list that drops down).
+        private void StyleFolderInput() => Theme.StyleNative(this.folderInput.Handle, this.theme.IsDark, Theme.DarkComboBox);
+
+        /// <summary>Darkens the title bar if the window opens dark.</summary>
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            if (this.theme.IsDark)
+                Theme.StyleTitleBar(this.Handle, true);
+        }
+
+        /// <summary>Follows Windows when the user switches between light and dark app mode while the window is open.</summary>
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            if (m.Msg == WmSettingChange && Marshal.PtrToStringUni(m.LParam) == "ImmersiveColorSet")
+                this.ApplyTheme(Theme.For(this.themeChoice));
+        }
 
         private void LoadFolder()
         {
@@ -279,7 +370,7 @@ namespace A2GPatch
                 TextRenderer.DrawText(g, "A2G-Patch", name, new Point(this.Px(14), this.Px(7)), Color.White);
             TextRenderer.DrawText(g, "Fehlerbehebungen für Anstoss 2 Gold", this.Font, new Point(this.Px(17), this.Px(36)), Color.FromArgb(0xD4, 0xEE, 0xDD));
 
-            using (Pen rule = new Pen(Line))
+            using (Pen rule = new Pen(this.theme.Line))
                 g.DrawLine(rule, 0, this.tilePanel.Bottom, width, this.tilePanel.Bottom);
         }
 
@@ -290,7 +381,7 @@ namespace A2GPatch
             {
                 Label heading = group.Key;
                 int middle = heading.Top + heading.Height / 2;
-                using (Pen rule = new Pen(PatchTile.Blend(heading.ForeColor, Page, 0.75f)))
+                using (Pen rule = new Pen(PatchTile.Blend(heading.ForeColor, this.theme.Page, 0.75f)))
                     g.DrawLine(rule, heading.Right + this.Px(6), middle, group.Value.Max(t => t.Right), middle);
             }
         }
@@ -332,6 +423,7 @@ namespace A2GPatch
         /// <summary>The tiles' scrolling area: double buffered, and it has the window place the tiles before it works out how far to scroll.</summary>
         private sealed class TilePanel : Panel
         {
+            private bool dark;
             /// <summary>Creates the panel, double buffered and redrawn when resized.</summary>
             public TilePanel()
             {
@@ -341,6 +433,25 @@ namespace A2GPatch
 
             /// <summary>Places the tiles for the panel's current size.</summary>
             public Action Arrange;
+
+            /// <summary>Whether the scroll bar is dark.</summary>
+            public bool Dark
+            {
+                set
+                {
+                    this.dark = value;
+                    if (this.IsHandleCreated)
+                        Theme.StyleNative(this.Handle, value, Theme.DarkScrollBars);
+                }
+            }
+
+            /// <summary>Darkens the scroll bar if the panel is created dark.</summary>
+            protected override void OnHandleCreated(EventArgs e)
+            {
+                base.OnHandleCreated(e);
+                if (this.dark)
+                    Theme.StyleNative(this.Handle, true, Theme.DarkScrollBars);
+            }
 
             /// <summary>Has the tiles placed before the panel lays itself out and works out its scroll range.</summary>
             protected override void OnLayout(LayoutEventArgs levent)
@@ -458,7 +569,7 @@ namespace A2GPatch
         /// <summary>Shows the about dialog over the window.</summary>
         internal void ShowAbout()
         {
-            using (AboutDialog dialog = new AboutDialog())
+            using (AboutDialog dialog = new AboutDialog(this.theme))
                 dialog.ShowDialog(this);
         }
 

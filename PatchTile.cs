@@ -14,13 +14,10 @@ namespace A2GPatch
     internal sealed class PatchTile : Control
     {
         private const float Step = 0.125f;  // per tick of the timer: 8 ticks, about 130 ms, from one end to the other
-        private static readonly Color Surface = Color.White, DisabledSurface = Color.FromArgb(0xF1, 0xF3, 0xF2),
-            Border = Color.FromArgb(0xD9, 0xDE, 0xDB), Track = Color.FromArgb(0xC3, 0xC9, 0xC6),
-            TitleColor = Color.FromArgb(0x1A, 0x1F, 0x1C), TextColor = Color.FromArgb(0x58, 0x63, 0x5E),
-            DisabledText = Color.FromArgb(0xA6, 0xAD, 0xAA), PendingColor = Color.FromArgb(0xE8, 0x8A, 0x00);
 
         private readonly Timer timer = new Timer { Interval = 16 };
         private bool isChecked, pending, hovered;
+        private Theme theme = Theme.Light;
 
         /// <summary>An unchecked tile.</summary>
         public PatchTile()
@@ -42,6 +39,17 @@ namespace A2GPatch
 
         /// <summary>The group's colour: the switch when on, the tile's tint and edge.</summary>
         public Color Accent { get; set; } = SystemColors.Highlight;
+
+        /// <summary>The colours the tile is drawn in.</summary>
+        public Theme Theme
+        {
+            get => this.theme;
+            set
+            {
+                this.theme = value;
+                this.Invalidate();
+            }
+        }
 
         /// <summary>Whether the patch is chosen.</summary>
         public bool Checked
@@ -171,15 +179,16 @@ namespace A2GPatch
             g.SmoothingMode = SmoothingMode.AntiAlias;
             float u = g.DpiX / 96f, on = Ease(this.Knob), pad = 10 * u;
             bool enabled = this.Enabled;
-            Color accent = enabled ? this.Accent : Blend(this.Accent, DisabledSurface, 0.6f);
+            Theme t = this.theme;
+            Color accent = enabled ? this.Accent : Blend(this.Accent, t.DisabledSurface, 0.6f);
 
             // The tile: tinted by the group's colour when on, a little more under the mouse.
             RectangleF box = new RectangleF(0.5f, 0.5f, this.Width - 1.5f, this.Height - 1.5f);
             using (GraphicsPath shape = Rounded(box, 7 * u))
             {
-                using (Brush fill = new SolidBrush(enabled ? Blend(Surface, this.Accent, 0.07f * on + 0.04f * this.Hover) : DisabledSurface))
+                using (Brush fill = new SolidBrush(enabled ? Blend(t.Surface, this.Accent, 0.07f * on + 0.04f * this.Hover) : t.DisabledSurface))
                     g.FillPath(fill, shape);
-                using (Pen edge = new Pen(Blend(Border, accent, Math.Max(0.75f * on, 0.5f * this.Hover)), this.Focused ? 2 * u : 1))
+                using (Pen edge = new Pen(Blend(t.Border, accent, Math.Max(0.75f * on, 0.5f * this.Hover)), this.Focused ? 2 * u : 1))
                     g.DrawPath(edge, shape);
                 // The stripe on the left edge grows in as the switch goes on.
                 g.SetClip(shape);
@@ -192,7 +201,7 @@ namespace A2GPatch
             // The switch: a pill whose track takes the accent and whose knob slides over.
             RectangleF track = new RectangleF(this.Width - pad - 34 * u, pad, 34 * u, 18 * u);
             using (GraphicsPath pill = Rounded(track, track.Height / 2))
-            using (Brush fill = new SolidBrush(Blend(enabled ? Track : Border, accent, on)))
+            using (Brush fill = new SolidBrush(Blend(enabled ? t.Track : t.Border, accent, on)))
                 g.FillPath(fill, pill);
             float knob = track.Height - 4 * u;
             RectangleF dot = new RectangleF(track.X + 2 * u + (track.Width - track.Height) * on, track.Y + 2 * u, knob, knob);
@@ -202,16 +211,16 @@ namespace A2GPatch
 
             // Not applied yet: an orange dot left of the switch.
             if (this.pending)
-                using (Brush fill = new SolidBrush(PendingColor))
+                using (Brush fill = new SolidBrush(t.Pending))
                     g.FillEllipse(fill, track.X - 13 * u, track.Y + track.Height / 2 - 3.5f * u, 7 * u, 7 * u);
 
             using (Font bold = new Font(this.Font, FontStyle.Bold))
             {
                 Rectangle text = this.TextBox(u, bold, this.Width, this.Height);
                 Rectangle title = new Rectangle(text.Left, (int)(pad - u), (int)(track.X - 16 * u) - text.Left, bold.Height);
-                TextRenderer.DrawText(g, this.Title, bold, title, enabled ? TitleColor : DisabledText,
+                TextRenderer.DrawText(g, this.Title, bold, title, enabled ? t.Title : t.DisabledText,
                     TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine);
-                TextRenderer.DrawText(g, this.Text, this.Font, text, enabled ? TextColor : DisabledText, TextFlags);
+                TextRenderer.DrawText(g, this.Text, this.Font, text, enabled ? t.TileText : t.DisabledText, TextFlags);
             }
         }
 

@@ -91,6 +91,11 @@ switches lift the goal limits and let interview answers take effect while the tr
 3. Switch on the patches you want, switch off the ones to take back (an orange dot marks each change
    not applied yet), and click *Übernehmen*.
 
+*Darstellung* in the banner picks light, dark or *Wie Windows* (the default), which follows Windows'
+app mode (Settings → Personalisation → Colours), also when it is switched while the window is open.
+The choice is kept in `HKEY_CURRENT_USER\Software\A2G-Patch`. Message boxes and the folder dialog
+stay as Windows draws them.
+
 What happens depends on the release:
 
 | Release | Exe | How |
@@ -300,7 +305,7 @@ club "would under no circumstances release" the player (text 2626, checks at `0x
 The monthly club update `0x642d00` (from `0x642e20` at the month change) halves the counters, but one byte
 too low: it halves `+0x107d` to `+0x1080`, so the real counters only go back to 0 at the season start. The
 patch moves its four loads and four stores to `+0x1081` to `+0x1084` (8 bytes, at `0x642dcf`; GOG
-`0x647dff`, 2007 CD `0x647bff`):
+and 2007 CD `0x647bff`):
 
 ```
 mov cl/al/bl/dl,[ebp+107D..1080] / shr x4 / push ebp / mov [ebp+107D..1080],cl/al/bl/dl
