@@ -39,8 +39,8 @@ namespace A2GPatch
         public static readonly Patch[] All =
         {
             new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new MoneyLimit(),
-            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(),
-            new CopyProtection(), new DialogStyles(), new AnimationEdge(),
+            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new FishPoisoning(), new ManagerEvents(),
+            new CopyProtection(), new DialogStyles(), new AnimationEdge(), new WrapperClipping(),
         };
 
         /// <summary>The patch of type <typeparamref name="T"/>, a switch of its own or one of the game's bugs.</summary>
@@ -56,7 +56,7 @@ namespace A2GPatch
         /// <summary>The group the window shows the tile in.</summary>
         public abstract PatchGroup Group { get; }
 
-        /// <summary>Its bits in the three flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c); 0 for the GOG patches the DLL doesn't know.</summary>
+        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 16777216 taken); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract uint Flag { get; }
 
         /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
@@ -102,7 +102,7 @@ namespace A2GPatch
         /// <summary>The bugs, in the order the tile names them.</summary>
         internal readonly Patch[] Members =
         {
-            new InvestmentBalance(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
+            new InvestmentBalance(), new EventEffects(), new EventCrashes(), new CompetenceBalance(), new GradeAverage(), new AppearancesList(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
             new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(), new SleepFreeze(),
         };
 
@@ -692,8 +692,9 @@ namespace A2GPatch
 
     /// <summary>
     /// A patch that rewrites one block of code that occurs exactly once. Original and patched code have
-    /// the same length and wildcards (null) at the same places; those bytes (addresses, displacements)
-    /// are kept from the game.
+    /// the same length and as many wildcards (null); those bytes (addresses, displacements) are kept
+    /// from the game, in their order (usually at the same places; a call's displacement that moves is
+    /// adjusted, see <see cref="FindOnce"/>).
     /// </summary>
     internal abstract class RewritePatch : Patch
     {
@@ -708,14 +709,52 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override Site[] Find(byte[] image)
         {
-            byte?[] originalCode = this.OriginalCode, patchedCode = this.PatchedCode;
+            Site site = FindOnce(image, this.OriginalCode, this.PatchedCode);
+            return site == null ? null : new[] { site };
+        }
+
+        /// <summary>
+        /// The one place of a block in <paramref name="image"/>, original or patched, or null. The bytes at the
+        /// found code's wildcards go to the wildcards of both, in order. Four wildcards right behind a call or
+        /// jmp (E8, E9) in both are its displacement: where the other code has it elsewhere, it is moved by the
+        /// difference, so that it still reaches the same target.
+        /// </summary>
+        internal static Site FindOnce(byte[] image, byte?[] originalCode, byte?[] patchedCode)
+        {
             List<long> original = FindAll(image, originalCode), patched = FindAll(image, patchedCode);
             if (original.Count + patched.Count != 1)
                 return null;
             bool isPatched = patched.Count == 1;
             long at = isPatched ? patched[0] : original[0];
-            byte[] Fill(byte?[] code) => code.Select((b, i) => b ?? image[at + i]).ToArray();
-            return new[] { new Site { Offset = at, Original = Fill(originalCode), Patched = Fill(patchedCode), IsPatched = isPatched } };
+            byte?[] found = isPatched ? patchedCode : originalCode;
+            int[] foundHoles = Holes(found);
+            byte[] kept = foundHoles.Select(i => image[at + i]).ToArray();
+            byte[] Fill(byte?[] code)
+            {
+                int[] holes = Holes(code);
+                byte[] result = code.Select(b => b ?? 0).ToArray();
+                for (int k = 0; k < holes.Length; k++)
+                    result[holes[k]] = kept[k];
+                for (int k = 0; k < holes.Length; k++)
+                {
+                    if (IsDisplacement(code, holes, k) && IsDisplacement(found, foundHoles, k))
+                        BitConverter.GetBytes(BitConverter.ToInt32(kept, k) + foundHoles[k] - holes[k]).CopyTo(result, holes[k]);
+                }
+                return result;
+            }
+            return new Site { Offset = at, Original = Fill(originalCode), Patched = Fill(patchedCode), IsPatched = isPatched };
+        }
+
+        // Where the wildcards of code are, in order.
+        private static int[] Holes(byte?[] code) => Enumerable.Range(0, code.Length).Where(i => code[i] == null).ToArray();
+
+        // Whether the wildcards from the k-th on are four in a row right behind E8 or E9, and no more (a
+        // pattern never starts with a wildcard).
+        private static bool IsDisplacement(byte?[] code, int[] holes, int k)
+        {
+            int at = holes[k];
+            return k + 3 < holes.Length && holes[k + 3] == at + 3 && (code[at - 1] == 0xE8 || code[at - 1] == 0xE9)
+                && (at + 4 == code.Length || code[at + 4] != null);
         }
     }
 
@@ -1864,6 +1903,392 @@ namespace A2GPatch
                 new Site { Offset = booking, Original = BookingOriginal.Skip(BookingAt).Select(b => b.Value).ToArray(), Patched = jump, IsPatched = bookingPatched },
             };
         }
+    }
+
+    /// <summary>
+    /// Makes random events do what their message says (texts of TEXTE\EreigGld.saq, places in the original):
+    /// <code>
+    ///   690 free copier "Sie sparen ..."       table 0x6BD058 {690,-120} books an expense    ->  {690,+120}
+    ///   697 prize draw "Kostenpunkt ..."        table 0x6BD090 {697,+80} books an income      ->  {697,-80}
+    ///   126 fan club tournament, cups cost      0x556D31 jmp to the income booking            ->  to the expense booking
+    ///   143 the club sells a plot, receives     0x557050 mov/add/mov [esi+38C] (expenses)     ->  [esi+390] (income)
+    ///   172 fans collect donations              0x5578B0 jmp to the expense booking           ->  to the income booking
+    ///   224 chocolate sponsor, won negotiation  0x558662 books the plain amount               ->  twice the amount, as offered
+    ///   307, 308, 369, 414 "verliert ... Frischepunkte"   push -5 / -10 to FUN_00623cc0      ->  push 5 / 10
+    ///    56 hints for the co-trainer, form up   0x563CBC sound 2 (negative)                   ->  1 (positive)
+    ///    38 a concussion in training            0x5632D7 injures the first of the two players ->  the second, whom the text names
+    ///   392 a player ages, loses strength       0x560124 with ability bit 4 appends text 393  ->  text 392 alone
+    ///   732 fish poisoning                      table 0x6C9534 {62, 20}: kind 62 has no name  ->  {68, 20}: "Fischvergiftung" (7 days)
+    ///   284 riot, the club is sued              0x55933E shows 283 (all calm) with no amounts ->  284 with both amounts
+    ///   339 bonus, "je einen Formpunkt"         0x55F6C0 books the bonus only                 ->  and every player form +1 (FUN_00565a50)
+    ///   343 banana skin, "verliert einen Formpunkt"  0x55F77D raises the mood only            ->  and the player form -1 (FUN_00565bc0)
+    ///   876/877 building delay, reason      0x55E5F3 random(10) of the 12 in 0x6BD3A0     ->  random(12): 888 "einer Fanblockade", 889 the weather
+    /// </code>
+    /// The money events (FUN_00556900) book +0x38C as expenses and +0x390 as income; the two booking ends
+    /// are alike, so 126 and 172 trade their jump targets (their displacements are the same in every build).
+    /// FUN_00623cc0 takes freshness (+0x31) into the recovery pool (+0x33) for a positive value and gives it
+    /// back for a negative one; training and matches pass positive values. The sponsor's question offers
+    /// twice the amount for a negotiation that works out (it stores 2*edi for the text), but its success
+    /// books edi like accepting at once. The patch doubles edi there, in the same 18 bytes, comparing the
+    /// question's outcome (a small number) as a byte instead of a word:
+    /// <code>
+    ///   cmp word [outcome],ax / push ebx / jne fail / push 3 / push 0 / push 0 / push 0 / call
+    ///   ->  cmp byte [outcome],al / push ebx / jne fail / add edi,edi / push 3 / xor eax,eax / push eax x3 / call
+    /// </code>
+    /// The event plays the sound its message is given: 0 neutral, 1 positive, 2 negative.
+    /// <para>
+    /// For 339 the booking is written shorter (add [ebp+330],esi), which makes room for push 1 / push ebp /
+    /// call; one add esp takes off both calls' arguments. For 343 the player (the 2nd and 3rd argument of
+    /// the message) is pushed once more under them, with -1; it stays on the stack for FUN_00565bc0, and
+    /// the event ends with a jump to the same ending of the case before (mov ax,1 / ... / ret). Both
+    /// functions, like that ending, lie as far from the places in every build.
+    /// </para>
+    /// <para>
+    /// The delay's message is "verzögern sich wegen %s"; reason 889 reads "wegen schlechtem Wetter" and would
+    /// give "wegen wegen". Its two branches (one or two weeks, 0x55E604) are folded into one, which makes room
+    /// to skip a reason's first 6 characters when it starts with "wege"; the jump at the end skips the
+    /// original's last address and displacement, which taking the patch back needs:
+    /// </para>
+    /// <code>
+    ///   push 2 / call random / pop ecx / movsx esi,si / neg eax / sbb eax,eax / inc eax (1: two weeks) / push eax /
+    ///   mov ecx,texts / push edi / call text / cmp dword [eax],"wege" / jne / add eax,6 / push eax / lea ecx,[esi+41] /
+    ///   push ecx / mov eax,[esp+8] / add eax,36C / push eax / mov ecx,texts / call text / push eax / lea edx,[esp+34] /
+    ///   push edx / call sprintf / add esp,10 / pop eax / mov cl,[ebx+esi+884] / lea eax,[eax+ecx+1] / jmp message
+    /// </code>
+    /// <para>
+    /// The referee events (FUN_005ee7f0) hurt a player through FUN_00633a60: the kind from a table of two
+    /// shorts at 0x6C9534 {62, 20}, the days from the kinds' table (kind 20, "Kapselriß im Knie", 28 days,
+    /// fits text 734). Kind 62 has no name; the patch enters 68, "Fischvergiftung", with its 7 days. The
+    /// three weeks the message names are a switch of their own (<see cref="FishPoisoning"/>).
+    /// </para>
+    /// <para>
+    /// The riot (FUN_005591c0, case 3) books the lawsuit's settlement (0x78BB10) but shows text 283 and
+    /// formats both amounts for it, into the one buffer of the money format (FUN_004a6dd0), so either would
+    /// show the same. The texts are kept in the table of FUN_00559b30 (ecx 0x7836E8, [ecx+4+number*4]), so
+    /// text 282 needs no copy. Rewritten in the same 132 bytes, the settlement's amount is copied (32 bytes)
+    /// into the first buffer before the claim (0x78BB84) is formatted:
+    /// </para>
+    /// <code>
+    ///   mov ecx,texts / mov ebp,[ecx+46C] / mov esi,[settlement] / push esi / call money / mov esi,eax /
+    ///   lea edi,[esp+3C] / push 8 / pop ecx / rep movsd / push [claim] / call money / lea ecx,[esp+40] /
+    ///   mov [esp],ecx / push eax / mov ecx,texts / push [ecx+474] / lea edx,[esp+23C] / push edx / call sprintf /
+    ///   add esp,10 / pop esi / lea eax,[esp+22C] / push eax / push ebp / push 2 / push 5B / push ebx / nop...
+    /// </code>
+    /// </summary>
+    internal sealed class EventEffects : RewritesPatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[][][] Places => EventPlaces;
+
+        /// <summary>Each place as original and patched code.</summary>
+        internal static readonly byte?[][][] EventPlaces =
+        {
+            Place("B202000088FFFFFF", "B202000078000000"),                                          // 690
+            Place("B902000050000000", "B9020000B0FFFFFF"),                                          // 697
+            Place("6A7E6A6256E8????????83C414566A006A016A00E8????????83C410E9E70A0000",               // 126
+                  "6A7E6A6256E8????????83C414566A006A016A00E8????????83C410E923120000"),
+            Place("688F0000006A6256E8????????8BAE8C03000083C41403EF6AF65389AE8C030000",               // 143
+                  "688F0000006A6256E8????????8BAE9003000083C41403EF6AF65389AE90030000"),
+            Place("68AC0000006A6256E8????????E9A1060000", "68AC0000006A6256E8????????E965FFFFFF"),     // 172
+            Place("6685C00F85????????663905????????5375156A036A006A006A00E8",                       // 224
+                  "6685C00F85????????3805????????53751603FF6A0333C0505050E8"),
+            Place("68330100006A6055E8????????83C4146AFE56E8????????83C4086AFB56E8",                   // 307
+                  "68330100006A6055E8????????83C4146AFE56E8????????83C4086A0556E8"),
+            Place("68340100006A6055E8????????83C4146AFB56E8", "68340100006A6055E8????????83C4146A0556E8"),   // 308
+            Place("68710100006A6055E8????????83C4146AF656E8", "68710100006A6055E8????????83C4146A0A56E8"),   // 369
+            Place("689E0100006A6055E8????????83C4186AF657E8????????83C4086AF656E8",                   // 414
+                  "689E0100006A6055E8????????83C4186A0A57E8????????83C4086A0A56E8"),
+            Place("6A026A386A6356E8", "6A016A386A6356E8"),                                          // 56
+            Place("83C40C6A076A3253E8", "83C40C6A076A3255E8"),                                      // 38
+            Place("F64328040F84CA0000008D430C", "F6432804E9CB000000908D430C"),                      // 392
+            Place("3E001400524150544F52", "44001400524150544F52"),                                  // 732, the table
+            Place("681A010000B9????????E8E30700008BF883C9FF33C08D542438F2AEF7D12BF98BC18BF78BFAC1E902F3A58BC883E103F3A4"   // 284
+                  + "8B35????????56E8????????8B0D????????83C4045051E8????????83C404B9????????50681B010000E891070000"
+                  + "8D9424340200005052E8????????83C4108D84242C0200008D4C243850516A026A5B53",
+                  "B9????????8BA96C0400008B35????????56E8????????8BF08D7C243C6A0859F3A5FF35????????E8????????"
+                  + "8D4C2440890C2450B9????????FFB1740400008D94243C02000052E8????????83C4105E8D84242C020000"
+                  + "50556A026A5B53" + string.Concat(Enumerable.Repeat("90", 37))),
+            Place("6A025668530100006A6055E8????????8B853003000083C41403C6898530030000",   // 339
+                  "6A025668530100006A6055E8????????01B5300300006A0155E88263000083C41C"),
+            Place("6A02505068570100006A6055E8????????83C4186A1455E8????????83C40866B801005F5E5D5B81C460080000C3",   // 343
+                  "6AFF506A02505068570100006A6055E8????????83C418E8276400006A1455E8????????83C410EBA39090909090"),
+            Place("6A0AE8????????8B3C85????????83C4046A02E8", "6A0CE8????????8B3C85????????83C4046A02E8"),   // 876/877, the reason
+            Place("6A02E8????????83C404B9????????85C00FBFF6577432E810B5FFFF8D4E415051686C030000B9????????E8FCB4FFFF8D54242C5052E8??"
+                  + "??????8A84338408000083C410FEC0EB30E8DEB4FFFF508D464150686D030000B9????????E8CAB4FFFF8D4C242C5051E8????????8A8433"
+                  + "8408000083C4100402",   // 876/877, the message
+                  "6A02E8????????590FBFF6F7D81BC04050B9????????57E810B5FFFF813877656765750383C006508D4E41518B442408056C03000050B9??"
+                  + "??????E8ECB4FFFF508D54243452E8????????83C410588A8C33840800008D440801EB1D????????90????????9090909090909090909090"
+                  + "909090909090909090"),
+        };
+
+        /// <inheritdoc/>
+        public override string Name => "Ereignisse wirken wie in ihrer Meldung (Geld, Form, Frische, Verletzungen, Klang)";
+        /// <inheritdoc/>
+        public override string Title => "Ereignisse";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 262144;
+    }
+
+    /// <summary>
+    /// Keeps a player out for three weeks after the fish poisoning of text 732 ("fällt drei Wochen aus"),
+    /// instead of the 7 days the kinds' table gives every fish poisoning. FUN_00633a60 enters the injury of
+    /// the referee events (its only caller, FUN_005ee7f0): event 0 is the poisoning (text 732), event 1 the
+    /// fall down the escalator (734, kind 20, 28 days, as its text says). The patch gives event 0 21 days,
+    /// whatever kind <see cref="EventEffects"/> left in the table, in the function's bytes and 5 of the 10
+    /// nops behind it:
+    /// <code>
+    ///   ... / mov [ecx+46],dl / movsx eax,word [eax*2+kinds] / lea eax,[eax+eax*2] / movzx dx,byte [eax*2+days] / mov [ecx+44],dx
+    ///   ->  ... / mov [ecx+46],dl / test eax,eax / movsx eax,word [eax*2+kinds] / lea eax,[eax+eax*2] / movzx edx,byte [eax*2+days] /
+    ///       jne / mov dl,21 / mov [ecx+44],dx
+    /// </code>
+    /// </summary>
+    internal sealed class FishPoisoning : RewritePatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[] OriginalCode =>
+            "0FBF4424088B4C24048A1445????????8851460FBF0445????????8D0440660FB61445????????6689514466A1????????66894142C39090909090".Pattern();
+        /// <inheritdoc/>
+        internal override byte?[] PatchedCode =>
+            "0FBF4424088B4C24048A1445????????88514685C00FBF0445????????8D04400FB61445????????7502B2156689514466A1????????66894142C3".Pattern();
+
+        /// <inheritdoc/>
+        public override string Name => "Fischvergiftung nach der Thunfischpizza: drei Wochen Ausfall wie in der Meldung statt einer";
+        /// <inheritdoc/>
+        public override string Title => "Fischvergiftung";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Balancing;
+        /// <inheritdoc/>
+        public override uint Flag => 4194304;
+    }
+
+    /// <summary>
+    /// Lets the manager's private life bring all its events. FUN_0055c900 (texts of EreigGld.saq, places in
+    /// the original) has 38 cases; FUN_0055c840 draws one from a weighted table at 0x784CE8, which
+    /// FUN_0055c820 builds, and skips one of the last 20 shown once. The game builds it from the table of
+    /// FUN_0055c230 (0x6BD248, 14 pairs {weight, case}, all of the other kind's events), so cases 15 to 38
+    /// never come; its own table (0x6BD280, 39 pairs, 56 bytes behind, referenced nowhere) gives them
+    /// weights from 1 to 25 (the fans' honking and tomatoes 25 each, both only for a manager with less
+    /// than 60 points of standing). The patch builds the dispatcher from it, in the builder's bytes and 4 of
+    /// the 12 nops behind them (the dispatcher's start, add ecx,28000, tells it from the other one):
+    /// <code>
+    ///   push -1 / push 6BD248 / push 0E / mov ecx,dispatcher / call / ret
+    ///   ->  push -1 / mov eax,6BD248 / add eax,38 / push eax / push 27 / mov ecx,dispatcher / call / ret
+    /// </code>
+    /// Two of the cases never tried need more. Case 34 (text 530) names "%s, der Sie eigentlich gar nicht
+    /// leiden kann" with an empty string; its weight 4 becomes 0. Case 32 (text 528, the honking) holds the
+    /// manager's name twice, but FUN_00565860 passes it once, and sprintf reads the caller's esi, saved
+    /// behind, as the second string. The patch passes it twice (keeping the buffer in esi saves the room);
+    /// texts with one name ignore the second:
+    /// <code>
+    ///   lea eax,[esp+4] / lea ecx,[esp+1F8] / push eax / push esi / push ecx / call sprintf / ... / lea eax,[esp+1F8]
+    ///   ->  lea eax,[esp+4] / push eax / push eax / push esi / lea esi,[esp+204] / push esi / call sprintf / ... / mov eax,esi
+    /// </code>
+    /// Case 25 (an inheritance, text 521) builds its text but neither shows it nor books anything; cases 21,
+    /// 35 and 39 do nothing. The events counted: 20, among them suspicion of rioting with hooligans, a
+    /// national order, a book, angry fans and a microphone that records the manager's language.
+    /// </summary>
+    internal sealed class ManagerEvents : RewritesPatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[][][] Places => ManagerPlaces;
+
+        private static readonly byte?[][][] ManagerPlaces =
+        {
+            Place("6AFF68????????6A0EB9????????E8????????C390909090909090909090909053565733F6B9????????E8????????8BD86685DB0F849500"
+                  + "0000668B15????????33C06685D27E260FBFCB81C1606D0000",
+                  "6AFFB8????????83C038506A27B9????????E8????????C3909090909090909053565733F6B9????????E8????????8BD86685DB0F849500"
+                  + "0000668B15????????33C06685D27E260FBFCB81C1606D0000"),
+            Place("1900200019002100040022000200230001002400", "1900200019002100000022000200230001002400"),   // case 34: weight 0
+            Place("8D480A515068????????52E8????????83C4108D4424048D8C24F8010000505651E8????????8B94240C0400008B8C240004000083C40C8D"
+                  + "8424F8010000",
+                  "8D480A515068????????52E8????????83C4108D4424045050568DB4240402000056E8????????8B9424100400008B8C240404000083C410"
+                  + "8BC690909090"),
+        };
+
+        /// <inheritdoc/>
+        public override string Name => "Weitere Ereignisse rund um den Manager: Presse, Fans, Privatleben";
+        /// <inheritdoc/>
+        public override string Title => "Manager-Ereignisse";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Balancing;
+        /// <inheritdoc/>
+        public override uint Flag => 16777216;
+    }
+
+    /// <summary>A patch that rewrites several blocks, each found as by <see cref="RewritePatch.FindOnce"/>, offered only if all of them are there.</summary>
+    internal abstract class RewritesPatch : Patch
+    {
+        /// <summary>Each place as original and patched code.</summary>
+        internal abstract byte?[][][] Places { get; }
+
+        /// <summary>A place from its original and patched code as hex ("??" a wildcard).</summary>
+        internal static byte?[][] Place(string original, string patched) => new[] { original.Pattern(), patched.Pattern() };
+
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => this.Places.SelectMany(p => p);
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            Site[] sites = this.Places.Select(p => RewritePatch.FindOnce(image, p[0], p[1])).ToArray();
+            return sites.Contains(null) ? null : sites;
+        }
+    }
+
+    /// <summary>
+    /// Lets the club list of the most appearances take in new players once it holds 50. Each human
+    /// manager's club keeps two lists of 50 entries of 20 bytes (block at 0x793030 and 0x79347C plus
+    /// 0x4210 per manager, places in the original): goals and appearances, each entry with the player's
+    /// number (+0), birth year (+6) and a flag "at the club" (+8). After each match FUN_0061ef70 counts the
+    /// appearances (FUN_0061ec50): a player found gets his count raised and the flag 1, a new one takes an
+    /// empty entry or, from the bottom up to place 10, the first with flag 0; then the list is sorted.
+    /// A player's leaving (FUN_00552d60 -> FUN_0061dc70) clears his flag in the goals list only, so once
+    /// 50 players have appeared nobody new gets in. The patch sets the flags of the appearances list anew
+    /// from the squad and the players lent out (number alone) before each count; a list frozen by an old
+    /// save game takes in new players at once. Room comes from the sort, a bubble sort now (the same
+    /// order, descending by appearances at +0xA) in 47 of its 139 bytes; the flags' routine goes in front of it
+    /// (jumped over), called from where the count starts:
+    /// <code>
+    ///   start: movzx ax,byte [ebx+104] / add esp,8 / cmp ax,2 / mov [esp+10],eax / jle / mov dword [esp+10],2
+    ///      -> add esp,8 / movzx eax,byte [ebx+104] / cmp al,2 / jbe / mov al,2 / mov [esp+10],eax / call flags / nop x4
+    ///   flags: for each entry: flag = 0, then 1 if its number is one of [ebx+990] ([ebx+E6] of them) or [ebx+A1C] ([ebx+A19])
+    /// </code>
+    /// The two places lie 179 bytes apart in every build, so the call's displacement is the same.
+    /// A squad holds at most 30 players, so the patch also keeps the first 20 places instead of 10 (the
+    /// search for a former player's entry stops above place 21: cmp ax,0A -> cmp ax,14); the other 30
+    /// leave room for the whole squad.
+    /// </summary>
+    internal sealed class AppearancesList : RewritesPatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[][][] Places => ListPlaces;
+
+        private static readonly byte?[][][] ListPlaces =
+        {
+            Place("660FB6830401000083C408663D0200894424107E08C744241002000000",
+                  "83C4080FB683040100003C027602B00289442410E89C00000090909090"),
+            Place("8D442434BD01000000894424106683FD328D55FF8BC57D260FBFCD8D0C898D748C3E0FBFCA8D0C89668B4C8C3E663B0E7D028BD0"
+                  + "4083C614663D32007CE46685D27E330FBFC2B9050000008D7C24208D14808D4494348B5424108BF0F3A5B9050000008BF28BF8F3A5"
+                  + "B9050000008D7424208BFAF3A58B5424104583C2148D45FF89542410663D31007C82",
+                  "EB585657558D7424446A325D6683660800668B066685C074240FBF8BE60000008DBB90090000E81C0000000FB68B190A00008DBB1C0A0000"
+                  + "E80A00000083C6144D75C95D5F5EC3E3108B17663B027504C646080183C704E2F0C36A315A8D7424346A3159668B460A663B461E7D13"
+                  + "516A05598B448EFC87448E1089448EFCE2F25983C614E2DE4A75D49090"),
+            Place("0FBFC88D0C8966837C8F0800740948663D0A007DEB", "0FBFC88D0C8966837C8F0800740948663D14007DEB"),   // the first place a new player may take: 11 -> 21
+        };
+
+        /// <inheritdoc/>
+        public override string Name => "Vereinsliste der meisten Einsätze nimmt nach 50 Spielern wieder neue auf";
+        /// <inheritdoc/>
+        public override string Title => "Meiste Einsätze";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 8388608;
+    }
+
+    /// <summary>
+    /// Keeps random events from crashing the game. FUN_00564ee0 (any player of the squad, places in the
+    /// original) and FUN_00564c40 (one who is fit) return NULL where the one drawn has +0x98 set (with 1
+    /// as second argument) or nobody fits. Of their 71 calls, four read from it without a test:
+    /// <code>
+    ///   321 0x55F1CB  cmp byte [esi+25],0A / jle out / ... three checks          ->  test esi,esi / je out first, the checks with short jumps to one jmp out
+    ///   366 0x55FB4D  up to five draws for an older player: mov cl,[eax+1E] ...  ->  test eax,eax / je next first, cmp [eax+1E],bl
+    ///   244 0x55B79C  the message and the injury right away                      ->  test esi,esi / je (return 0), both calls' arguments off at once
+    ///       0x5BBCB0  movsx eax,word [eax] for the message (FUN_005bb160)        ->  test eax,eax / je (ret), push dword [eax]
+    /// </code>
+    /// Each in its own bytes: pop ecx twice instead of add esp,8 makes room. FUN_005bb160 reads the
+    /// player's number as a word.
+    /// </summary>
+    internal sealed class EventCrashes : RewritesPatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[][][] Places => CrashPlaces;
+
+        private static readonly byte?[][][] CrashPlaces =
+        {
+            Place("6A0155E8????????8BF083C408807E250A0F8E501B0000807E1F030F86461B000080BEC0000000020F8C391B0000",   // 321
+                  "6A0155E8????????59599685F67415807E250A7E0F807E1F03760980BEC0000000027D0AE93E1B00009090909090"),
+            Place("33F6B31E6A0155E8????????8A481E83C4083ACB760980B8C0000000017407466683FE057CDE",                    // 366
+                  "33F6B31E6A0155E8????????595985C0740E38581E760980B8C00000000174064683FE057CDE"),
+            Place("6A0157E8????????83C4088BF06A025668F40000006A6157E8????????83C4146A5A6A4D56E8????????83C40C",     // 244
+                  "6A0157E8????????59598BF085F674E26A025668F40000006A6157E8????????6A5A6A4D56E8????????83C420"),
+            Place("6A0FE8????????83C40485C0751A6A0156E8????????0FBF0083C408506A3D56E8????????83C40C5F5E5D5BC3",
+                  "6A0FE8????????5985C0751C6A0156E8????????595985C0740EFF306A3D56E8????????83C40C905F5E5D5BC3"),
+        };
+
+        /// <inheritdoc/>
+        public override string Name => "Kein Absturz bei Ereignissen, für die kein passender Spieler da ist";
+        /// <inheritdoc/>
+        public override string Title => "Ereignis-Abstürze";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 2097152;
+    }
+
+    /// <summary>
+    /// Keeps appearances without a mark out of two averages of marks: the player's season average in his
+    /// details (FUN_004fbd60 in the original) and the fans' check for a hated player (FUN_00639f70, the last
+    /// matches, at least 4 marks, average 4.5 or worse). The match day byte (player +0x130) holds bit 7 for
+    /// an appearance, the mark in bits 2-4 and cards in bits 0-1; who plays under 20 minutes gets no mark.
+    /// Both test the mark and the cards together, so a short appearance with a card counts as mark 0 (better
+    /// than 1). The team statistics test the mark alone; the patch does the same:
+    /// <code>
+    ///   test al,80 / je skip / test al,1F / je skip   ->   test al,1C
+    /// </code>
+    /// </summary>
+    internal sealed class GradeAverage : OpcodePatch
+    {
+        /// <inheritdoc/>
+        protected override byte?[] Code => Exact(0xA8, 0x80, 0x74, 0x10, 0xA8, 0x1F, 0x74, 0x0C);
+        /// <inheritdoc/>
+        protected override int At => 5;
+        /// <inheritdoc/>
+        internal override byte PatchedByte => 0x1C;
+        /// <inheritdoc/>
+        protected override int Occurrences => 2;
+        /// <inheritdoc/>
+        public override string Name => "Einsätze ohne Note zählen nicht im Notenschnitt (Spielerdetails, Fans)";
+        /// <inheritdoc/>
+        public override string Title => "Notenschnitt";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 524288;
+    }
+
+    /// <summary>
+    /// Lets the yearly raise of trainers' and managers' competence take effect. Once a year the game
+    /// balances each country's competence (FUN_005cc740 in the original, for trainers and managers, then
+    /// written back to the persons): with an average under 6 it gives every tenth person 1 or 2 points (up
+    /// to 15), with one over 10 it takes some off. The raise adds the points to the sum and moves the
+    /// person's count back to the old value, but never stores the new one; the cut does. The patch stores
+    /// it, in the same 36 bytes:
+    /// <code>
+    ///   mov dx,[edi] / add esp,4 / inc eax / movsx ecx,dx / movsx ebp,ax / add ebp,ecx / cmp ebp,15 / jle /
+    ///   mov eax,15 / sub eax,edx / movsx eax,ax / add ebx,eax / inc word [esi+ecx*2]
+    /// ->
+    ///   movsx edx,[edi] / add esp,4 / inc eax / movsx eax,ax / add eax,edx / cmp eax,15 / jle / mov eax,15 /
+    ///   mov [edi],ax / sub eax,edx / add ebx,eax / movsx ecx,[edi] / inc word [esi+ecx*2]
+    /// </code>
+    /// </summary>
+    internal sealed class CompetenceBalance : RewritePatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[] OriginalCode => "668B1783C404400FBFCA0FBFE803E983FD0F7E07B80F0000002BC20FBFC003D866FF044E".Pattern();
+        /// <inheritdoc/>
+        internal override byte?[] PatchedCode => "0FBF1783C404400FBFC003C283F80F7E05B80F0000006689072BC203D80FBF0F66FF044E".Pattern();
+
+        /// <inheritdoc/>
+        public override string Name => "Trainer und Manager in schwachen Ländern werden jährlich besser";
+        /// <inheritdoc/>
+        public override string Title => "Trainerkompetenz";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 1048576;
     }
 
     /// <summary>What the patches need of a 32-bit exe's headers: its sections, where the headers are, and the imports by name.</summary>

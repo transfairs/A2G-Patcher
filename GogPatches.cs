@@ -323,7 +323,8 @@ namespace A2GPatch
         };
 
         /// <inheritdoc/>
-        public override string Name => "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr";
+        public override string Name => "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, "
+            + "Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01";
         /// <inheritdoc/>
         public override string Title => "Patch 1.01";
         /// <inheritdoc/>
@@ -892,6 +893,63 @@ namespace A2GPatch
         }
     }
 
+    /// <summary>
+    /// Keeps GOG's DirectDraw wrapper (ddraw.dll, Direct3D 9 underneath, see <see cref="AnimationEdge"/>)
+    /// from clipping the game's vertices itself. Where it sets up the device (twice, file 0x1CD90 and
+    /// 0x1E50E) it stores bit 9 of D3DCAPS9.PrimitiveMiscCaps, D3DPMISCCAPS_CLIPTLVERTS, and with 0 takes a
+    /// slower way of its own. Current drivers (A3-Rework found it with a Radeon RX 6800 XT, in GOG's
+    /// Anstoss 3 with the same code) don't report the bit, and every click then takes 2 to 3 seconds to
+    /// answer. The patch stores 1:
+    /// <code>
+    ///   mov eax,[esp+2E8] / push 'DF16' / shr eax,9 / and eax,ebp / push 3   ->   ... / mov eax,1 / push 3
+    /// </code>
+    /// Offered with GOG's wrapper in the folder (the file keeps the name <see cref="AnimationEdge"/> looks
+    /// for); a folder with another ddraw.dll leaves the tile greyed out.
+    /// </summary>
+    internal sealed class WrapperClipping : FilePatch
+    {
+        /// <summary>The wrapper's code around the stored bit, original.</summary>
+        internal static readonly byte[] Original = "8b8424e80200006844463136c1e80923c56a03".Hex();
+        /// <summary>The same, patched.</summary>
+        internal static readonly byte[] Patched = "8b8424e80200006844463136b8010000006a03".Hex();
+        private const int Places = 2;
+
+        /// <inheritdoc/>
+        public override string Name => "Keine Verzögerung nach Mausklicks mit manchen Grafikkarten";
+        /// <inheritdoc/>
+        public override string Title => "Mausklicks";
+
+        /// <summary>The places in the wrapper, or null if it isn't GOG's or they aren't all original or all patched.</summary>
+        internal static Site[] Sites(byte[] wrapper)
+        {
+            if (wrapper == null || FindAll(wrapper, Exact(AnimationEdge.WrapperName)).Count == 0)
+                return null;
+            Site[] sites = FindAll(wrapper, Exact(Original)).Select(at => new Site { Offset = at, Original = Original, Patched = Patched })
+                .Concat(FindAll(wrapper, Exact(Patched)).Select(at => new Site { Offset = at, Original = Original, Patched = Patched, IsPatched = true }))
+                .ToArray();
+            return sites.Length == Places && sites.All(s => s.IsPatched == sites[0].IsPatched) ? sites : null;
+        }
+
+        /// <inheritdoc/>
+        public override FileState State(GameFiles files)
+        {
+            Site[] sites = Sites(files.Read(AnimationEdge.Wrapper));
+            return sites == null ? FileState.Unknown : sites[0].IsPatched ? FileState.On : FileState.Off;
+        }
+
+        /// <inheritdoc/>
+        public override void Switch(GameFiles files, bool on)
+        {
+            byte[] wrapper = (byte[])files.Read(AnimationEdge.Wrapper).Clone();
+            Site[] sites = Sites(wrapper);
+            if (sites[0].IsPatched == on)
+                return;
+            foreach (Site site in sites)
+                (on ? site.Patched : site.Original).CopyTo(wrapper, site.Offset);
+            files.Write(AnimationEdge.Wrapper, wrapper);
+        }
+    }
+
     /// <summary>Helpers for byte strings.</summary>
     internal static class Bytes
     {
@@ -906,5 +964,10 @@ namespace A2GPatch
         /// <summary>The bytes written as hex digits.</summary>
         internal static byte[] Hex(this string hex) =>
             Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(2 * i, 2), 16)).ToArray();
+
+        /// <summary>A pattern written as hex digits, "??" for a wildcard.</summary>
+        internal static byte?[] Pattern(this string hex) =>
+            Enumerable.Range(0, hex.Length / 2).Select(i => hex.Substring(2 * i, 2))
+                .Select(b => b == "??" ? (byte?)null : Convert.ToByte(b, 16)).ToArray();
     }
 }

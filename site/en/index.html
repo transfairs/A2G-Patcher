@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="902" height="759" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
+      <img src="../patch.png" width="902" height="949" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
     </figure>
   </div>
 </section>
@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>The patches</h2>
-    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes nine of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device), and the upper limit for the bank balance. <b>Balancing</b> changes how the game plays. Three more patches are for the GOG release only.</p>
+    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes fourteen of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device), and the upper limit for the bank balance. <b>Balancing</b> changes how the game plays. Four more patches are for the GOG release only.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -68,6 +68,46 @@
         </div>
         <h3>Investments no longer drain the balance</h3>
         <p>Every gain of an investment is taken off the bank balance: the better it does, the less money is in the account, and the less interest it earns. Only closing it brings everything back at once, which looks like double interest. With the patch the balance only goes down by the money paid in, and the gain arrives once when the investment is closed.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>
+        </div>
+        <h3>Events do what their message says</h3>
+        <p>Some random events do something else than their message says. The free copier costs money, the prize draw brings some; the cups of a fan club tournament are booked as income, the sale of a plot and the fans' collection of donations as expenses. A won negotiation with the chocolate maker brings only the plain amount instead of the double one offered. Four messages announce that a player loses freshness points, but he gains them. And the hints for the co-trainer, after which players gain a form point, come with the sound for bad news. A concussion in training hurts the other of the two players named, fish poisoning shows as an injury without a name, a player growing old gets someone else’s question appended to his message, and after a riot that costs the club a lawsuit the game reports all calm. A bonus from the board promises every player a form point, a slip on a banana skin costs one, but neither happens. And two of the reasons meant to hold up the stadium works never come: a fans’ blockade and bad weather. With the patch everything matches the message.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M12 8v5M12 16h.01"/></svg>
+        </div>
+        <h3>No crash on events without a fitting player</h3>
+        <p>Some random events draw a player and use him without checking that one was found, for instance when the one drawn is on loan. The game then crashes. With the patch the event doesn’t happen.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/></svg>
+        </div>
+        <h3>Trainers and managers in weak countries get better</h3>
+        <p>Once a year the game raises every tenth trainer or manager by 1 or 2 points in countries where their average competence is below 6, but it never stores the new value. With the patch they keep it; the cut in countries with an average above 10 already works.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="1"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        </div>
+        <h3>Appearances without a mark don't count in the average</h3>
+        <p>A player who plays less than 20 minutes gets no mark. If he gets a card, the season average in his details and the fans' check for a hated player count that appearance as mark&nbsp;0, better than a 1. With the patch only marks count, as in the team statistics.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
+        </div>
+        <h3>The list of most appearances takes in new players again</h3>
+        <p>The club list of the players with the most appearances holds 50 players. A player who leaves the club still counts as one of its players there; once 50 players have played for the club, nobody new gets in, and the list stays as it is for good. With the patch the mark follows the squad again, and even a list frozen already takes in new players from the next match. A new player pushes out the former player with the fewest appearances; the first 20&nbsp;places always stay, the other 30 leave room for a full squad. Appearances that were never counted don’t come back.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -211,6 +251,22 @@
         <h3>Trainer supply</h3>
         <p>When a trainer or manager retires, a former player from a waiting list takes his place. But players only get on that list if they end their career at 36 or later, which outfield players rarely do. With the list empty, the retired one comes back under his name, aged 30 with competence 2; in the long run the strong trainers die out. With the patch former players get on the list from age 33, and without one the newcomer starts with competence 3 to 11, most often around 7. So trainers with competence 15 keep coming in the long run. This also goes for co-trainers and goalkeeper trainers.</p>
       </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12c3-4 7-5 11-5 3 0 5 2 7 5-2 3-4 5-7 5-4 0-8-1-11-5z"/><path d="M16 11h.01"/></svg>
+        </div>
+        <h3>Fish poisoning: three weeks as reported</h3>
+        <p>After the tuna pizza the game reports the player out for three weeks. What it enters, though, is a fish poisoning with the usual 7&nbsp;days. With the patch he misses the three weeks.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M18 3l1.5 1.5M20 8h2"/></svg>
+        </div>
+        <h3>More events around the manager</h3>
+        <p>The events of the manager’s private life are drawn from the wrong table, so 24 of their 38 cases never come. With their own table about 20 events join in: suspicion of rioting with hooligans, a national order, a book of his own, a microphone that records every word, and fans honking at night or throwing tomatoes when the manager stands badly with them. The known ones come less often. Two of the new ones needed a fix; one that would show without its name stays out.</p>
+      </article>
       <article class="card">
         <div class="card-head">
           <span class="tag tag-gog">GOG only</span>
@@ -234,6 +290,14 @@
         </div>
         <h3>No black line on the animations</h3>
         <p>GOG’s DirectDraw wrapper (<code>ddraw.dll</code>) shows a black line along the right and bottom edge of the animations, such as the overhead kick in the main menu. The patch fills it with the picture. Offered only with GOG’s <code>ddraw.dll</code> in the game folder.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">GOG only</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 7v4"/></svg>
+        </div>
+        <h3>No delay after mouse clicks</h3>
+        <p>When the graphics driver doesn’t report a certain capability, GOG’s <code>ddraw.dll</code> takes a slow way of its own, and the game answers every click two to three seconds late (seen with a Radeon RX 6800 XT). The patch changes the <code>ddraw.dll</code>; without the delay it makes no noticeable difference. Offered only with GOG’s <code>ddraw.dll</code> in the game folder.</p>
       </article>
     </div>
   </div>
@@ -405,6 +469,57 @@ week’s result: 20 fields one by one (208 B) →  bookings sum + tax − field 
 place back without an entry: competence 2   →  3 + 4 × random(3): 3 to 11, most often 7</code></pre>
       </details>
       <details class="tech-item">
+        <summary><b>Manager events</b><span>The table next door</span></summary>
+        <p>The dispatcher for the manager’s private life is built from the same table as the one for another kind of events (14 pairs of weight and case). Its own table of 39 pairs lies 56&nbsp;bytes behind and is used nowhere. The new cases never ran, so each was read. The honking text holds the name twice, it is passed once, and <code>sprintf</code> takes the caller’s saved <code>esi</code> as the second string: garbage or a crash. A case that leaves its name empty gets weight&nbsp;0.</p>
+<pre><code>push 6BD248 / push 0E             →  mov eax,6BD248 / add eax,38 / push eax / push 27
+push name / push text / push dest  →  push name / push name / push text / push dest</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Most appearances</b><span>A flag nobody clears</span></summary>
+        <p>For each human manager the game keeps two lists of 50 entries: goals and appearances, each entry with the player’s number, birth year and the flag “at the club”. With the list full, a new player replaces, from the bottom up to place&nbsp;10, the first entry without the flag. A player leaving, though, clears his flag in the goals list only. The patch sets the flags of the appearances list anew from the squad and the players lent out before each count. Room comes from the sort, rewritten shorter as a bubble sort (47 instead of 139&nbsp;bytes). 20 places are kept instead of 10.</p>
+<pre><code>start of the count: … / mov [esp+10],eax  →  … / call flags
+sort: selection with three copy loops       →  bubble sort, the routine in front of it</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Fish poisoning</b><span>Event 0 of the referee events</span></summary>
+        <p>The injury is entered by a small function that only the referee events call: event&nbsp;0 is the fish poisoning, event&nbsp;1 the fall down the escalator (28&nbsp;days, as reported). The days come from the table of injury kinds, 7 for a fish poisoning. The patch gives event&nbsp;0 21&nbsp;days, in the function’s bytes and five of the ten filler bytes behind it.</p>
+<pre><code>movzx dx,byte [eax*2+days] / mov [ecx+44],dx  →  test eax,eax / … / jne / mov dl,21 / mov [ecx+44],dx</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Events</b><span>Signs, jumps and a sound</span></summary>
+        <p>The random events book expenses at club <code>+0x38C</code> and income at <code>+0x390</code>; the hundred money events are pairs of text and amount in a table, expenses negative. The copier and the prize draw have the wrong sign there, three more events jump to the wrong booking or book the wrong field. The chocolate maker's question offers twice the amount, the booking takes the plain one; comparing the question's outcome as a byte instead of a word makes room for the doubling. Freshness goes through a function that moves it into the recovery pool for a positive value and back for a negative one; four events pass −5 and −10. A message's sound is its last argument (0&nbsp;neutral, 1&nbsp;positive, 2&nbsp;negative).</p>
+<pre><code>690 copier:          {690, −120}               →  {690, +120}
+697 prize draw:      {697, +80}                →  {697, −80}
+126, 172:            jmp income / expenses     →  jmp expenses / income
+143 plot:            [esi+38C] += amount       →  [esi+390] += amount
+224 chocolate:       success books edi         →  add edi,edi, then book
+307, 308, 369, 414:  push −5 / −10             →  push 5 / 10
+56 co-trainer:       sound 2                   →  sound 1</code></pre>
+        <p>Text 38 injures the first of the two players and names the second. Text 392 appends text 393 for ability bit&nbsp;4, by now another question with a literal “%1”. Fish poisoning (732) enters kind 62, which has no name; the patch puts 68 “Fischvergiftung” into its small table, with its 7&nbsp;days. After a riot the game books the settlement but shows text 283, and both amounts end up in the one buffer of the money format; rewritten in the same 132&nbsp;bytes, the patch copies the first amount away and shows text 284 with both. Calls move within the block, and the patch recomputes their displacements.</p>
+<pre><code>38 concussion:       push ebx                  →  push ebp (the player named)
+392 older player:    je (adds text 393)        →  jmp (392 alone)
+732 fish poisoning:  kind 62                   →  kind 68
+284 riot:            text 283                  →  text 284 with claim and settlement
+339 bonus:           the booking only          →  plus every player form +1
+343 banana skin:     the mood only             →  plus the player form −1
+876/877 works delay: random(10) of 12 reasons  →  random(12); a reason’s leading “wegen ” is skipped</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Event crashes</b><span>A player who isn’t there</span></summary>
+        <p>Two functions draw a player of the squad and return NULL when the one drawn has a certain flag or nobody fits. Of their 71 calls, four read the result without a test. The patch tests it at all four places, in their own bytes; <code>pop ecx</code> twice instead of <code>add esp,8</code> makes room.</p>
+<pre><code>mov esi,eax / add esp,8 / cmp byte [esi+25],0A  →  pop ecx / pop ecx / xchg eax,esi / test esi,esi / je out / …</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Trainer competence</b><span>A result that isn't stored</span></summary>
+        <p>Once a year the game balances the competence of the trainers and of the managers per country group: with an average under 6 every tenth gets 1 or 2 points (at most 15), with one over 10 every tenth loses some. The raise only adds the points to the sum and counts the person at the old value again; only the cut writes the new value back. The patch writes it for the raise too, in the same 36&nbsp;bytes.</p>
+<pre><code>new = old + bonus, sum += bonus            →  the same, plus mov [edi],ax and counting the new value</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Grade average</b><span>Card and mark in one byte</span></summary>
+        <p>For each match day a byte of the player holds the appearance (bit&nbsp;7), the mark (bits&nbsp;2–4) and cards (bits&nbsp;0–1). The team statistics count an appearance only with a mark. The season average in the player's details and the fans' check test mark and cards together, so a short appearance with a card counts as mark&nbsp;0 there.</p>
+<pre><code>test al,80 / je / test al,1F / je  →  test al,1C (the mark alone), in both places</code></pre>
+      </details>
+      <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>
         <p>Eleven places call a signature routine and subtract the expected value; 0 means “original CD”. GOG replaced the subtraction with NOPs, so every check fails. The patch puts in the result of a passed check. In addition, five places check a CRC32 of <code>run.exe</code> on disk and five a CRC32 of their own code; A2G-Patch stores the matching values after every change.</p>
 <pre><code>call check / add esp,4 / nop ×5  →  call check / add esp,4 / xor eax,eax / nop ×3</code></pre>
@@ -422,6 +537,11 @@ place back without an entry: competence 2   →  3 + 4 × random(3): 3 to 11, mo
         <p>The animations play in a child window exactly as large as the picture; a thread blits them into its client rect on the primary surface. GOG’s wrapper shows that rect plus one column and one row of the primary surface, where nothing was ever drawn. The patch makes the window one pixel smaller each way and blits the whole picture into it, so the extra column and row show the picture’s last ones. With a correct DirectDraw the clipper would cut them off, hence only with GOG’s wrapper.</p>
 <pre><code>window: add ecx,edx / add eax,edi            →  add ecx,edx / dec ecx / add eax,edi / dec eax
 blit:   call GetClientRect(window, dest)     →  call CopyRect(dest, source)</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Mouse clicks (GOG)</b><span>One bit of the driver’s capabilities</span></summary>
+        <p>GOG’s wrapper puts Direct3D&nbsp;9 under DirectDraw. Setting up the device, it keeps bit&nbsp;9 of <code>D3DCAPS9.PrimitiveMiscCaps</code> (<code>D3DPMISCCAPS_CLIPTLVERTS</code>) and clips by itself without it. Current drivers don’t report the bit; the delay was found by A3-Rework, a patch for Anstoss&nbsp;3, whose GOG wrapper has the same code. The patch keeps 1, at both places. The wrapper keeps its name, so the patch for the animations still recognizes it.</p>
+<pre><code>shr eax,9 / and eax,ebp  →  mov eax,1</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>A proxy for the 2007 CD</span></summary>

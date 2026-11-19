@@ -4,7 +4,7 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
 
 "Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes and current Windows.
 
-- **Spielfehler** (Behebt: Geldanlagen, Kadergröße, …), one switch for nine bug fixes; each keeps its own places
+- **Spielfehler** (Behebt: Geldanlagen, Ereignisse, …), one switch for fourteen bug fixes; each keeps its own places
   and DLL flag, and the switch counts as on once one of them is applied (an exe patched by an older
   version keeps its fixes, and applying completes the rest):
   - **Geldanlagen** (Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen): the game takes every
@@ -12,6 +12,37 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
     (and the less interest it earns, or the more overdraft interest it costs). Closing it brings everything
     back at once, which looks like double interest. With the patch the balance only goes down by the money
     paid in, and the gain arrives once when the investment is closed.
+  - **Ereignisse** (Ereignisse wirken wie in ihrer Meldung (Geld, Form, Frische, Verletzungen, Klang)): some random
+    events do something else than their message says. The free copier ("Sie sparen …") costs money and the
+    prize draw ("Kostenpunkt …") brings money; the cups of a fan club tournament are booked as income, the
+    sale of a plot and the fans' collection of donations as expenses. A won negotiation with the chocolate
+    maker brings the plain amount instead of the doubled one the question offers. Four messages say that a
+    player loses freshness points, but he gains them. The hints for the co-trainer, after which some players
+    gain a form point, play the negative sound. A concussion in training hurts the other of the two
+    players the message names; fish poisoning shows as an injury without a name; a player who grows old gets a request for a day off appended to his message; and
+    after a riot that costs the club a lawsuit the message says all is calm. A bonus from the board
+    promises every player a form point, a slip on a banana skin costs one, but neither happens. A delay of
+    the stadium works never names two of its reasons, a fans' blockade and the weather. With the patch each
+    does what its message says, and all reasons can hold up the works.
+  - **Ereignis-Abstürze** (Kein Absturz bei Ereignissen, für die kein passender Spieler da ist): some random
+    events draw a player and use him without checking that one was found (for instance when the one drawn
+    is on loan). The game then crashes. With the patch the event doesn't happen.
+  - **Trainerkompetenz** (Trainer und Manager in schwachen Ländern werden jährlich besser): once a year the
+    game raises every tenth trainer or manager by 1 or 2 points in countries where their average is below
+    6, but it never stores the new value. With the patch they keep it; the cut in countries with an
+    average above 10 already works.
+  - **Notenschnitt** (Einsätze ohne Note zählen nicht im Notenschnitt (Spielerdetails, Fans)): a player who
+    plays less than 20 minutes gets no mark. If he gets a card, the season average in his details and the
+    fans' check for a hated player count that appearance as mark 0, better than a 1. With the patch only
+    marks count, as in the team statistics.
+  - **Meiste Einsätze** (Vereinsliste der meisten Einsätze nimmt nach 50 Spielern wieder neue auf): the
+    club list of the players with the most appearances keeps 50 players. A player who leaves stays marked as
+    still at the club, so once 50 have played for the club nobody new gets in, and the list stays as it is
+    for good. With the patch the marks follow the squad again; a list frozen in a saved game takes in new
+    players from the next match. The game counts a player's appearances for the club only in this list, so
+    a new player enters at once and pushes out the former player with the fewest appearances; the first 20
+    places (instead of 10) are never pushed out, the other 30 leave room for a full squad. Appearances that
+    were never counted don't come back.
   - **Kadergröße** (Kader nicht über 30 Spieler wachsen lassen): a club with players on loan can get a 31st
     player, which overwrites data behind the squad array. The patch counts the actual squad too.
   - **Pokalauslosung** (Vereinsnamen bei der Pokalauslosung richtig darstellen): on current Windows and
@@ -35,7 +66,7 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
     there this fix is left out.
   - **Langer Windows-Betrieb** (Kein Einfrieren nach über 24 Tagen Windows-Laufzeit): a 3-second wait in a
     reply sequence turns into weeks once Windows has run for 2^31 ms (Fast Startup keeps the uptime).
-- **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr): the GOG
+- **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01): the GOG
   release and the 2007 CD release are built from the 1.00 source. The patch brings program and data to the
   official patch 1.01, which the 1999 release contains already, among them the training camp in the winter
   break. Greyed out for the 1999 release.
@@ -77,6 +108,15 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   name, aged 30 with competence 2 (goalkeeper trainers aged 35 with 2). They hardly grow, and in the long
   run the strong trainers die out. With the patch former players get on the list from age 33, and a place
   without one comes back with competence 3 to 11, most often around 7, so that trainers with competence 15 keep coming.
+- **Fischvergiftung nach der Thunfischpizza: drei Wochen Ausfall wie in der Meldung statt einer**
+  ("Fischvergiftung"): the message of this random event says the player is out for three weeks, but the
+  game enters a fish poisoning with its usual 7 days. With the patch he misses the three weeks.
+- **Weitere Ereignisse rund um den Manager: Presse, Fans, Privatleben** ("Manager-Ereignisse"): the
+  events of the manager's private life draw from the wrong table, so 24 of their 38 cases never come. Their
+  own table gives about 20 more events: suspicion of rioting with hooligans, a national order, a book of his
+  own, a speech the microphones caught, fans honking at night or throwing tomatoes when the manager stands
+  badly with them, and more. The ones known so far come less often. Two of the new ones needed a fix to
+  show properly; one that would show without its name stays out.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -92,6 +132,10 @@ releases don't need):
 - **Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)** (bug fix): GOG's DirectDraw wrapper
   (`ddraw.dll`) shows a black line along the right and bottom edge of the animations (the overhead kick in
   the main menu and the others). Offered only with GOG's `ddraw.dll` in the game folder.
+- **Keine Verzögerung nach Mausklicks mit manchen Grafikkarten** (bug fix): GOG's `ddraw.dll` takes a slow
+  way of its own when the graphics driver doesn't report one capability, and the game then answers each
+  click two to three seconds late (seen with a Radeon RX 6800 XT). The patch changes `ddraw.dll`; on
+  systems without the delay it makes no difference. Offered only with GOG's `ddraw.dll` in the game folder.
 
 Works with the original release (1999), the GOG release and the 2007 CD release. Like the game, the
 user interface is in German.
@@ -412,6 +456,189 @@ nobody above 12. A goalkeeper trainer coming back reaches 15 with about 9 %. The
 original code; the places are `0x5a1355`, `0x5a1500` and `0x5a15c0` (GOG `0x5a3b65`, `0x5a3d10`,
 `0x5a3dd0`, the 2007 release the same in memory, outside its CRC stretches).
 
+**Events.** The random events of `0x556900` (texts from `TEXTE\EreigGld.saq`) book a club's expenses at
+`+0x38c` and its income at `+0x390`; the hundred money events of the table at `0x6bcd80` are pairs of text
+and amount, negative for expenses. Wrong are:
+
+```
+690 free copier "Sie sparen %s ein"          table 0x6bd058 {690, -120}         ->  {690, +120}
+697 prize draw "Kostenpunkt: %s"             table 0x6bd090 {697, +80}          ->  {697, -80}
+126 fan club tournament, cups "kosten %s"    0x556d31 jmp 0x55781d (income)     ->  jmp 0x557f59 (expenses)
+143 a plot sold, "erhalten Sie %s"           0x557050, 0x55705e [esi+38c]       ->  [esi+390]
+172 the fans' donations "kommen ... zusammen" 0x5578b0 jmp 0x557f56 (expenses)  ->  jmp 0x55781a (income)
+```
+
+The two ends 126 and 172 jump to are alike apart from the field, so the two trade their targets (the
+displacements are the same in all builds). The chocolate maker (text 224, `0x558606`) offers a sponsor
+deal and twice the amount for a negotiation with a 50:50 chance (`[0xc21eb0] = 2 * edi` for the text), but
+a success books `edi`, like accepting at once. The patch doubles `edi` there; the room comes from comparing
+the question's outcome (a small number, written as a dword) as a byte, so its address moves one byte:
+
+```
+cmp word [outcome],ax / push ebx / jne fail / push 3 / push 0 / push 0 / push 0 / call
+->  cmp byte [outcome],al / push ebx / jne fail / add edi,edi / push 3 / xor eax,eax / push eax x3 / call
+```
+
+`0x623cc0` moves a player's freshness (`+0x31`) into his recovery pool (`+0x33`) for a positive value and
+back for a negative one; training and matches pass positive values, the events 307, 308, 369 and 414
+("verliert ... Frischepunkte", `0x55ed03`, `0x55ed45`, `0x55fc80`, `0x5605d6`, `0x5605e1`) pass -5 and
+-10. The patch makes them 5 and 10. A message's sound is the last argument of its call (`0x4771f0`: 0
+neutral, 1 positive, 2 negative, 3 question); text 56, hints for the co-trainer that give three players a
+form point (`0x563cbc`), passes 2, the patch 1. In GOG and the 2007 CD the places lie 0x22F0 bytes (code)
+and 0x30F8 bytes (table) further on.
+
+Four more events don't do what their message says. Text 38, a concussion after two players collide in
+training (`0x5632d7`), injures the first of the two while the text names the second (`push ebx` ->
+`push ebp`). Text 392, a player losing strength with age (`0x560124`), appends text 393 raw when he has
+ability bit 4; that text is now the request for a day off, with a literal "%1". The patch always takes
+the plain branch (`je` -> `jmp`); the bit is cleared as before. Text 732, fish poisoning, is one of the
+referee events (`0x5ee7f0`); it hurts the player through `0x633a60`, which takes the kind from a table of
+two shorts at `0x6c9534` ({62, 20}) and the days from the kinds' table: kind 62 has no name (text 734 gets
+kind 20, 28 days, as it says). The patch enters 68, "Fischvergiftung", with its 7 days.
+
+Two messages name a form point that never comes: text 339, a bonus from the board ("Sämtliche Spieler
+gewinnen je einen Formpunkt", `0x55f6c0`), books the money only, and text 343, a slip on a banana skin
+("verliert einen Formpunkt", `0x55f77d`), only raises the team's mood. The game changes form with
+`0x565bc0` (one player, kept between 0 and 20) and `0x565a50` (every player of the squad and the ones lent
+out). For 339 the booking is written shorter, which makes room for the call; for 343 the player is pushed
+once more under the message's arguments, with -1, and the event ends with a jump to the same ending of the
+case before:
+
+```
+339: mov eax,[ebp+330] / add esp,14 / add eax,esi / mov [ebp+330],eax
+->   add [ebp+330],esi / push 1 / push ebp / call 0x565a50 / add esp,1C
+343: push 2 / push eax / push eax / ... / call message / add esp,18 / push 14 / push ebp / call mood / add esp,8 / mov ax,1 / ... / ret
+->   push -1 / push eax / push 2 / push eax / push eax / ... / call message / add esp,18 / call 0x565bc0 /
+     push 14 / push ebp / call mood / add esp,10 / jmp 0x55f749 (mov ax,1 / ... / ret)
+```
+
+A delay of the stadium works (texts 876, 877, "verzögern sich wegen %s") draws its reason with
+`random(10)` (`0x55e5f3`) from a table of 12 (`0x6bd3a0`, texts 878 to 889), so 888 and 889 never come.
+The patch draws from all 12. 889 reads "wegen schlechtem Wetter" and would give "wegen wegen schlechtem
+Wetter"; instead of changing `TEXTE\EreigGld.saq` (which patch 1.01 recognizes by its SHA-256), the
+message's two branches (one or two weeks, `0x55e604`, 121 bytes) are folded into one, which skips a
+reason's first six characters when it starts with "wege":
+
+```
+push 2 / call random / pop ecx / movsx esi,si / neg eax / sbb eax,eax / inc eax (1: two weeks) / push eax /
+mov ecx,texts / push edi / call text / cmp dword [eax],"wege" / jne / add eax,6 / push eax / ... /
+mov eax,[esp+8] / add eax,36C (876 or 877) / ... / call sprintf / add esp,10 / pop eax /
+mov cl,[ebx+esi+884] / lea eax,[eax+ecx+1] / jmp message
+```
+
+**Manager events** (Balancing). `0x55c900` holds the manager's private life, 38 cases (texts from 491 on);
+`0x55c840` draws one from a weighted dispatcher (`0x784ce8`, pairs {weight, case}, one of the last 20
+shown is drawn again once). `0x55c820` builds it from `0x6bd248`, the 14 pairs the other kind of events
+(`0x55c230`) uses, so cases 15 to 38 never come. The table 56 bytes behind (`0x6bd280`, 39 pairs, weights
+1 to 25) is referenced nowhere. The patch builds the dispatcher from it, in the builder's bytes and 4 of
+the 12 nops behind (the dispatcher's start, `add ecx,6D60`, tells it from the other one):
+
+```
+push -1 / push 6BD248 / push 0E / mov ecx,dispatcher / call / ret
+->  push -1 / mov eax,6BD248 / add eax,38 / push eax / push 27 / mov ecx,dispatcher / call / ret
+```
+
+The new cases were never played, so each was read: most show a message and change a value of the manager
+or the club. Two needed more. Case 34 (text 530) fills "%s, der Sie eigentlich gar nicht leiden kann" with
+an empty string; its weight 4 becomes 0. Case 32 (text 528, fans honking at night) names the manager twice,
+but `0x565860` passes his name once, and `sprintf` takes the caller's `esi`, saved behind the arguments, as
+the second string: garbage or a crash. The patch passes the name twice; texts with one name ignore the
+second (`0x565896`):
+
+```
+lea eax,[esp+4] / lea ecx,[esp+1F8] / push eax / push esi / push ecx / call sprintf / ... / lea eax,[esp+1F8]
+->  lea eax,[esp+4] / push eax / push eax / push esi / lea esi,[esp+204] / push esi / call sprintf / ... / mov eax,esi
+```
+
+Case 25 (text 521, an inheritance) builds its text but neither shows it nor books anything, cases 21, 35
+and 39 do nothing; they stay as they are. The honking and the tomatoes (weight 25 each of 112) only come
+for a manager with less than 60 points of standing; else the draw brings nothing that day. GOG and 2007 CD:
+`0x55eb10`, `0x6c03fc`, `0x567b73`.
+
+**Fish poisoning** (Balancing). Text 732 says "fällt drei Wochen aus". `0x633a60` is called only by the
+referee events, event 0 being the poisoning; the patch gives it 21 days whatever kind the table holds, in
+the function's bytes and 5 of the 10 nops behind its `ret` (GOG and 2007 CD `0x6385c0`):
+
+```
+... / mov [ecx+46],dl / movsx eax,word [eax*2+kinds] / lea eax,[eax+eax*2] / movzx dx,byte [eax*2+days] /
+mov [ecx+44],dx
+->  ... / mov [ecx+46],dl / test eax,eax / movsx eax,word [eax*2+kinds] / lea eax,[eax+eax*2] /
+    movzx edx,byte [eax*2+days] / jne / mov dl,21 / mov [ecx+44],dx
+```
+
+The riot (`0x5591c0`, case 3) books the lawsuit's settlement (`[0x78bb10]`) after an unlucky draw, but
+shows text 283 ("unter Kontrolle gebracht") instead of 284 and formats both amounts for it into the one
+buffer of the money format (`0x4a6dd0`), so 284 would show the same amount twice. The texts are kept in a
+table (`0x559b30`, `[0x7836e8 + 4 + number * 4]`), so text 282 needs no copy. Rewritten in the same 132
+bytes (`0x55933e`), the settlement is formatted first and copied (32 bytes) into the free buffer, then the
+claim (`[0x78bb84]`), and `sprintf` writes 284 with both:
+
+```
+mov ecx,texts / mov ebp,[ecx+46C] / mov esi,[settlement] / push esi / call money / mov esi,eax /
+lea edi,[esp+3C] / push 8 / pop ecx / rep movsd / push [claim] / call money / lea ecx,[esp+40] /
+mov [esp],ecx / push eax / mov ecx,texts / push [ecx+474] / lea edx,[esp+23C] / push edx / call sprintf /
+add esp,10 / pop esi / lea eax,[esp+22C] / push eax / push ebp / push 2 / push 5B / push ebx / nop...
+```
+
+The calls move within the block; a rewritten block keeps the four bytes behind a call (`E8`) as its
+displacement and moves it by the distance the call moved, here and in the DLL (`RewritePatch.FindOnce`,
+`PatchRewrite`).
+
+**Event crashes.** `0x564ee0` (any player of a squad) and `0x564c40` (one who is fit) return NULL when the
+one drawn has `+0x98` set (with 1 as second argument) or nobody fits. Of their 71 calls, four read from
+the result without testing it:
+
+```
+0x55f1cb  text 321  cmp byte [esi+25],0A / jle out / ... (three checks)  ->  test esi,esi / je, the checks with short jumps to one jmp out
+0x55fb4d  text 366  five draws for an older player: mov cl,[eax+1E] ...   ->  test eax,eax / je next / cmp [eax+1E],bl ...
+0x55b79c  text 244  the message and the injury                           ->  test esi,esi / je (return 0), one add esp for both calls
+0x5bbcb0  a news    movsx eax,word [eax] for the message                 ->  test eax,eax / je (ret) / push dword [eax]
+```
+
+Each in its own bytes: `pop ecx` twice instead of `add esp,8` makes room (`0x5bb160` reads the player's
+number as a word). In GOG and the 2007 CD the places lie 0x22F0 bytes (`0x5bbcb0`: 0x2D30) further on.
+
+**Appearances list.** Each human manager's club keeps two lists of 50 entries of 20 bytes (`0x793030` and
+`0x79347c`, plus `0x4210` per manager): goals and appearances, each entry with the player's number (`+0`),
+birth year (`+6`) and a flag "at the club" (`+8`). After a match `0x61ef70` counts the appearances
+(`0x61ec50`): a player found gets his count raised and the flag 1, a new one takes an empty entry or, from
+the bottom up to place 10, the first with flag 0; then the list is sorted. A player leaving
+(`0x552d60` -> `0x61dc70`) clears his flag in the goals list only, so once 50 players have appeared the
+appearances list never takes another one. The patch sets its flags anew before each count: 0, or 1 if the
+number is one of the squad's (`[ebx+990]`, `[ebx+e6]` of them) or of the players lent out (`[ebx+a1c]`,
+`[ebx+a19]`). Room comes from the sort, rewritten as a bubble sort (the same descending order) in 47 of
+its 139 bytes (`0x61f0b1`); the routine goes in front of it and is called where the count starts:
+
+```
+movzx ax,byte [ebx+104] / add esp,8 / cmp ax,2 / mov [esp+10],eax / jle / mov dword [esp+10],2
+->  add esp,8 / movzx eax,byte [ebx+104] / cmp al,2 / jbe / mov al,2 / mov [esp+10],eax / call flags / nop x4
+```
+
+Both places lie 179 bytes apart in every build (GOG and 2007 CD `0x623b8e`, `0x623c41`). A squad holds
+at most 30 players, so the patch also keeps the first 20 places instead of 10: the search for a former
+player's entry stops above place 21 (`0x61ed1e`, `cmp ax,0A` -> `cmp ax,14`; GOG and 2007 CD `0x6238ae`).
+
+**Competence balance.** Once a year `0x5cc740` balances the competence of the trainers and of the managers
+of each country group (lists of 6-byte entries, value at `+2`, written back to the persons afterwards):
+with an average under 6, every tenth gets 1 or 2 points (at most 15), with one over 10 every tenth loses
+some. The raise adds the points to the sum and counts the person at its old value again, but never stores
+the new one; the cut does (`mov [edi],cx`). The patch stores it in the same 36 bytes (`0x5cc79a`, GOG and
+2007 CD `0x5cfeca`):
+
+```
+mov dx,[edi] / add esp,4 / inc eax / movsx ecx,dx / movsx ebp,ax / add ebp,ecx / cmp ebp,15 / jle /
+mov eax,15 / sub eax,edx / movsx eax,ax / add ebx,eax / inc word [esi+ecx*2]
+->  movsx edx,[edi] / add esp,4 / inc eax / movsx eax,ax / add eax,edx / cmp eax,15 / jle / mov eax,15 /
+    mov [edi],ax / sub eax,edx / add ebx,eax / movsx ecx,[edi] / inc word [esi+ecx*2]
+```
+
+**Grade average.** A player's match day byte (`+0x130`, one per match day) holds bit 7 for an appearance,
+the mark in bits 2-4 and cards in bits 0-1; who plays less than 20 minutes gets mark 0 (`0x5f4bf0`). The
+team statistics count an appearance only with a mark (`0x460f0b`), but the season average in the player's
+details (`0x4fcc46`) and the fans' check for a hated player (`0x639fcd`, at least 4 marks, average 4.5 or
+worse) test mark and cards together, so a short appearance with a card counts as mark 0. The patch tests
+the mark alone in both (`test al,1F` -> `test al,1C`; GOG and 2007 CD `0x4fee76`, `0x63eb0d`).
+
 ### GOG release
 
 The GOG patches (`GogPatches.cs`) change more than places in the code, so they are offered only where the
@@ -521,6 +748,15 @@ clean; the line came only from the presentation. The 1999 release has the same c
 GOG's `ddraw.dll` is put in its folder); the 2007 CD release isn't offered it, as `msvfw32.dll` makes only
 the patches with a flag.
 
+**Click delay.** GOG's `ddraw.dll` ("GOG.com DirectX 1-7 wrapper", Direct3D 9) stores, where it sets up the
+device (two code paths, file offsets `0x1cd90` and `0x1e50e`), bit 9 of `D3DCAPS9.PrimitiveMiscCaps`,
+`D3DPMISCCAPS_CLIPTLVERTS`, and without it clips the vertices itself. Current drivers don't report the
+bit; A3-Rework (a patch for Anstoss 3, whose GOG release has a wrapper with the same code) found every click
+answered 2 to 3 seconds late with a Radeon RX 6800 XT. The patch stores 1 (`shr eax,9 / and eax,ebp` ->
+`mov eax,1`). It is offered when the folder's `ddraw.dll` names GOG's wrapper and holds both places, all
+original or all patched; the name stays, so the animation edge still finds the wrapper. Without it (another
+`ddraw.dll`, e.g. WineD3D's) the tile is greyed out.
+
 ## msvfw32.dll (`dll/`)
 
 A proxy like A2G-Scaler's `dsound.dll`: `msvfw32` is not a KnownDLL, so the copy in the program folder
@@ -529,12 +765,14 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 
 - All 47 exports of the real `msvfw32.dll` are `jmp` stubs (ordinals kept in `msvfw32.def`). The real
   DLL is loaded lazily on the first call, never in `DllMain` (loader lock).
-- Which patches it applies are three flags bytes (low byte first) after the marker `A2GPatchFlags` in its
+- Which patches it applies are four flags bytes (low byte first) after the marker `A2GPatchFlags` in its
   `.data`; A2G-Patch sets them when installing (1 goal limits, 2 arrow repeat, 4 video crash, 8 freeze,
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
-  counters, 32768 investments, 65536 trainer supply, 131072 money limit; the build has all on). Versions before the third
-  byte had two; the NUL ending their string follows them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
+  counters, 32768 investments, 65536 trainer supply, 131072 money limit, 262144 events, 524288 grade
+  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events; the
+  build has all on). Older versions had two or three bytes; the NUL ending their string and its padding
+  follow them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the
   embedded one in more than these bytes is from another version and gets replaced.
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled

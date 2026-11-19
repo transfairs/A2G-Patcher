@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="patch.png" width="902" height="759" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je eine Kachel mit Schalter pro Patch, in drei Gruppen">
+      <img src="patch.png" width="902" height="949" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl und je eine Kachel mit Schalter pro Patch, in drei Gruppen">
     </figure>
   </div>
 </section>
@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
-    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ neun Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät) sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen drei Patches nur für die GOG-Version.</p>
+    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ vierzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät) sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen vier Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -68,6 +68,46 @@
         </div>
         <h3>Geldanlagen mindern den Kontostand nicht mehr</h3>
         <p>Jeder Gewinn einer Geldanlage wird vom Kontostand abgezogen: Je besser sie läuft, desto weniger Geld ist auf dem Konto, und desto weniger Zinsen bringt es. Erst beim Auflösen kommt alles auf einmal zurück, was wie doppelte Zinsen aussieht. Mit dem Patch sinkt der Kontostand nur um das eingezahlte Geld, der Gewinn kommt einmal beim Auflösen.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>
+        </div>
+        <h3>Ereignisse wirken wie in ihrer Meldung</h3>
+        <p>Einige Zufallsereignisse tun etwas anderes, als ihre Meldung sagt. Der geschenkte Kopierer kostet Geld, das Preisausschreiben bringt welches; die Pokale eines Fanclub-Turniers werden als Einnahme gebucht, der Verkauf eines Grundstücks und die Spendensammlung der Fans als Ausgabe. Eine gewonnene Verhandlung mit dem Schokoladenhersteller bringt nur den einfachen Betrag statt des versprochenen doppelten. Vier Meldungen kündigen den Verlust von Frischepunkten an, der Spieler gewinnt aber welche. Und die Hinweise an den Co-Trainer, nach denen Spieler einen Formpunkt gewinnen, kommen mit dem Klang für schlechte Nachrichten. Eine Gehirnerschütterung im Training trifft den anderen der beiden genannten Spieler, eine Fischvergiftung erscheint als Verletzung ohne Namen, ein alternder Spieler bekommt eine fremde Frage an seine Meldung gehängt, und nach Randale, die den Verein eine Klage kostet, meldet das Spiel Entwarnung. Eine Prämie des Präsidiums verspricht allen Spielern einen Formpunkt, ein Sturz auf einer Bananenschale kostet einen, beides geschieht nicht. Und zwei der Gründe, die den Stadionbau verzögern sollen, kommen nie vor: eine Fanblockade und schlechtes Wetter. Mit dem Patch passt alles zur Meldung.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M12 8v5M12 16h.01"/></svg>
+        </div>
+        <h3>Kein Absturz bei Ereignissen ohne passenden Spieler</h3>
+        <p>Einige Zufallsereignisse losen einen Spieler aus und verwenden ihn, ohne zu prüfen, ob sich einer gefunden hat, etwa wenn der ausgeloste verliehen ist. Dann stürzt das Spiel ab. Mit dem Patch fällt das Ereignis aus.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/></svg>
+        </div>
+        <h3>Trainer und Manager in schwachen Ländern werden besser</h3>
+        <p>Einmal im Jahr hebt das Spiel in Ländern, in denen Trainer und Manager im Schnitt unter Kompetenz&nbsp;6 liegen, jeden Zehnten um 1 oder 2&nbsp;Punkte an. Den neuen Wert speichert es aber nie. Mit dem Patch bleibt er; das Absenken in Ländern mit einem Schnitt über 10 funktioniert schon.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="1"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        </div>
+        <h3>Einsätze ohne Note zählen nicht im Notenschnitt</h3>
+        <p>Wer weniger als 20&nbsp;Minuten spielt, bekommt keine Note. Sieht er dabei eine Karte, zählen der Saisonschnitt in den Spielerdetails und die Prüfung der Fans auf einen verhassten Spieler diesen Einsatz als Note&nbsp;0, besser als eine 1. Mit dem Patch zählen nur Noten, wie in der Mannschaftsstatistik.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
+        </div>
+        <h3>Liste der meisten Einsätze nimmt wieder neue Spieler auf</h3>
+        <p>Die Vereinsliste der Spieler mit den meisten Einsätzen fasst 50 Spieler. Wer den Verein verlässt, gilt dort weiter als Vereinsspieler; haben 50 Spieler für den Verein gespielt, kommt keiner mehr hinzu, und die Liste bleibt für immer stehen. Mit dem Patch folgt die Markierung wieder dem Kader, auch eine schon erstarrte Liste nimmt ab dem nächsten Spiel neue Spieler auf. Ein neuer Spieler verdrängt den Ehemaligen mit den wenigsten Einsätzen; die ersten 20&nbsp;Plätze bleiben immer, die übrigen 30 reichen für einen vollen Kader. Nie gezählte Einsätze kommen nicht zurück.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -211,6 +251,22 @@
         <h3>Trainer-Nachwuchs</h3>
         <p>Geht ein Trainer oder Manager in Rente, rückt ein Ex-Spieler von einer Warteliste nach. Dorthin kommen Spieler aber erst, wenn sie mit 36 oder später aufhören, und das schaffen Feldspieler selten. Ist die Liste leer, kehrt der Rentner unter seinem Namen als 30-Jähriger mit Kompetenz 2 zurück; auf Dauer sterben die starken Trainer aus. Mit dem Patch kommen Ex-Spieler ab 33 Jahren auf die Liste, und ohne einen startet der Nachfolger mit Kompetenz 3 bis 11, meist um 7. So kommen auf Dauer wieder Trainer mit Kompetenz 15 nach. Das gilt auch für Co- und Torwarttrainer.</p>
       </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12c3-4 7-5 11-5 3 0 5 2 7 5-2 3-4 5-7 5-4 0-8-1-11-5z"/><path d="M16 11h.01"/></svg>
+        </div>
+        <h3>Fischvergiftung: drei Wochen wie gemeldet</h3>
+        <p>Nach der Thunfischpizza meldet das Spiel, der Spieler falle drei Wochen aus. Eingetragen wird aber eine Fischvergiftung mit den üblichen 7&nbsp;Tagen. Mit dem Patch fehlt er die drei Wochen.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M18 3l1.5 1.5M20 8h2"/></svg>
+        </div>
+        <h3>Weitere Ereignisse rund um den Manager</h3>
+        <p>Die Ereignisse aus dem Privatleben des Managers werden aus der falschen Tabelle gewürfelt, 24 ihrer 38 Fälle kommen deshalb nie vor. Mit ihrer eigenen Tabelle kommen rund 20 Ereignisse hinzu: der Verdacht, mit Hooligans randaliert zu haben, ein Staatsorden, ein eigenes Buch, ein Mikrofon, das jedes Wort mitschneidet, und Fans, die nachts hupen oder mit Tomaten werfen, wenn der Manager bei ihnen schlecht dasteht. Die bekannten kommen dafür seltener. Zwei der neuen brauchten eine Korrektur; eines, das ohne seinen Namen erschiene, bleibt draußen.</p>
+      </article>
       <article class="card">
         <div class="card-head">
           <span class="tag tag-gog">Nur GOG</span>
@@ -234,6 +290,14 @@
         </div>
         <h3>Kein schwarzer Strich an den Animationen</h3>
         <p>Der DirectDraw-Wrapper von GOG (<code>ddraw.dll</code>) zeigt rechts und unten an den Animationen, etwa dem Fallrückzieher im Hauptmenü, eine schwarze Linie. Der Patch füllt sie mit dem Bild. Angeboten nur, wenn die <code>ddraw.dll</code> von GOG im Spielordner liegt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-gog">Nur GOG</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 7v4"/></svg>
+        </div>
+        <h3>Keine Verzögerung nach Mausklicks</h3>
+        <p>Meldet der Grafiktreiber eine bestimmte Fähigkeit nicht, geht die <code>ddraw.dll</code> von GOG einen langsamen eigenen Weg, und das Spiel reagiert auf jeden Klick erst nach zwei bis drei Sekunden (beobachtet mit einer Radeon RX 6800 XT). Der Patch ändert die <code>ddraw.dll</code>; ohne die Verzögerung ändert er nichts spürbar. Angeboten nur, wenn die <code>ddraw.dll</code> von GOG im Spielordner liegt.</p>
       </article>
     </div>
   </div>
@@ -405,6 +469,57 @@ Wochenergebnis: 20 Felder einzeln (208 B)  →  Buchungssumme + Steuer − Feld 
 Platz zurück ohne Eintrag: Kompetenz 2      →  3 + 4 × Zufall(3): 3 bis 11, meist 7</code></pre>
       </details>
       <details class="tech-item">
+        <summary><b>Manager-Ereignisse</b><span>Die Tabelle daneben</span></summary>
+        <p>Der Verteiler für das Privatleben des Managers wird aus derselben Tabelle gebaut wie der für eine andere Art Ereignisse (14 Paare aus Gewicht und Fall). Die eigene Tabelle mit 39 Paaren liegt 56&nbsp;Bytes dahinter und wird nirgends benutzt. Die neuen Fälle liefen nie, deshalb wurde jeder gelesen. Beim Hupkonzert steht der Name zweimal im Text, übergeben wird er einmal, und <code>sprintf</code> nimmt das gesicherte <code>esi</code> des Aufrufers als zweiten Text: Müll oder Absturz. Ein Fall, der seinen Namen leer lässt, bekommt Gewicht&nbsp;0.</p>
+<pre><code>push 6BD248 / push 0E          →  mov eax,6BD248 / add eax,38 / push eax / push 27
+push Name / push Text / push Ziel →  push Name / push Name / push Text / push Ziel</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Meiste Einsätze</b><span>Ein Kennzeichen, das niemand löscht</span></summary>
+        <p>Je menschlichem Manager führt das Spiel zwei Listen mit 50 Einträgen: Tore und Einsätze, jeder Eintrag mit Spielernummer, Jahrgang und dem Kennzeichen „im Verein“. Ist die Liste voll, ersetzt ein neuer Spieler von unten her bis Platz&nbsp;10 den ersten Eintrag ohne Kennzeichen. Beim Abgang löscht das Spiel das Kennzeichen aber nur in der Tore-Liste. Der Patch setzt die Kennzeichen der Einsatzliste vor jeder Zählung aus Kader und verliehenen Spielern neu. Platz schafft die Sortierung, kürzer als Bubblesort neu geschrieben (47 statt 139&nbsp;Bytes). Geschützt sind 20 statt 10 Plätze.</p>
+<pre><code>Beginn der Zählung: … / mov [esp+10],eax  →  … / call Kennzeichen
+Sortierung: Auswahl mit drei Kopierschleifen  →  Bubblesort, davor die Routine</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Fischvergiftung</b><span>Ereignis 0 der Schiri-Ereignisse</span></summary>
+        <p>Die Verletzung trägt eine kleine Funktion ein, die nur die Schiri-Ereignisse aufrufen: Ereignis&nbsp;0 ist die Fischvergiftung, Ereignis&nbsp;1 der Sturz von der Rolltreppe (28&nbsp;Tage, wie gemeldet). Die Tage kommen aus der Tabelle der Verletzungsarten, für eine Fischvergiftung 7. Der Patch gibt Ereignis&nbsp;0 21&nbsp;Tage, in den Bytes der Funktion und fünf der zehn Füllbytes dahinter.</p>
+<pre><code>movzx dx,byte [eax*2+Tage] / mov [ecx+44],dx  →  test eax,eax / … / jne / mov dl,21 / mov [ecx+44],dx</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Ereignisse</b><span>Vorzeichen, Sprünge und ein Klang</span></summary>
+        <p>Die Zufallsereignisse buchen Ausgaben auf Verein <code>+0x38C</code> und Einnahmen auf <code>+0x390</code>; die hundert Geldereignisse stehen als Paare aus Text und Betrag in einer Tabelle, Ausgaben negativ. Kopierer und Preisausschreiben haben dort das falsche Vorzeichen, drei weitere Ereignisse springen zur falschen Buchung oder buchen auf das falsche Feld. Beim Schokoladenhersteller verspricht die Frage den doppelten Betrag, gebucht wird der einfache; Platz für die Verdopplung schafft ein Byte- statt Wortvergleich des Ergebnisses der Frage. Die Frische gibt eine Funktion ab, die bei positivem Wert Frische in den Erholungsvorrat schiebt und bei negativem zurückholt; vier Ereignisse übergeben −5 und −10. Den Klang einer Meldung wählt ihr letztes Argument (0&nbsp;neutral, 1&nbsp;positiv, 2&nbsp;negativ).</p>
+<pre><code>690 Kopierer:        {690, −120}               →  {690, +120}
+697 Preisausschreiben: {697, +80}             →  {697, −80}
+126, 172:            jmp Einnahme / Ausgabe   →  jmp Ausgabe / Einnahme
+143 Grundstück:      [esi+38C] += Betrag      →  [esi+390] += Betrag
+224 Schokolade:      Erfolg bucht edi         →  add edi,edi, dann buchen
+307, 308, 369, 414:  push −5 / −10            →  push 5 / 10
+56 Co-Trainer:       Klang 2                  →  Klang 1</code></pre>
+        <p>Text 38 verletzt den ersten der beiden Spieler und nennt den zweiten. Text 392 hängt bei Fähigkeitsbit&nbsp;4 Text 393 an, inzwischen eine andere Frage mit wörtlichem „%1“. Die Fischvergiftung (732) trägt Art 62 ein, die keinen Namen hat; der Patch trägt 68 „Fischvergiftung“ in ihre kleine Tabelle ein, mit deren 7&nbsp;Tagen. Bei der Randale bucht das Spiel den Vergleich, zeigt aber Text 283, und beide Beträge landen im selben Puffer der Geldformatierung; neu geschrieben in denselben 132&nbsp;Bytes kopiert der Patch den ersten Betrag weg und zeigt Text 284 mit beiden. Dabei rücken Aufrufe im Block, ihr Sprungziel rechnet der Patch um.</p>
+<pre><code>38 Gehirnerschütterung: push ebx         →  push ebp (der genannte Spieler)
+392 älterer Spieler:  je (Text 393 dazu)  →  jmp (nur 392)
+732 Fischvergiftung:  Art 62             →  Art 68
+284 Randale:          Text 283            →  Text 284 mit Forderung und Vergleich
+339 Prämie:           nur die Buchung     →  dazu alle Spieler Form +1
+343 Bananenschale:    nur die Stimmung    →  dazu der Spieler Form −1
+876/877 Bauverzögerung: Zufall(10) von 12 Gründen  →  Zufall(12); „wegen “ am Anfang eines Grundes wird übersprungen</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Ereignis-Abstürze</b><span>Ein Spieler, den es nicht gibt</span></summary>
+        <p>Zwei Funktionen losen einen Spieler des Kaders aus und geben NULL zurück, wenn der ausgeloste ein bestimmtes Kennzeichen hat oder keiner passt. Von ihren 71 Aufrufen lesen vier das Ergebnis ohne Prüfung. Der Patch prüft es an allen vier Stellen in deren eigenen Bytes; Platz schafft <code>pop ecx</code> zweimal statt <code>add esp,8</code>.</p>
+<pre><code>mov esi,eax / add esp,8 / cmp byte [esi+25],0A  →  pop ecx / pop ecx / xchg eax,esi / test esi,esi / je raus / …</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Trainerkompetenz</b><span>Ein Ergebnis, das nicht gespeichert wird</span></summary>
+        <p>Einmal im Jahr gleicht das Spiel die Kompetenz der Trainer und der Manager je Ländergruppe aus: Liegt der Schnitt unter 6, bekommt jeder Zehnte 1 oder 2&nbsp;Punkte (höchstens 15), liegt er über 10, verliert jeder Zehnte welche. Das Anheben zählt die Punkte nur in die Summe und die Person wieder beim alten Wert; den neuen Wert schreibt nur das Absenken zurück. Der Patch schreibt ihn auch beim Anheben, in denselben 36&nbsp;Bytes.</p>
+<pre><code>neu = alt + Zuschlag, Summe += Zuschlag     →  dasselbe, dazu mov [edi],ax und Zählung beim neuen Wert</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Notenschnitt</b><span>Karte und Note in einem Byte</span></summary>
+        <p>Je Spieltag hält ein Byte des Spielers den Einsatz (Bit&nbsp;7), die Note (Bits&nbsp;2–4) und Karten (Bits&nbsp;0–1). Die Mannschaftsstatistik zählt einen Einsatz nur mit Note. Der Saisonschnitt in den Spielerdetails und die Prüfung der Fans prüfen Note und Karten zusammen, ein Kurzeinsatz mit Karte zählt dort also als Note&nbsp;0.</p>
+<pre><code>test al,80 / je / test al,1F / je  →  test al,1C (nur die Note), an beiden Stellen</code></pre>
+      </details>
+      <details class="tech-item">
         <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>
         <p>Elf Stellen rufen eine Signaturroutine auf und ziehen den erwarteten Wert ab; 0 heißt „Original-CD“. GOG hat das Abziehen durch NOPs ersetzt, also scheitert jede Abfrage. Der Patch setzt das Ergebnis einer bestandenen Abfrage ein. Dazu prüfen fünf Stellen eine CRC32 der <code>run.exe</code> auf der Platte und fünf eine CRC32 ihres eigenen Codes; A2G-Patch speichert nach jeder Änderung die passenden Werte.</p>
 <pre><code>call check / add esp,4 / nop ×5  →  call check / add esp,4 / xor eax,eax / nop ×3</code></pre>
@@ -422,6 +537,11 @@ Platz zurück ohne Eintrag: Kompetenz 2      →  3 + 4 × Zufall(3): 3 bis 11, 
         <p>Die Animationen laufen in einem Unterfenster genau so groß wie das Bild; ein Thread blittet sie in dessen Client-Rechteck auf die Primärfläche. Der Wrapper von GOG zeigt dieses Rechteck plus eine Spalte und eine Zeile der Primärfläche, auf die nie etwas gezeichnet wurde. Der Patch macht das Fenster in jede Richtung ein Pixel kleiner und blittet das ganze Bild hinein, sodass die zusätzliche Spalte und Zeile die letzten des Bildes zeigen. Mit einem korrekten DirectDraw schnitte der Clipper sie ab, daher nur mit dem Wrapper von GOG.</p>
 <pre><code>Fenster: add ecx,edx / add eax,edi           →  add ecx,edx / dec ecx / add eax,edi / dec eax
 Blit:    call GetClientRect(Fenster, Ziel)   →  call CopyRect(Ziel, Quelle)</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Mausklicks (GOG)</b><span>Ein Bit der Treiber-Fähigkeiten</span></summary>
+        <p>Der Wrapper von GOG legt Direct3D&nbsp;9 unter DirectDraw. Beim Einrichten des Geräts merkt er sich Bit&nbsp;9 von <code>D3DCAPS9.PrimitiveMiscCaps</code> (<code>D3DPMISCCAPS_CLIPTLVERTS</code>) und schneidet ohne es selbst zu. Aktuelle Treiber melden das Bit nicht; gefunden hat die Verzögerung A3-Rework, ein Patch für Anstoss&nbsp;3, dessen GOG-Wrapper denselben Code hat. Der Patch merkt sich 1, an beiden Stellen. Der Name des Wrappers bleibt, sodass der Patch für die Animationen ihn weiter erkennt.</p>
+<pre><code>shr eax,9 / and eax,ebp  →  mov eax,1</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>Ein Proxy für die 2007er-CD</span></summary>

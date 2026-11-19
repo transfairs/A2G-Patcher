@@ -40,7 +40,7 @@ namespace A2GPatch.Tests
         internal static readonly Patch Dialogs = Patch.All.OfType<DialogStyles>().Single();
         internal static readonly Patch[] Gog = { Protection, V101, Dialogs };
         // Stands for A2G-Patch's msvfw32.dll: the marker with the three flags bytes after it.
-        internal static readonly byte[] OwnDll = Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x03\0\0..");
+        internal static readonly byte[] OwnDll = Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x03\0\0\0..");
 
         // Runs body with DllBytes returning dll.
         internal static void WithDll(byte[] dll, Action body)
@@ -60,7 +60,7 @@ namespace A2GPatch.Tests
         private static uint Flags(byte[] dll)
         {
             int at = GameInstall.MarkerAt(dll) + GameInstall.DllMarker.Length;
-            return (uint)(dll[at] | dll[at + 1] << 8 | dll[at + 2] << 16);
+            return (uint)(dll[at] | dll[at + 1] << 8 | dll[at + 2] << 16 | dll[at + 3] << 24);
         }
 
         private static uint Flags(GameFolder folder) => Flags(File.ReadAllBytes(folder.File(GameInstall.DllName)));
@@ -242,7 +242,7 @@ namespace A2GPatch.Tests
                 arrowOnly.Apply(new[] { Bugs, Goals });
                 Assert.Equal(Bugs.Flag | Goals.Flag, Flags(folder));
                 // A DLL with only some of the bugs' flags (an older version's choice) counts as the switch on.
-                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x02\0\0.."));
+                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x02\0\0\0.."));
                 Assert.True(GameInstall.Detect(folder.Path).IsApplied(Bugs));
 
                 GameInstall.Detect(folder.Path).Apply(new Patch[0]);
@@ -329,7 +329,7 @@ namespace A2GPatch.Tests
         {
             using (GameFolder folder = new GameFolder())
             {
-                byte[] older = Encoding.ASCII.GetBytes("MZ.,.A2GPatchFlags\0\x02\0\0..");
+                byte[] older = Encoding.ASCII.GetBytes("MZ.,.A2GPatchFlags\0\x02\0\0\0..");
                 File.WriteAllBytes(folder.File("run.exe"), new byte[] { 0x4D, 0x5A });
                 File.WriteAllBytes(folder.File(GameInstall.DllName), older);
                 GameInstall install = GameInstall.Detect(folder.Path);
@@ -358,10 +358,10 @@ namespace A2GPatch.Tests
             using (GameFolder folder = new GameFolder())
             {
                 File.WriteAllBytes(folder.File("run.exe"), new byte[] { 0x4D, 0x5A });
-                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x03\0\0...."));
+                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x03\0\0\0...."));
                 WithDll(OwnDll, () => Assert.True(GameInstall.Detect(folder.Path).DllOutdated));
                 WithDll(null, () => Assert.False(GameInstall.Detect(folder.Path).DllOutdated));
-                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x01\0\0.."));
+                File.WriteAllBytes(folder.File(GameInstall.DllName), Encoding.ASCII.GetBytes("MZ...A2GPatchFlags\0\x01\0\0\0.."));
                 WithDll(OwnDll, () => Assert.False(GameInstall.Detect(folder.Path).DllOutdated));
             }
         }
@@ -393,13 +393,13 @@ namespace A2GPatch.Tests
         }
 
         [Fact]
-        public void MarkerAt_NeedsExactlyOneMarkerWithThreeFlagsBytes()
+        public void MarkerAt_NeedsExactlyOneMarkerWithFourFlagsBytes()
         {
             byte[] marker = GameInstall.DllMarker;
-            Assert.Equal(1, GameInstall.MarkerAt(new byte[] { 0 }.Concat(marker).Concat(new byte[] { 3, 1, 0 }).ToArray()));
+            Assert.Equal(1, GameInstall.MarkerAt(new byte[] { 0 }.Concat(marker).Concat(new byte[] { 3, 1, 0, 1 }).ToArray()));
             Assert.Equal(-1, GameInstall.MarkerAt(marker));
-            Assert.Equal(-1, GameInstall.MarkerAt(marker.Concat(new byte[] { 3, 0 }).ToArray()));
-            Assert.Equal(-1, GameInstall.MarkerAt(marker.Concat(new byte[] { 3, 0, 0 }).Concat(marker).Concat(new byte[] { 3, 0, 0 }).ToArray()));
+            Assert.Equal(-1, GameInstall.MarkerAt(marker.Concat(new byte[] { 3, 0, 0 }).ToArray()));
+            Assert.Equal(-1, GameInstall.MarkerAt(marker.Concat(new byte[] { 3, 0, 0, 0 }).Concat(marker).Concat(new byte[] { 3, 0, 0, 0 }).ToArray()));
         }
 
         public static IEnumerable<object[]> UnknownFolders => new[]

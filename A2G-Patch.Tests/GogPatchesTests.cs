@@ -767,6 +767,59 @@ namespace A2GPatch.Tests
             }
         }
 
+        // ---- WrapperClipping ----
+
+        private static readonly WrapperClipping Clipping = Patch.All.OfType<WrapperClipping>().Single();
+
+        // GOG's wrapper with the stored bit at both places, each original or patched.
+        private static byte[] Wrapper(bool first = false, bool second = false, byte[] name = null) =>
+            GameCode.Exe(new byte[] { 0x4D, 0x5A }, name ?? AnimationEdge.WrapperName,
+                first ? WrapperClipping.Patched : WrapperClipping.Original, second ? WrapperClipping.Patched : WrapperClipping.Original);
+
+        [Fact]
+        public void WrapperClipping_StoresTheBitAsSet_AtBothPlaces_AndTakesItBack()
+        {
+            // mov eax,[esp+2E8] / push 'DF16' / shr eax,9 / and eax,ebp / push 3  ->  ... / mov eax,1 / push 3
+            Assert.Equal("8b8424e80200006844463136b8010000006a03".Hex(), WrapperClipping.Patched);
+            using (GameFolder folder = new GameFolder())
+            {
+                GameFiles files = WithWrapper(folder, EdgeExe(), Wrapper());
+                Assert.Equal(FileState.Off, Clipping.State(files));
+                Clipping.Switch(files, false);
+                Assert.Empty(files.Changes);
+
+                Clipping.Switch(files, true);
+                Assert.Equal(Wrapper(true, true), files.Read(AnimationEdge.Wrapper));
+                Assert.Equal(FileState.On, Clipping.State(files));
+                // The animations still see GOG's wrapper.
+                Assert.Equal(FileState.Off, Edge.State(files));
+
+                Clipping.Switch(files, false);
+                Assert.Equal(Wrapper(), files.Read(AnimationEdge.Wrapper));
+            }
+        }
+
+        public static IEnumerable<object[]> UnknownWrappers() => new[]
+        {
+            null,                                                               // no ddraw.dll
+            Wrapper(name: new byte[] { 0x41, 0 }),                              // another one
+            Wrapper(true),                                                      // half patched
+            GameCode.Exe(AnimationEdge.WrapperName, WrapperClipping.Original),  // one place
+            GameCode.Exe(Wrapper(), WrapperClipping.Original),                  // three
+        }.Select(wrapper => new object[] { wrapper });
+
+        [Theory]
+        [MemberData(nameof(UnknownWrappers))]
+        public void WrapperClipping_WithAnotherDDraw_IsNotOffered(byte[] wrapper)
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                if (wrapper != null)
+                    File.WriteAllBytes(folder.File(AnimationEdge.Wrapper), wrapper);
+                Assert.Equal(FileState.Unknown, Clipping.State(Files(EdgeExe(), folder.Path)));
+            }
+        }
+
         [Fact]
         public void DialogStyles_WithAnUnexpectedResult_ChangesNothing() => WithTestHashes(() =>
         {

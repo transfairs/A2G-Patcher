@@ -162,13 +162,13 @@ namespace A2GPatch.Tests
             Assert.Equal(new[]
             {
                 "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Kontostand",
-                "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs",
-                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen",
+                "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs", "Fischvergiftung", "Manager-Ereignisse",
+                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen", "Mausklicks",
             }, Patch.All.Select(p => p.Title));
             Assert.Equal(new[]
             {
-                "Behebt: Geldanlagen, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb",
-                "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler und mehr",
+                "Behebt: Geldanlagen, Ereignisse, Ereignis-Abstürze, Trainerkompetenz, Notenschnitt, Meiste Einsätze, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb",
+                "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Ton über das Standard-Audiogerät von Windows",
                 "Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen",
@@ -177,32 +177,40 @@ namespace A2GPatch.Tests
                 "Torgrenze auf 15 Tore pro Mannschaft erhöhen",
                 "Unpassende Ansprachen in der Mannschaftssitzung schwächen die Mannschaft",
                 "Neue Trainer: Ex-Spieler ab 33 Jahren, sonst Kompetenz 3 bis 11 statt 2",
+                "Fischvergiftung nach der Thunfischpizza: drei Wochen Ausfall wie in der Meldung statt einer",
+                "Weitere Ereignisse rund um den Manager: Presse, Fans, Privatleben",
                 "Keine Kopierschutz-Strafen (z. B. „Raubkopie“ als Vereinsname)",
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
+                "Keine Verzögerung nach Mausklicks mit manchen Grafikkarten",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
-            Assert.Equal(new uint[] { 0x8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 0xBC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
-            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, o, o, o }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own; together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;
-            Assert.Equal(new[] { "Geldanlagen", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb" },
+            Assert.Equal(new[] { "Geldanlagen", "Ereignisse", "Ereignis-Abstürze", "Trainerkompetenz", "Notenschnitt", "Meiste Einsätze", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb" },
                 bugs.Select(p => p.Title));
             Assert.Equal(new[]
             {
-                "Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen", "Kader nicht über 30 Spieler wachsen lassen",
+                "Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen",
+                "Ereignisse wirken wie in ihrer Meldung (Geld, Form, Frische, Verletzungen, Klang)",
+                "Kein Absturz bei Ereignissen, für die kein passender Spieler da ist",
+                "Trainer und Manager in schwachen Ländern werden jährlich besser",
+                "Einsätze ohne Note zählen nicht im Notenschnitt (Spielerdetails, Fans)",
+                "Vereinsliste der meisten Einsätze nimmt nach 50 Spielern wieder neue auf", "Kader nicht über 30 Spieler wachsen lassen",
                 "Vereinsnamen bei der Pokalauslosung richtig darstellen", "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Keine falsche Warnung „Festplatte fast voll“ beim Speichern",
                 "Pfeile zählen beim Gedrückthalten weiter", "Desktop-Auflösung auch nach einem Absturz zurückholen",
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit",
             }, bugs.Select(p => p.Name));
-            Assert.Equal(new uint[] { 32768, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 32768, 262144, 2097152, 1048576, 524288, 8388608, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
             Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
             uint[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
-            Assert.Equal(18, bits.Length);
-            Assert.Equal(0x3FFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
+            Assert.Equal(25, bits.Length);
+            Assert.Equal(0x1FFFFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
         }
 
         private static readonly Patch Cup = Patch.Get<CupDraw>();
@@ -295,12 +303,13 @@ namespace A2GPatch.Tests
         }
 
         [Fact]
-        public void RewritePatches_HaveWildcardsAtTheSamePlaces()
+        public void RewritePatches_HaveAsManyWildcards_InBothVersions()
         {
+            // FindOnce fills them in order, so they may move (FishPoisoning's by two bytes).
             foreach (RewritePatch patch in Patch.Get<GameBugs>().Members.Concat(Patch.All).OfType<RewritePatch>())
             {
                 Assert.Equal(patch.OriginalCode.Length, patch.PatchedCode.Length);
-                Assert.Equal(patch.OriginalCode.Select(b => b == null), patch.PatchedCode.Select(b => b == null));
+                Assert.Equal(patch.OriginalCode.Count(b => b == null), patch.PatchedCode.Count(b => b == null));
             }
         }
 
@@ -599,6 +608,277 @@ namespace A2GPatch.Tests
             Assert.Null(Money.Find(Changed(patched, MoneyBookingsAt + 8, 0xF5)));
             Assert.Null(Money.Find(Changed(patched, MoneyBookingAt + 9, 0x83)));
             Assert.Null(Money.Find(new byte[0]));
+        }
+
+        private static readonly Patch Events = Patch.Get<EventEffects>();
+        // The original exe's places in the order of EventEffects.Places: the money table's entries for 690 and
+        // 697 (0x6BD058, 0x6BD090), the money events 126, 143, 172 (from 0x556D15, 0x557043, 0x5578A3), the
+        // sponsor from 0x558659, the freshness of 307, 308, 369, 414 and the sound of 56 (from 0x563CBC).
+        internal static readonly byte[][] EventCode =
+        {
+            "B202000088FFFFFF".Hex(), "B902000050000000".Hex(),
+            "6A7E6A6256E86122000083C414566A006A016A00E8F20FECFF83C410E9E70A0000".Hex(),
+            "688F0000006A6256E8301F00008BAE8C03000083C41403EF6AF65389AE8C030000".Hex(),
+            "68AC0000006A6256E8D0160000E9A1060000".Hex(),
+            "6685C00F856EE6FFFF663905A01EC2005375156A036A006A006A00E8".Hex(),
+            "68330100006A6055E8DB69000083C4146AFE56E8C06E000083C4086AFB56E8".Hex(),
+            "68340100006A6055E88E69000083C4146AFB56E8".Hex(),
+            "68710100006A6055E8535A000083C4146AF656E8".Hex(),
+            "689E0100006A6055E87D51000083C4186AF657E8E2360C0083C4086AF656E8".Hex(),
+            "6A026A386A6356E8".Hex(),
+            // 38 from 0x5632D0, 392 from 0x560120, 732's table at 0x6C9534, 284 from 0x55933E.
+            "83C40C6A076A3253E8".Hex(),
+            "F64328040F84CA0000008D430C".Hex(),
+            "3E001400524150544F52".Hex(),
+            ("681A010000B9E8367800E8E30700008BF883C9FF33C08D542438F2AEF7D12BF98BC18BF78BFAC1E902F3A58BC883E103F3A4"
+                + "8B3510BB780056E854DAF4FF8B0D84BB780083C4045051E844DAF4FF83C404B9E836780050681B010000E891070000"
+                + "8D9424340200005052E893D30F0083C4108D84242C0200008D4C243850516A026A5B53").Hex(),
+            // 339 from 0x55F6B0, 343 from 0x55F77D, the building delay from 0x55E5F3.
+            "6A025668530100006A6055E8C098FFFF8B853003000083C41403C6898530030000".Hex(),
+            "6A02505068570100006A6055E8C25F000083C4186A1455E8B7020A0083C40866B801005F5E5D5B81C460080000C3".Hex(),
+            "6A0AE8D6780E008B3C85A0D36B0083C4046A02E8".Hex(),
+            // The delay's message from 0x55E604.
+            ("6A02E8C5780E0083C404B9E836780085C00FBFF6577432E810B5FFFF8D4E415051686C030000B9E8367800E8FCB4FFFF8D54242C5052E801"
+                + "810F008A84338408000083C410FEC0EB30E8DEB4FFFF508D464150686D030000B9E8367800E8CAB4FFFF8D4C242C5051E8CF800F008A8433"
+                + "8408000083C4100402").Hex(),
+        };
+        // GOG's sponsor (the 2007 CD's too): the question's outcome at 0xC24FE0.
+        internal static readonly byte[] GogSponsorCode = "6685C00F856EE6FFFF663905E04FC2005375156A036A006A006A00E8".Hex();
+
+        // The bytes of each place that the patch changes, at their index.
+        private static Dictionary<int, byte> Changes(Site site) =>
+            Enumerable.Range(0, site.Original.Length).Where(i => site.Original[i] != site.Patched[i]).ToDictionary(i => i, i => site.Patched[i]);
+
+        [Fact]
+        public void EventEffects_BookAndTakeWhatTheMessagesSay()
+        {
+            byte[] image = GameCode.Exe(EventCode);
+            Site[] sites = Events.Find(image);
+
+            Assert.Equal(EventCode.Length, sites.Length);
+            Assert.All(sites, s => Assert.False(s.IsPatched));
+            Assert.Equal(EventCode, sites.Select(s => s.Original));
+            Assert.Equal(new Dictionary<int, byte> { [4] = 0x78, [5] = 0, [6] = 0, [7] = 0 }, Changes(sites[0]));            // +120: income
+            Assert.Equal(new Dictionary<int, byte> { [4] = 0xB0, [5] = 0xFF, [6] = 0xFF, [7] = 0xFF }, Changes(sites[1]));   // -80: expense
+            Assert.Equal("E923120000".Hex(), sites[2].Patched.Skip(28));                                                    // jmp 0x557F59: expenses
+            Assert.Equal(new Dictionary<int, byte> { [15] = 0x90, [29] = 0x90 }, Changes(sites[3]));                       // [esi+390]: income
+            Assert.Equal("E965FFFFFF".Hex(), sites[4].Patched.Skip(13));                                                    // jmp 0x55781A: income
+            Assert.Equal(new Dictionary<int, byte> { [28] = 0x05 }, Changes(sites[6]));                                     // the second push: 5
+            Assert.Equal(new Dictionary<int, byte> { [17] = 0x05 }, Changes(sites[7]));
+            Assert.Equal(new Dictionary<int, byte> { [17] = 0x0A }, Changes(sites[8]));
+            Assert.Equal(new Dictionary<int, byte> { [17] = 0x0A, [28] = 0x0A }, Changes(sites[9]));
+            Assert.Equal(new Dictionary<int, byte> { [1] = 0x01 }, Changes(sites[10]));                                     // positive sound
+            Assert.Equal(new Dictionary<int, byte> { [7] = 0x55 }, Changes(sites[11]));                                     // push ebp: the second player
+            Assert.Equal("E9CB00000090".Hex(), sites[12].Patched.Skip(4).Take(6));                                          // jmp: text 392 alone
+            Assert.Equal(new Dictionary<int, byte> { [0] = 0x44 }, Changes(sites[13]));                                     // kind 68, "Fischvergiftung"
+            // The riot: both calls of the money format and sprintf moved, still reaching 0x4A6DD0 and 0x656740.
+            Assert.Equal(("B9E83678008BA96C0400008B3510BB780056E87BDAF4FF8BF08D7C243C6A0859F3A5FF3584BB7800E865DAF4FF"
+                + "8D4C2440890C2450B9E8367800FFB1740400008D94243C02000052E8B5D30F0083C4105E8D84242C02000050556A026A5B53").Hex()
+                .Concat(Enumerable.Repeat((byte)0x90, 37)), sites[14].Patched);
+            // add [ebp+330],esi / push 1 / push ebp / call 0x565A50 (every player's form) / add esp,1C
+            Assert.Equal("6A025668530100006A6055E8C098FFFF01B5300300006A0155E88263000083C41C".Hex(), sites[15].Patched);
+            // push -1 / push player under the message's arguments, call 0x565BC0 (his form) after it, jmp to the ending at 0x55F749
+            Assert.Equal("6AFF506A02505068570100006A6055E8BF5F000083C418E8276400006A1455E8AF020A0083C410EBA39090909090".Hex(), sites[16].Patched);
+            Assert.Equal(new Dictionary<int, byte> { [1] = 0x0C }, Changes(sites[17]));                                     // random(12): all reasons
+            // One branch for one or two weeks, skipping a reason's "wegen "; the calls of random and sprintf still reach 0x645ED0 and 0x656740
+            Assert.Equal(("6A02E8C5780E00590FBFF6F7D81BC04050B9E836780057E810B5FFFF813877656765750383C006508D4E41518B442408056C03000050B9E8"
+                + "367800E8ECB4FFFF508D54243452E8F1800F0083C410588A8C33840800008D440801EB1DE836780090CF800F009090909090909090909090"
+                + "909090909090909090").Hex(), sites[18].Patched);
+
+            Site[] again = Events.Find(Apply(image, sites));
+            Assert.All(again, s => Assert.True(s.IsPatched));
+            Assert.Equal(sites.Select(s => s.Original), again.Select(s => s.Original));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void EventEffects_DoubleTheSponsorsAmount_KeepingTheOutcomesAddress(bool gog)
+        {
+            byte[][] code = (byte[][])EventCode.Clone();
+            if (gog)
+                code[5] = GogSponsorCode;
+            Site site = Events.Find(GameCode.Exe(code))[5];
+            byte[] outcome = code[5].Skip(12).Take(4).ToArray();
+
+            // cmp byte [outcome],al / push ebx / jne fail / add edi,edi / push 3 / xor eax,eax / push eax x3 / call
+            Assert.Equal(code[5].Take(9).Concat("3805".Hex()).Concat(outcome).Concat("53751603FF6A0333C0505050E8".Hex()), site.Patched);
+            Site again = Events.Find(Apply(GameCode.Exe(code), Events.Find(GameCode.Exe(code))))[5];
+            Assert.True(again.IsPatched);
+            Assert.Equal(code[5], again.Original);
+        }
+
+        [Fact]
+        public void EventEffects_WithAPlaceMissingOrTwice_FindNothing()
+        {
+            Assert.Null(Events.Find(GameCode.Exe(EventCode.Take(10).ToArray())));
+            Assert.Null(Events.Find(GameCode.Exe(EventCode.Concat(new[] { EventCode[10] }).ToArray())));
+            Assert.All(EventEffects.EventPlaces.Concat(((RewritesPatch)Crashes).Places), p => Assert.Equal(p[0].Length, p[1].Length));
+            Assert.All(EventEffects.EventPlaces.Concat(((RewritesPatch)Crashes).Places), p => Assert.Equal(p[0].Count(b => b == null), p[1].Count(b => b == null)));
+        }
+
+        private static readonly Patch Crashes = Patch.Get<EventCrashes>();
+        // The original exe from 0x55F1C3 (321), 0x55FB41 (366), 0x55B794 (244) and 0x5BBCB0 (the news).
+        internal static readonly byte[][] CrashCode =
+        {
+            "6A0155E8155D00008BF083C408807E250A0F8E501B0000807E1F030F86461B000080BEC0000000020F8C391B0000".Hex(),
+            "33F6B31E6A0155E8935300008A481E83C4083ACB760980B8C0000000017407466683FE057CDE".Hex(),
+            "6A0157E8A494000083C4088BF06A025668F40000006A6157E81F9F000083C4146A5A6A4D56E822800D0083C40C".Hex(),
+            "6A0FE819A2080083C40485C0751A6A0156E81A92FAFF0FBF0083C408506A3D56E88BF4FFFF83C40C5F5E5D5BC3".Hex(),
+        };
+
+        [Fact]
+        public void EventCrashes_TestTheDrawnPlayer_BeforeReadingFromIt()
+        {
+            byte[] image = GameCode.Exe(CrashCode);
+            Site[] sites = Crashes.Find(image);
+
+            Assert.Equal(CrashCode, sites.Select(s => s.Original));
+            // pop ecx x2 / xchg eax,esi / test esi,esi / je out / the three checks, jumping short to one jmp out
+            Assert.Equal("6A0155E8155D000059599685F67415807E250A7E0F807E1F03760980BEC0000000027D0AE93E1B00009090909090".Hex(), sites[0].Patched);
+            // pop ecx x2 / test eax,eax / je next / cmp [eax+1E],bl / ... / inc esi / cmp esi,5 / jl draw
+            Assert.Equal("33F6B31E6A0155E893530000595985C0740E38581E760980B8C00000000174064683FE057CDE".Hex(), sites[1].Patched);
+            // test esi,esi / je (return 0); the message's call three bytes later (0x9F1F -> 0x9F1C), one add esp at the end
+            Assert.Equal("6A0157E8A494000059598BF085F674E26A025668F40000006A6157E81C9F00006A5A6A4D56E822800D0083C420".Hex(), sites[2].Patched);
+            // pop ecx / ... / test eax,eax / je (ret) / push dword [eax]; the calls one and two bytes earlier
+            Assert.Equal("6A0FE819A208005985C0751C6A0156E81C92FAFF595985C0740EFF306A3D56E88CF4FFFF83C40C905F5E5D5BC3".Hex(), sites[3].Patched);
+
+            Site[] again = Crashes.Find(Apply(image, sites));
+            Assert.All(again, s => Assert.True(s.IsPatched));
+            Assert.Equal(CrashCode, again.Select(s => s.Original));
+            Assert.Null(Crashes.Find(GameCode.Exe(CrashCode.Take(3).ToArray())));
+        }
+
+        [Fact]
+        public void FindOnce_MovesCallDisplacements_ToKeepTheirTargets()
+        {
+            // push 1 / call +10 / nop / jmp +20, the call moved to the front: its displacement grows by 2.
+            byte?[] original = "6A01E8????????90E9????????".Pattern(), patched = "E8????????6A0190E9????????".Pattern();
+            byte[] image = GameCode.Exe("6A01E81000000090E920000000".Hex());
+            Site site = RewritePatch.FindOnce(image, original, patched);
+
+            Assert.Equal("E8120000006A0190E920000000".Hex(), site.Patched);
+            Site again = RewritePatch.FindOnce(Apply(image, new[] { site }), original, patched);
+            Assert.True(again.IsPatched);
+            Assert.Equal("6A01E81000000090E920000000".Hex(), again.Original);
+
+            // Not a displacement: behind another opcode, behind E8 only in the patched code, five in a row, or split.
+            original = "B8????????90E8??????????90E8????90????".Pattern();
+            patched = "E8????????90E8??????????90E8????90????".Pattern();
+            site = RewritePatch.FindOnce(GameCode.Exe("B81122334490E8556677889990E8AABB90CCDD".Hex()), original, patched);
+            Assert.Equal("E81122334490E8556677889990E8AABB90CCDD".Hex(), site.Patched);
+        }
+
+        private static readonly Patch Grades = Patch.Get<GradeAverage>();
+        // The original exe from 0x4FCC40 (the player's details; the fans' check at 0x639FC7 has the same test).
+        internal static readonly byte[] GradeCode = "8A01A8807410A81F740CC0E8022407".Hex();
+
+        [Fact]
+        public void GradeAverage_CountsTheMarkAlone_InBothAverages()
+        {
+            byte[] image = GameCode.Exe(GradeCode, GradeCode);
+            Site[] sites = Grades.Find(image);
+
+            Assert.Equal(new long[] { 307, 338 }, sites.Select(s => s.Offset));
+            Assert.All(sites, s => Assert.Equal(new byte[] { 0x1F }, s.Original));
+            Assert.All(sites, s => Assert.Equal(new byte[] { 0x1C }, s.Patched));
+            Assert.All(Grades.Find(Apply(image, sites)), s => Assert.True(s.IsPatched));
+            Assert.Null(Grades.Find(GameCode.Exe(GradeCode)));
+        }
+
+        private static readonly Patch Competence = Patch.Get<CompetenceBalance>();
+        // The original exe at 0x5CC79A (GOG's and the 2007 CD's at 0x5CFECA), behind the call of random(2).
+        internal static readonly byte[] CompetenceCode = "668B1783C404400FBFCA0FBFE803E983FD0F7E07B80F0000002BC20FBFC003D866FF044E".Hex();
+
+        [Fact]
+        public void CompetenceBalance_StoresTheRaise_InTheSameBytes()
+        {
+            Site site = Competence.Find(GameCode.Exe(CompetenceCode)).Single();
+
+            Assert.Equal(300, site.Offset);
+            Assert.Equal(CompetenceCode, site.Original);
+            // movsx edx,[edi] / add esp,4 / inc eax / movsx eax,ax / add eax,edx / cmp eax,15 / jle / mov eax,15 /
+            // mov [edi],ax / sub eax,edx / add ebx,eax / movsx ecx,[edi] / inc word [esi+ecx*2]
+            Assert.Equal("0FBF1783C404400FBFC003C283F80F7E05B80F0000006689072BC203D80FBF0F66FF044E".Hex(), site.Patched);
+            Assert.True(Competence.Find(Apply(GameCode.Exe(CompetenceCode), new[] { site })).Single().IsPatched);
+            Assert.Null(Competence.Find(GameCode.Exe(CompetenceCode, CompetenceCode)));
+        }
+
+        private static readonly Patch Fish = Patch.Get<FishPoisoning>();
+        // The original exe from 0x633A60: FUN_00633a60 and the nops behind it.
+        internal static readonly byte[] FishCode = "0FBF4424088B4C24048A144534956C008851460FBF044534956C008D0440660FB61445C1926C006689514466A16C66820066894142C39090909090".Hex();
+
+        [Fact]
+        public void FishPoisoning_GivesTheFirstRefereeEvent_ThreeWeeks()
+        {
+            Site site = Fish.Find(GameCode.Exe(FishCode)).Single();
+
+            Assert.Equal(FishCode, site.Original);
+            // test eax,eax (event 0) / ... / movzx edx,byte [eax*2+days] / jne / mov dl,21 / mov [ecx+44],dx / ... / ret
+            Assert.Equal("0FBF4424088B4C24048A144534956C0088514685C00FBF044534956C008D04400FB61445C1926C007502B2156689514466A16C66820066894142C3".Hex(), site.Patched);
+            Assert.True(Fish.Find(Apply(GameCode.Exe(FishCode), new[] { site })).Single().IsPatched);
+            Assert.Equal(PatchGroup.Balancing, Fish.Group);
+        }
+
+        private static readonly Patch Appearances = Patch.Get<AppearancesList>();
+        // The original exe from 0x61EFFE (where the count starts) and 0x61F0B1 (the sort), 179 bytes apart.
+        internal static readonly byte[] ListStartCode = "660FB6830401000083C408663D0200894424107E08C744241002000000".Hex();
+        internal static readonly byte[] ListSortCode = ("8D442434BD01000000894424106683FD328D55FF8BC57D260FBFCD8D0C898D748C3E0FBFCA8D0C89668B4C8C3E663B0E7D028BD0"
+            + "4083C614663D32007CE46685D27E330FBFC2B9050000008D7C24208D14808D4494348B5424108BF0F3A5B9050000008BF28BF8F3A5"
+            + "B9050000008D7424208BFAF3A58B5424104583C2148D45FF89542410663D31007C82").Hex();
+        // From 0x61ED0F: where a new player looks for a former one's entry, from place 50 down to place 11.
+        internal static readonly byte[] ListKeepCode = "0FBFC88D0C8966837C8F0800740948663D0A007DEB".Hex();
+
+        [Fact]
+        public void AppearancesList_SetsTheFlagsFromTheSquad_BeforeEachCount()
+        {
+            byte[] image = GameCode.Exe(ListStartCode, ListSortCode, ListKeepCode);
+            Site[] sites = Appearances.Find(image);
+
+            Assert.Equal(new[] { ListStartCode, ListSortCode, ListKeepCode }, sites.Select(s => s.Original));
+            Assert.Equal(new Dictionary<int, byte> { [17] = 0x14 }, Changes(sites[2]));                                     // down to place 21
+            // ... / mov [esp+10],eax / call flags: from behind the call (+25) to the routine (sort + 2)
+            Assert.Equal("E89C000000".Hex(), sites[0].Patched.Skip(20).Take(5));
+            Assert.Equal(179 + 2 - 25, BitConverter.ToInt32(sites[0].Patched, 21));
+            // jmp over the routine (88 bytes) to the bubble sort; nops to the original's 139 bytes
+            Assert.Equal("EB58".Hex(), sites[1].Patched.Take(2));
+            Assert.Equal(139, sites[1].Patched.Length);
+            Assert.All(Appearances.Find(Apply(image, sites)), s => Assert.True(s.IsPatched));
+            Assert.Null(Appearances.Find(GameCode.Exe(ListStartCode, ListSortCode)));
+        }
+
+        private static readonly Patch Manager = Patch.Get<ManagerEvents>();
+        // The original exe from 0x55C820 (the private life's dispatcher built and drawn from), the weights' table
+        // from 0x6BD2FC and FUN_00565860 from 0x565883.
+        internal static readonly byte[][] ManagerCode =
+        {
+            ("6AFF6848D26B006A0EB9E84C7800E84D560000C390909090909090909090909053565733F6B9E84C7800E8815600008BD86685DB0F849500"
+                + "0000668B15E04D780033C06685D27E260FBFCB81C1606D0000").Hex(),
+            "1900200019002100040022000200230001002400".Hex(),
+            ("8D480A5150683CBF6A0052E8AD0E0F0083C4108D4424048D8C24F8010000505651E8970E0F008B94240C0400008B8C240004000083C40C8D"
+                + "8424F8010000").Hex(),
+        };
+
+        [Fact]
+        public void ManagerEvents_DrawFromTheirOwnTable_AndNameTheManagerTwice()
+        {
+            byte[] image = GameCode.Exe(ManagerCode);
+            Site[] sites = Manager.Find(image);
+
+            Assert.Equal(ManagerCode, sites.Select(s => s.Original));
+            // push -1 / mov eax,6BD248 / add eax,38 / push eax / push 27 (39 pairs) / mov ecx,dispatcher / call / ret
+            Assert.Equal("6AFFB848D26B0083C038506A27B9E84C7800E849560000C3".Hex(), sites[0].Patched.Take(24));
+            Assert.Equal(new Dictionary<int, byte> { [8] = 0 }, Changes(sites[1]));                                         // case 34: weight 0
+            // the name twice, the buffer kept in esi
+            Assert.Equal("8D4424045050568DB4240402000056E8960E0F00".Hex(), sites[2].Patched.Skip(19).Take(20));
+            Assert.All(Manager.Find(Apply(image, sites)), s => Assert.True(s.IsPatched));
+            Assert.Null(Manager.Find(GameCode.Exe(ManagerCode.Take(2).ToArray())));
+        }
+
+        [Fact]
+        public void Pattern_ReadsHexWithWildcards()
+        {
+            Assert.Equal(new byte?[] { 0x6A, null, 0xFF }, "6A??FF".Pattern());
         }
 
         private static readonly Patch Button = Patch.Get<PictureButtonInit>();

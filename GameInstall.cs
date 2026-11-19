@@ -37,10 +37,11 @@ namespace A2GPatch
         /// <summary>In A2G-Patch's msvfw32.dll, followed by a NUL and the flags bytes, low byte first (see dll/msvfw32.c).</summary>
         internal static readonly byte[] DllMarker = Encoding.ASCII.GetBytes("A2GPatchFlags\0");
         /// <summary>
-        /// The number of flags bytes behind the marker. Versions before the third byte had two; the NUL
-        /// that ends their string follows them, so they read as the same flags with the third byte 0.
+        /// The number of flags bytes behind the marker. Older versions had two or three; behind them come
+        /// the NUL that ends their string and the zeros that pad it, so they read as the same flags with
+        /// the missing bytes 0.
         /// </summary>
-        internal const int FlagsBytes = 3;
+        internal const int FlagsBytes = 4;
 
         /// <summary>The msvfw32.dll to install (embedded at build time, see the csproj); null if this build has none. Tests replace it.</summary>
         internal static Func<byte[]> DllBytes = () => ReadResource("A2GPatch.msvfw32.dll");
@@ -168,7 +169,7 @@ namespace A2GPatch
         }
 
         /// <summary>The flags bytes at <paramref name="at"/> in <paramref name="dll"/>, low byte first.</summary>
-        private static uint ReadFlags(byte[] dll, int at) => (uint)(dll[at] | dll[at + 1] << 8 | dll[at + 2] << 16);
+        private static uint ReadFlags(byte[] dll, int at) => (uint)(dll[at] | dll[at + 1] << 8 | dll[at + 2] << 16 | dll[at + 3] << 24);
 
         /// <summary>Where the marker starts in <paramref name="dll"/>, or -1 if it isn't A2G-Patch's msvfw32.dll.</summary>
         internal static int MarkerAt(byte[] dll)
