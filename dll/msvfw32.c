@@ -46,6 +46,7 @@
 // kernel32 functions that exist since XP may be used here.
 
 #include <windows.h>
+#include "net.h"
 
 // The compiler may emit memset calls (e.g. for ZeroMemory); without the CRT this file provides it.
 #pragma function(memset)
@@ -1559,6 +1560,7 @@ BOOL WINAPI DllMain(HINSTANCE self, DWORD reason, LPVOID reserved)
         InitializeCriticalSection(&g_lock);    // real msvfw32 is loaded lazily on the first forwarded call
         HANDLE t = CreateThread(NULL, 0, PatchThread, NULL, 0, NULL);
         if (t) CloseHandle(t);
+        NetEarlyInit();                        // network play, only if a2gnet.ini switches it on
     }
     return TRUE;
 }

@@ -163,7 +163,7 @@ namespace A2GPatch.Tests
             {
                 "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Kontostand",
                 "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs", "Fischvergiftung", "Manager-Ereignisse",
-                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen", "Mausklicks",
+                "Kopierschutz", "Fensterrahmen anzeigen", "Animationen", "Mausklicks", "Netzwerkspiel",
             }, Patch.All.Select(p => p.Title));
             Assert.Equal(new[]
             {
@@ -183,11 +183,12 @@ namespace A2GPatch.Tests
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
                 "Keine Verzögerung nach Mausklicks mit manchen Grafikkarten",
+                "Bis zu vier Rechner spielen ein Spiel gemeinsam, im lokalen Netz oder über das Internet",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
-            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
-            PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
-            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog, x = PatchGroup.Extras;
+            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o, x }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own; together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;

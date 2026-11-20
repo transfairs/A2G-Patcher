@@ -17,9 +17,9 @@ call "%VCVARS%" x86 || exit /b 1
 
 cd /d "%~dp0"
 rem No C runtime (/Zl /GS- /NODEFAULTLIB, own entry point) and subsystem 5.01, so Windows XP loads it.
-cl /nologo /W3 /O1 /GS- /Zl /LD msvfw32.c /link /DEF:msvfw32.def /OUT:msvfw32.dll /NODEFAULTLIB /ENTRY:DllMain /SUBSYSTEM:WINDOWS,5.01 kernel32.lib
+cl /nologo /W3 /O1 /GS- /Zl /LD msvfw32.c net.c /link /DEF:msvfw32.def /OUT:msvfw32.dll /NODEFAULTLIB /ENTRY:DllMain /SUBSYSTEM:WINDOWS,5.01 kernel32.lib user32.lib
 if errorlevel 1 exit /b 1
 
-del /q msvfw32.obj msvfw32.exp msvfw32.lib 2>nul
+del /q msvfw32.obj net.obj msvfw32.exp msvfw32.lib 2>nul
 echo.
 echo Fertig: %~dp0msvfw32.dll

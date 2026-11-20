@@ -210,6 +210,14 @@ jobs:
             RX 6800 XT). Der Patch ändert die ddraw.dll. Angeboten nur mit GOGs ddraw.dll im
             Spielordner.
 
+          Erweiterungen (Original und GOG):
+
+          - Netzwerkspiel: Bis zu vier Rechner spielen ein Spiel gemeinsam, im lokalen Netz oder über
+            das Internet. Beim ersten Hauptmenü fragt das Spiel, ob es allein, als Gastgeber oder als
+            Gast spielt (Adresse des Gastgebers, Name des Managers). Der Gastgeber braucht einen
+            erreichbaren TCP-Port 47720; Windows fragt beim ersten Mal nach der Firewall-Freigabe.
+            A2G-Patch legt dafür eine msvfw32.dll und eine a2gnet.ini in den Spielordner.
+
           So geht's
           ---------
           1. Spiel beenden.

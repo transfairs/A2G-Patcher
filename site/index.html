@@ -308,6 +308,14 @@
         <h3>Keine Verzögerung nach Mausklicks</h3>
         <p>Meldet der Grafiktreiber eine bestimmte Fähigkeit nicht, geht die <code>ddraw.dll</code> von GOG einen langsamen eigenen Weg, und das Spiel reagiert auf jeden Klick erst nach zwei bis drei Sekunden (beobachtet mit einer Radeon RX 6800 XT). Der Patch ändert die <code>ddraw.dll</code>; ohne die Verzögerung ändert er nichts spürbar. Angeboten nur, wenn die <code>ddraw.dll</code> von GOG im Spielordner liegt.</p>
       </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-opt">Erweiterung</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="8" height="6" rx="1"/><rect x="14" y="4" width="8" height="6" rx="1"/><rect x="8" y="15" width="8" height="6" rx="1"/><path d="M6 10v2h12v-2M12 12v3"/></svg>
+        </div>
+        <h3>Netzwerkspiel</h3>
+        <p>Bis zu vier Rechner spielen ein Spiel gemeinsam, im lokalen Netz oder über das Internet. Anstoss&nbsp;2 enthält eine nie eingeschaltete Netzwerkschicht; A2G-Patch ergänzt, was ihr fehlt. Beim ersten Hauptmenü fragt das Spiel, ob es allein, als Gastgeber oder als Gast spielt. Original und GOG.</p>
+      </article>
     </div>
   </div>
 </section>
@@ -563,6 +571,10 @@ Blit:    call GetClientRect(Fenster, Ziel)   →  call CopyRect(Ziel, Quelle)</c
         <summary><b>Mausklicks (GOG)</b><span>Ein Bit der Treiber-Fähigkeiten</span></summary>
         <p>Der Wrapper von GOG legt Direct3D&nbsp;9 unter DirectDraw. Beim Einrichten des Geräts merkt er sich Bit&nbsp;9 von <code>D3DCAPS9.PrimitiveMiscCaps</code> (<code>D3DPMISCCAPS_CLIPTLVERTS</code>) und schneidet ohne es selbst zu. Aktuelle Treiber melden das Bit nicht; gefunden hat die Verzögerung A3-Rework, ein Patch für Anstoss&nbsp;3, dessen GOG-Wrapper denselben Code hat. Der Patch merkt sich 1, an beiden Stellen. Der Name des Wrappers bleibt, sodass der Patch für die Animationen ihn weiter erkennt.</p>
 <pre><code>shr eax,9 / and eax,ebp  →  mov eax,1</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Netzwerkspiel</b><span>Eine verwaiste Schicht wird wach</span></summary>
+        <p>Das Spiel trennt Server und Client: Datenzugriffe fragen „bin ich Server?“ und holen sonst beim Server, nur der Server simuliert, und ein Verteiler kennt Anfragen, Antworten, Aufgaben und die Übertragung des Spielstands. Es fehlte die Laufzeit: DirectPlay wurde nie erzeugt, kein Thread sendete, niemand rief die Empfangsschleife. Die <code>msvfw32.dll</code> schickt die Pakete per TCP, liefert sie über ein kleines Objekt mit der Schnittstelle von DirectPlay&nbsp;1 aus und gleicht den Spielstand vor jedem Schritt mit den Gästen ab.</p>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>Ein Proxy für die 2007er-CD</span></summary>

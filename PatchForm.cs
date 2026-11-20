@@ -22,7 +22,7 @@ namespace A2GPatch
         /// <summary>The entries of the "Darstellung" menu, by <see cref="ThemeChoice"/>.</summary>
         internal static readonly string[] ThemeTitles = { "Wie Windows", "Hell", "Dunkel" };
         /// <summary>The headings of the groups, by <see cref="PatchGroup"/>.</summary>
-        internal static readonly string[] GroupTitles = { "Patches", "Balancing", "Nur für die GOG-Version" };
+        internal static readonly string[] GroupTitles = { "Patches", "Balancing", "Nur für die GOG-Version", "Erweiterungen" };
         // The banner and the apply button look the same in both themes.
         private static readonly Color Grass = Color.FromArgb(0x1B, 0x7A, 0x45), DarkGrass = Color.FromArgb(0x0C, 0x4D, 0x2A),
             Apply = Color.FromArgb(0x1E, 0x8E, 0x4E), ApplyHover = Color.FromArgb(0x18, 0x78, 0x41), ApplyDown = Color.FromArgb(0x12, 0x62, 0x35);

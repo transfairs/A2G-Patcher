@@ -25,6 +25,8 @@ namespace A2GPatch
         Balancing,
         /// <summary>Only for GOG's release.</summary>
         Gog,
+        /// <summary>Additions the game never had: network play.</summary>
+        Extras,
     }
 
     /// <summary>
@@ -41,6 +43,7 @@ namespace A2GPatch
             new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new MoneyLimit(),
             new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new FishPoisoning(), new ManagerEvents(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(), new WrapperClipping(),
+            new NetworkPlay(),
         };
 
         /// <summary>The patch of type <typeparamref name="T"/>, a switch of its own or one of the game's bugs.</summary>

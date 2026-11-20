@@ -155,6 +155,15 @@ releases don't need):
   click two to three seconds late (seen with a Radeon RX 6800 XT). The patch changes `ddraw.dll`; on
   systems without the delay it makes no difference. Offered only with GOG's `ddraw.dll` in the game folder.
 
+Under *Erweiterungen* (original release and GOG release):
+
+- **Netzwerkspiel**: up to four computers play one game together, in a local network or over the
+  internet. The game holds a client/server layer that was never switched on; `msvfw32.dll` supplies
+  what it lacks. At its first main menu the game asks whether to play alone, open a network game or join
+  one (address of the host, the manager's name). The host plays as usual and simulates; a joining
+  computer gets the game state, takes part with a manager of its own and shows its screens. Prototype
+  state and details in [docs/network.md](docs/network.md).
+
 Works with the original release (1999), the GOG release and the 2007 CD release. Like the game, the
 user interface is in German.
 
@@ -854,6 +863,9 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
   patch's code is in memory, then rewrites it (`VirtualProtect`, `FlushInstructionCache`). Code that
   is ambiguous or not as expected is left alone; in other programs (Editor.exe) nothing turns up.
 - No C runtime (`/Zl /GS- /NODEFAULTLIB`, subsystem 5.01), so it loads on Windows XP.
+- `net.c`: network play, active only with `a2gnet.ini` (`Enabled=1`) next to the exe, which the
+  *Netzwerkspiel* switch writes together with the DLL (flags 0 on the exes patched on disk). It knows the
+  1999 exe and GOG's `run.exe` by signatures; see [docs/network.md](docs/network.md).
 
 ## Building
 

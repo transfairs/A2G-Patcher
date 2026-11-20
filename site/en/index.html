@@ -308,6 +308,14 @@
         <h3>No delay after mouse clicks</h3>
         <p>When the graphics driver doesn’t report a certain capability, GOG’s <code>ddraw.dll</code> takes a slow way of its own, and the game answers every click two to three seconds late (seen with a Radeon RX 6800 XT). The patch changes the <code>ddraw.dll</code>; without the delay it makes no noticeable difference. Offered only with GOG’s <code>ddraw.dll</code> in the game folder.</p>
       </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-opt">Extra</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="8" height="6" rx="1"/><rect x="14" y="4" width="8" height="6" rx="1"/><rect x="8" y="15" width="8" height="6" rx="1"/><path d="M6 10v2h12v-2M12 12v3"/></svg>
+        </div>
+        <h3>Network game</h3>
+        <p>Up to four computers play one game together, in a local network or over the internet. Anstoss&nbsp;2 holds a network layer that was never switched on; A2G-Patch adds what it lacks. At the first main menu the game asks whether to play alone, as host or as guest. Original and GOG release.</p>
+      </article>
     </div>
   </div>
 </section>
@@ -563,6 +571,10 @@ blit:   call GetClientRect(window, dest)     →  call CopyRect(dest, source)</c
         <summary><b>Mouse clicks (GOG)</b><span>One bit of the driver’s capabilities</span></summary>
         <p>GOG’s wrapper puts Direct3D&nbsp;9 under DirectDraw. Setting up the device, it keeps bit&nbsp;9 of <code>D3DCAPS9.PrimitiveMiscCaps</code> (<code>D3DPMISCCAPS_CLIPTLVERTS</code>) and clips by itself without it. Current drivers don’t report the bit; the delay was found by A3-Rework, a patch for Anstoss&nbsp;3, whose GOG wrapper has the same code. The patch keeps 1, at both places. The wrapper keeps its name, so the patch for the animations still recognizes it.</p>
 <pre><code>shr eax,9 / and eax,ebp  →  mov eax,1</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Network game</b><span>An orphaned layer wakes up</span></summary>
+        <p>The game separates server and client: data accessors ask “am I the server?” and fetch from it otherwise, only the server simulates, and a dispatcher knows requests, replies, tasks and the transfer of the game state. The runtime was missing: DirectPlay was never created, no thread sent, nothing called the receive loop. The <code>msvfw32.dll</code> sends the packets over TCP, hands them over through a small object with DirectPlay&nbsp;1’s interface and mirrors the game state to the guests before every step.</p>
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>A proxy for the 2007 CD</span></summary>
