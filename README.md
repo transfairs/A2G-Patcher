@@ -877,6 +877,12 @@ committed. After changing the source, run `python3 tools/make_v101.py`; it needs
 takes the relocations from the differences. `python3 tools/make_v101.py --from-cs` rewrites both files
 from `V101Code.cs` without binutils.
 
+`ManagerCode.cs` and `dll/managercode.h` (the code of the manager events) are generated from
+`tools/manager_events.asm` and the builds' addresses and original bytes in `tools/manager_builds.py`, and
+committed. After changing either, run `python tools/make_manager.py`; it needs `ml.exe` from Visual Studio's
+x86 C++ tools (found like `dll\build.cmd` does, or set `MASM_EXE`) and links each build once to check that
+the code fits.
+
 Tests (xUnit, net472, x86), restore and build in separate calls:
 
 ```

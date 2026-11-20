@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="902" height="949" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
+      <img src="../patch.png" width="902" height="965" alt="The A2G-Patch window: game folder selection and one tile with a switch per patch, in three groups">
     </figure>
   </div>
 </section>
@@ -480,7 +480,7 @@ place back without an entry: competence 2   →  3 + 4 × random(3): 3 to 11, mo
       <details class="tech-item">
         <summary><b>Manager events</b><span>The table next door</span></summary>
         <p>The dispatcher for the manager’s private life is built from the same table as the one for another kind of events (14 pairs of weight and case). Its own table of 39 pairs lies 56&nbsp;bytes behind and is used nowhere. The new cases never ran, so each was read. The honking text holds the name twice, it is passed once, and <code>sprintf</code> takes the caller’s saved <code>esi</code> as the second string: garbage or a crash.</p>
-        <p>Six cases get code of their own (MASM, <code>tools/manager_events.asm</code>): 13, 21, 35 and 39 have only their texts, 25 builds its message but never shows it, 34 fills the name with an empty string. The code lies in three functions nothing refers to (a news item never drawn, debug keys of the game, tab stops of a list box), the three questions behind the first part, where the question dialog reaches them. The switch’s jump table leads the six cases there. Case 34 reads the journalist’s first name from <code>KLEINIG.SAV</code>; the game keeps only outlet and last name.</p>
+        <p>Six cases get code of their own (MASM, <code>tools/manager_events.asm</code>): 13, 21, 35 and 39 have only their texts, 25 builds its message but never shows it, 34 fills the name with an empty string. The code lies in three functions nothing refers to (a news item never drawn, debug keys of the game, tab stops of a list box), the three questions behind the first part, where the question dialog reaches them. The jump table of the <code>switch</code> leads the six cases there. Case 34 reads the journalist’s first name from <code>KLEINIG.SAV</code>; the game keeps only outlet and last name.</p>
 <pre><code>push 6BD248 / push 0E             →  mov eax,6BD248 / add eax,38 / push eax / push 27
 push name / push text / push dest  →  push name / push name / push text / push dest
 jmp [eax*4+table]: cases 13, 21, 25, 34, 35, 39  →  code of their own</code></pre>
