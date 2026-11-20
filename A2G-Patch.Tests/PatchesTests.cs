@@ -167,7 +167,7 @@ namespace A2GPatch.Tests
             }, Patch.All.Select(p => p.Title));
             Assert.Equal(new[]
             {
-                "Behebt: Geldanlagen, Ereignisse, Ereignis-Abstürze, Trainerkompetenz, Notenschnitt, Meiste Einsätze, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb",
+                "Behebt: Geldanlagen, Ereignisse, Ereignis-Abstürze, Schiedsrichter-Groll, Trainerkompetenz, Notenschnitt, Meiste Einsätze, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb",
                 "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Ton über das Standard-Audiogerät von Windows",
@@ -185,32 +185,34 @@ namespace A2GPatch.Tests
                 "Keine Verzögerung nach Mausklicks mit manchen Grafikkarten",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
-            Assert.Equal(new uint[] { 0xBC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
             Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own; together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;
-            Assert.Equal(new[] { "Geldanlagen", "Ereignisse", "Ereignis-Abstürze", "Trainerkompetenz", "Notenschnitt", "Meiste Einsätze", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb" },
+            Assert.Equal(new[] { "Geldanlagen", "Ereignisse", "Ereignis-Abstürze", "Schiedsrichter-Groll", "Trainerkompetenz", "Notenschnitt", "Notenschnitt", "Meiste Einsätze", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb" },
                 bugs.Select(p => p.Title));
             Assert.Equal(new[]
             {
                 "Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen",
                 "Ereignisse wirken wie in ihrer Meldung (Geld, Form, Frische, Verletzungen, Klang)",
                 "Kein Absturz bei Ereignissen, für die kein passender Spieler da ist",
+                "Schiedsrichter mit Groll treffen in den Spielszenen den richtigen Verein",
                 "Trainer und Manager in schwachen Ländern werden jährlich besser",
                 "Einsätze ohne Note zählen nicht im Notenschnitt (Spielerdetails, Fans)",
+                "Notenverlauf in der Statistik mit „Noten/6“ statt „Formpunkte/6“ beschriften",
                 "Vereinsliste der meisten Einsätze nimmt nach 50 Spielern wieder neue auf", "Kader nicht über 30 Spieler wachsen lassen",
                 "Vereinsnamen bei der Pokalauslosung richtig darstellen", "Knöpfe „A/B“ und „i“ in der Aufstellung an ihrem Platz",
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Keine falsche Warnung „Festplatte fast voll“ beim Speichern",
                 "Pfeile zählen beim Gedrückthalten weiter", "Desktop-Auflösung auch nach einem Absturz zurückholen",
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit",
             }, bugs.Select(p => p.Name));
-            Assert.Equal(new uint[] { 32768, 262144, 2097152, 1048576, 524288, 8388608, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 32768, 262144, 2097152, 67108864, 1048576, 524288, 33554432, 8388608, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
             Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
             uint[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
-            Assert.Equal(25, bits.Length);
-            Assert.Equal(0x1FFFFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
+            Assert.Equal(27, bits.Length);
+            Assert.Equal(0x7FFFFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
         }
 
         private static readonly Patch Cup = Patch.Get<CupDraw>();
@@ -786,6 +788,64 @@ namespace A2GPatch.Tests
             Assert.Null(Grades.Find(GameCode.Exe(GradeCode)));
         }
 
+        private static readonly Patch ChartLabel = Patch.Get<GradeChartLabel>();
+        // The original exe from 0x461476: the grade chart's axis label to the nops behind FUN_0045ceb0.
+        internal static readonly byte[] ChartCode = ("8D4C240C68A816000051E88B871B0083C4088D54241068A916000052E879871B0083C404"
+            + "8D4424108BCC50E8BDBF2000518D5424188BCC52E8B0BF20008B8EFC050100E832A71A008D4C2410E8D7C02000"
+            + "8D4C240CE8CEC020005F5E5B83C468C3909090909090909090").Hex();
+        // From 0x619C10: FUN_00619c10, the text loader, whose first call is CString::operator=.
+        internal static readonly byte[] ChartLoaderCode = "8B4C240881EC000200008D44240068000100005051E8604B050085C075188B8C240402000068C87C6B00E8A73A050081C400020000C3".Hex();
+        private const int ChartAssignAt = 300, ChartLoaderAt = 400, ChartAt = 800;
+
+        // The loader at 400 calling the assignment at 300, the chart at 800 with both labels' calls to loader.
+        internal static byte[] ChartImage(int loader = ChartLoaderAt)
+        {
+            byte[] image = Enumerable.Repeat((byte)0xCC, 1000).ToArray();
+            ChartLoaderCode.CopyTo(image, ChartLoaderAt);
+            BitConverter.GetBytes(ChartAssignAt - (ChartLoaderAt + 0x2F)).CopyTo(image, ChartLoaderAt + 0x2B);
+            ChartCode.CopyTo(image, ChartAt);
+            BitConverter.GetBytes(loader - (ChartAt + 0x0F)).CopyTo(image, ChartAt + 0x0B);
+            BitConverter.GetBytes(loader - (ChartAt + 0x21)).CopyTo(image, ChartAt + 0x1D);
+            return image;
+        }
+
+        [Fact]
+        public void GradeChartLabel_AssignsNotenFromBehindTheFunction()
+        {
+            byte[] image = ChartImage();
+            Site site = ChartLabel.Find(image).Single();
+
+            Assert.Equal(ChartAt, site.Offset);
+            Assert.False(site.IsPatched);
+            Assert.Equal(image.Slice(ChartAt, ChartCode.Length), site.Original);
+            // call $+5 / add dword [esp],5C / lea ecx,[esp+10] / call 300 (operator=), the rest kept, "Noten/6" behind the ret
+            Assert.Equal("E8000000008304245C8D4C2410E8".Hex().Concat(BitConverter.GetBytes(ChartAssignAt - (ChartAt + 0x12))), site.Patched.Take(0x12));
+            Assert.Equal(site.Original.Skip(0x12).Take(0x4F), site.Patched.Skip(0x12).Take(0x4F));
+            Assert.Equal("Noten/6\0", Encoding.ASCII.GetString(site.Patched, 0x61, 8));
+            Assert.Equal(0x90, site.Patched[0x69]);
+            Assert.Equal(ChartAt + 5 + 0x5C, ChartAt + 0x61);
+
+            Site again = ChartLabel.Find(Apply(image, new[] { site })).Single();
+            Assert.True(again.IsPatched);
+            Assert.Equal(site.Original, again.Original);
+            Assert.Equal(site.Patched, again.Patched);
+        }
+
+        [Fact]
+        public void GradeChartLabel_InUnknownCode_FindsNothing()
+        {
+            Assert.Null(ChartLabel.Find(ChartImage().Concat(ChartCode).ToArray()));
+            Assert.Null(ChartLabel.Find(new byte[0]));
+            // The labels' calls not to the loader: none there, or before the image.
+            Assert.Null(ChartLabel.Find(ChartImage(loader: 500)));
+            Assert.Null(ChartLabel.Find(ChartImage(loader: -100)));
+            // The first label's call elsewhere than the second's.
+            Assert.Null(ChartLabel.Find(Changed(ChartImage(), ChartAt + 0x0B, 0x00)));
+            // Patched, but the call not to the assignment.
+            byte[] image = ChartImage();
+            Assert.Null(ChartLabel.Find(Changed(Apply(image, ChartLabel.Find(image)), ChartAt + 0x0E, 0x00)));
+        }
+
         private static readonly Patch Competence = Patch.Get<CompetenceBalance>();
         // The original exe at 0x5CC79A (GOG's and the 2007 CD's at 0x5CFECA), behind the call of random(2).
         internal static readonly byte[] CompetenceCode = "668B1783C404400FBFCA0FBFE803E983FD0F7E07B80F0000002BC20FBFC003D866FF044E".Hex();
@@ -848,31 +908,207 @@ namespace A2GPatch.Tests
         }
 
         private static readonly Patch Manager = Patch.Get<ManagerEvents>();
-        // The original exe from 0x55C820 (the private life's dispatcher built and drawn from), the weights' table
-        // from 0x6BD2FC and FUN_00565860 from 0x565883.
-        internal static readonly byte[][] ManagerCode =
+        // The original exe from 0x55C820 (the private life's dispatcher built and drawn from) and FUN_00565860 from 0x565883.
+        internal static readonly byte[][] ManagerPlaces =
         {
             ("6AFF6848D26B006A0EB9E84C7800E84D560000C390909090909090909090909053565733F6B9E84C7800E8815600008BD86685DB0F849500"
                 + "0000668B15E04D780033C06685D27E260FBFCB81C1606D0000").Hex(),
-            "1900200019002100040022000200230001002400".Hex(),
             ("8D480A5150683CBF6A0052E8AD0E0F0083C4108D4424048D8C24F8010000505651E8970E0F008B94240C0400008B8C240004000083C40C8D"
                 + "8424F8010000").Hex(),
         };
+        private const uint ManagerCodeVa = TestExe.Base + TestExe.CodeRva;
+        private const int CodeFileAt = (int)TestExe.CodeAt;
+        private const int SwitchAt = 0x400, TableAt = 0x500, CasesAt = 0x480;
+        private static readonly int[] RegionsAt = { 0x1000, 0x1800, 0x2000 };
+
+        // A build for a test exe: the switch at code +400, its table at +500, the three functions at +1000, +1800 and +2000.
+        private static ManagerBuild TestBuild(uint keyState) => new ManagerBuild
+        {
+            Switch = ManagerCodeVa + SwitchAt, Table = ManagerCodeVa + TableAt, Questions = 0x6BD610, KeyState = keyState,
+            Cases = Enumerable.Repeat(ManagerCodeVa + CasesAt, ManagerCode.Cases.Length).ToArray(),
+            Regions = RegionsAt.Select(at => ManagerCodeVa + (uint)at).ToArray(),
+            Originals = new[] { 1216, 640, 400 }.Select((n, r) => Enumerable.Repeat((byte)(0x11 * (r + 1)), n).ToArray()).ToArray(),
+            Symbols = Enumerable.Range(0, ManagerCode.Symbols.Length - 3).Select(i => 0x500000u + 0x10u * (uint)i).ToArray(),
+        };
+
+        // A test exe for its build: the two places, the switch with its table and the three functions, all original.
+        private static byte[] ManagerExe(out ManagerBuild build, byte[] weights = null)
+        {
+            ManagerBuild made = null;
+            byte[] image = TestExe.Build(entries =>
+            {
+                made = TestBuild(entries["GetAsyncKeyState"]);
+                byte[] text = Enumerable.Repeat((byte)0xCC, 0x2200).ToArray();
+                ManagerPlaces[0].CopyTo(text, 0x10);
+                ManagerPlaces[1].CopyTo(text, 0x200);
+                weights?.CopyTo(text, 0x300);
+                "0FBF8424F40700004883F8260F8700000000FF2485".Hex().Concat(BitConverter.GetBytes(made.Table)).ToArray().CopyTo(text, SwitchAt);
+                for (int k = 0; k < ManagerCode.Cases.Length; k++)
+                    BitConverter.GetBytes(made.Cases[k]).CopyTo(text, TableAt + 4 * (ManagerCode.Cases[k] - 1));
+                for (int r = 0; r < 3; r++)
+                    made.Originals[r].CopyTo(text, RegionsAt[r]);
+                return text;
+            }, imports: TestExe.GameImports.Concat(new[] { new[] { "USER32.dll", "GetAsyncKeyState" } }).ToArray());
+            build = made;
+            return image;
+        }
+
+        private static byte[] Revert(byte[] image, Site[] sites)
+        {
+            byte[] result = (byte[])image.Clone();
+            foreach (Site site in sites)
+                site.Original.CopyTo(result, site.Offset);
+            return result;
+        }
 
         [Fact]
-        public void ManagerEvents_DrawFromTheirOwnTable_AndNameTheManagerTwice()
+        public void ManagerEvents_DrawFromTheirOwnTable_NameTheManagerTwice_AndJumpToTheirCode()
         {
-            byte[] image = GameCode.Exe(ManagerCode);
-            Site[] sites = Manager.Find(image);
+            byte[] image = ManagerExe(out ManagerBuild build);
+            Site[] sites = ManagerEvents.Find(image, new[] { build });
 
-            Assert.Equal(ManagerCode, sites.Select(s => s.Original));
+            Assert.Equal(2 + 6 + 3, sites.Length);
+            Assert.All(sites, s => Assert.False(s.IsPatched));
             // push -1 / mov eax,6BD248 / add eax,38 / push eax / push 27 (39 pairs) / mov ecx,dispatcher / call / ret
-            Assert.Equal("6AFFB848D26B0083C038506A27B9E84C7800E849560000C3".Hex(), sites[0].Patched.Take(24));
-            Assert.Equal(new Dictionary<int, byte> { [8] = 0 }, Changes(sites[1]));                                         // case 34: weight 0
+            Assert.Equal(ManagerPlaces, sites.Take(2).Select(s => s.Original));
+            Assert.Equal("6AFFB848D26B0083C038506A27B9E84C7800E8".Hex(), sites[0].Patched.Take(19));
             // the name twice, the buffer kept in esi
-            Assert.Equal("8D4424045050568DB4240402000056E8960E0F00".Hex(), sites[2].Patched.Skip(19).Take(20));
-            Assert.All(Manager.Find(Apply(image, sites)), s => Assert.True(s.IsPatched));
-            Assert.Null(Manager.Find(GameCode.Exe(ManagerCode.Take(2).ToArray())));
+            Assert.Equal("8D4424045050568DB4240402000056E8".Hex(), sites[1].Patched.Skip(19).Take(16));
+            // the jump table's entries of cases 13, 21, 25, 34, 35 and 39 lead into the code
+            byte[][] regions = ManagerEvents.Link(build, out uint[] entries);
+            for (int k = 0; k < 6; k++)
+            {
+                Site entry = sites[2 + k];
+                Assert.Equal(CodeFileAt + TableAt + 4 * (ManagerCode.Cases[k] - 1), entry.Offset);
+                Assert.Equal(BitConverter.GetBytes(ManagerCodeVa + CasesAt), entry.Original);
+                Assert.Equal(BitConverter.GetBytes(entries[k]), entry.Patched);
+            }
+            // the three functions, original and with the code
+            for (int r = 0; r < 3; r++)
+            {
+                Assert.Equal(CodeFileAt + RegionsAt[r], sites[8 + r].Offset);
+                Assert.Equal(build.Originals[r], sites[8 + r].Original);
+                Assert.Equal(regions[r], sites[8 + r].Patched);
+            }
+
+            byte[] patched = Apply(image, sites);
+            Site[] again = ManagerEvents.Find(patched, new[] { build });
+            Assert.All(again, s => Assert.True(s.IsPatched));
+            Assert.Equal(image, Revert(patched, again));
+            // the build the game has isn't the test's
+            Assert.Null(Manager.Find(image));
+        }
+
+        [Fact]
+        public void ManagerEvents_Link_PutsTheQuestionsBehindTheCode_WhereTheDialogReachesThem()
+        {
+            ManagerBuild build = TestBuild(0);
+            byte[][] regions = ManagerEvents.Link(build, out uint[] entries);
+
+            Assert.Equal(new[] { 1216, 640, 400 }, regions.Select(r => r.Length));
+            // MAIN from the start; the questions at the first entry of the question table behind it
+            int main = ManagerCode.Blocks[0].Length, asks = ManagerCode.Blocks[1].Length;
+            long slot = build.Regions[0] + main;
+            while ((slot - build.Questions) % ManagerEvents.QuestionSize != 0)
+                slot++;
+            int at = (int)(slot - build.Regions[0]);
+            Assert.Equal(new uint[] { 0x4E34, 503, 0x113, 0x114 }, Enumerable.Range(0, 4).Select(i => BitConverter.ToUInt32(regions[0], at + 4 * i)));
+            Assert.Equal(514u, BitConverter.ToUInt32(regions[0], at + ManagerEvents.QuestionSize + 4));
+            Assert.Equal(531u, BitConverter.ToUInt32(regions[0], at + 2 * ManagerEvents.QuestionSize + 4));
+            Assert.All(regions[0].Skip(main).Take(at - main).Concat(regions[0].Skip(at + asks)), b => Assert.Equal(ManagerEvents.Fill, b));
+            Assert.All(regions[1].Skip(ManagerCode.Blocks[2].Length), b => Assert.Equal(ManagerEvents.Fill, b));
+            Assert.All(regions[2].Skip(ManagerCode.Blocks[3].Length), b => Assert.Equal(ManagerEvents.Fill, b));
+            // the entries: block and offset
+            uint[] starts = { build.Regions[0], (uint)slot, build.Regions[1], build.Regions[2] };
+            for (int k = 0; k < 6; k++)
+                Assert.Equal(starts[ManagerCode.Entries[k][0]] + (uint)ManagerCode.Entries[k][1], entries[k]);
+        }
+
+        [Fact]
+        public void ManagerEvents_KnowTheThreeBuilds_AndLinkThemAsTheGeneratorDid()
+        {
+            Assert.Equal(new uint[] { 0x6775A8, 0xCBAD30, 0x67C5A8 }, ManagerCode.Builds.Select(b => b.KeyState));
+            Assert.All(ManagerCode.Builds, b => Assert.Equal(new[] { 1216, 640, 400 }, b.Originals.Select(o => o.Length)));
+            Assert.All(ManagerCode.Builds, b => Assert.Equal(ManagerCode.Symbols.Length - 3, b.Symbols.Length));
+            // SHA-256 of the three functions and the entries as tools/make_manager.py links them (checked in an emulator)
+            string[] expected =
+            {
+                "7E89777C13FA1F82465A21906F09A7D4A76D70D35F9683BE9445D9668BF4CD4E",
+                "D1D4C88FBD9FFC02E454E4D484C74509FF8B9407119906686C362BAE8E35917F",
+                "D1D4C88FBD9FFC02E454E4D484C74509FF8B9407119906686C362BAE8E35917F",
+            };
+            for (int i = 0; i < 3; i++)
+            {
+                byte[][] regions = ManagerEvents.Link(ManagerCode.Builds[i], out uint[] entries);
+                byte[] all = regions.SelectMany(r => r).Concat(entries.SelectMany(BitConverter.GetBytes)).ToArray();
+                using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create())
+                    Assert.Equal(expected[i], BitConverter.ToString(sha.ComputeHash(all)).Replace("-", ""));
+            }
+        }
+
+        [Fact]
+        public void ManagerEvents_AreNotOffered_WhereAPlaceHoldsNeither()
+        {
+            byte[] image = ManagerExe(out ManagerBuild build);
+            ManagerBuild[] builds = { build };
+            int table = CodeFileAt + TableAt, region = CodeFileAt + RegionsAt[1];
+            byte[] switchCode = image.Slice(CodeFileAt + SwitchAt, 25);
+
+            Assert.NotNull(ManagerEvents.Find(image, builds));
+            Assert.Null(ManagerEvents.Find(image.With(CodeFileAt + 0x10, 0xCCCCCCCC), builds));                 // no dispatcher builder
+            Assert.Null(ManagerEvents.Find(image.With(CodeFileAt + SwitchAt, 0xCCCCCCCC), builds));             // no switch
+            Assert.Null(ManagerEvents.Find(GameCode.Exe(ManagerPlaces[0], ManagerPlaces[1], switchCode), builds));   // no exe
+            byte[] twice = (byte[])image.Clone();
+            switchCode.CopyTo(twice, CodeFileAt + 0x600);
+            Assert.Null(ManagerEvents.Find(twice, builds));                                                              // two switches
+            Assert.Null(ManagerEvents.Find(image, new[] { TestBuild(build.KeyState + 4) }));                          // another import
+            ManagerBuild moved = TestBuild(build.KeyState);
+            moved.Switch++;
+            Assert.Null(ManagerEvents.Find(image, new[] { moved }));                                                     // another switch
+            moved = TestBuild(build.KeyState);
+            moved.Table += 4;
+            Assert.Null(ManagerEvents.Find(image, new[] { moved }));                                                     // another table
+            Assert.Null(ManagerEvents.Find(image.With(table + 4 * 12, 0x401000), builds));                            // case 13 elsewhere
+            Assert.Null(ManagerEvents.Find(image.With(region + 100, 0x90909090), builds));                            // KEYS changed
+            moved = TestBuild(build.KeyState);
+            moved.Regions[2] = 0x900000;
+            Assert.Null(ManagerEvents.Find(image, new[] { moved }));                                                     // TABS outside the exe
+        }
+
+        [Fact]
+        public void ManagerEvents_PutBackTheWeightVersion050Took()
+        {
+            byte[] image = ManagerExe(out ManagerBuild build, ManagerEvents.OldWeights);
+            Site[] sites = ManagerEvents.Find(image, new[] { build });
+
+            Assert.Equal(13, sites.Length);
+            Site off = sites[11], on = sites[12];
+            Assert.Equal(CodeFileAt + 0x300, off.Offset);
+            Assert.Equal(off.Offset, on.Offset);
+            Assert.True(off.IsPatched);
+            Assert.False(on.IsPatched);
+            Assert.All(new[] { off, on }, s => Assert.Equal(ManagerEvents.Weights, s.Original));
+            Assert.All(new[] { off, on }, s => Assert.Equal(ManagerEvents.Weights, s.Patched));
+            // case 34's weight back to 4 either way, then nothing more to do there
+            Assert.Equal(4, ManagerEvents.Weights[8]);
+            Assert.Equal(11, ManagerEvents.Find(Apply(image, sites), new[] { build }).Length);
+            Assert.Equal(11, ManagerEvents.Find(Revert(image, sites), new[] { build }).Length);
+        }
+
+        private static readonly Patch Referee = Patch.Get<RefereeGrudge>();
+        // The original exe from 0x404FA1: the referee's grudge compared with the defending club's number plus one.
+        internal static readonly byte[] RefereeCode = "668B832E0200006685C0742733D28A97020100000FBFC0423BC27517".Hex();
+
+        [Fact]
+        public void RefereeGrudge_ComparesTheClubsNumber()
+        {
+            byte[] image = GameCode.Exe(RefereeCode);
+            Site site = Referee.Find(image).Single();
+
+            Assert.Equal(RefereeCode, site.Original);
+            // je (skips club 0) and inc edx (number plus one) gone
+            Assert.Equal(new Dictionary<int, byte> { [10] = 0x90, [11] = 0x90, [23] = 0x90 }, Changes(site));
+            Assert.True(Referee.Find(Apply(image, new[] { site })).Single().IsPatched);
         }
 
         [Fact]

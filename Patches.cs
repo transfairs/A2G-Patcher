@@ -56,7 +56,7 @@ namespace A2GPatch
         /// <summary>The group the window shows the tile in.</summary>
         public abstract PatchGroup Group { get; }
 
-        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 16777216 taken); 0 for the GOG patches the DLL doesn't know.</summary>
+        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 67108864 taken); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract uint Flag { get; }
 
         /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
@@ -88,6 +88,9 @@ namespace A2GPatch
 
         /// <summary>The bytes as a pattern without wildcards.</summary>
         internal static byte?[] Exact(params byte[] bytes) => bytes.Select(b => (byte?)b).ToArray();
+
+        /// <summary>Where the call or jump (E8, E9 with a 32-bit displacement) at <paramref name="at"/> leads.</summary>
+        internal static long Target(byte[] image, long at) => at + 5 + BitConverter.ToInt32(image, (int)at + 1);
     }
 
     /// <summary>
@@ -102,12 +105,13 @@ namespace A2GPatch
         /// <summary>The bugs, in the order the tile names them.</summary>
         internal readonly Patch[] Members =
         {
-            new InvestmentBalance(), new EventEffects(), new EventCrashes(), new CompetenceBalance(), new GradeAverage(), new AppearancesList(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
+            new InvestmentBalance(), new EventEffects(), new EventCrashes(), new RefereeGrudge(), new CompetenceBalance(), new GradeAverage(), new GradeChartLabel(), new AppearancesList(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
             new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(), new SleepFreeze(),
         };
 
         /// <inheritdoc/>
-        public override string Name => "Behebt: " + string.Join(", ", this.Members.Select(m => m.Title));
+        // Fixes of one subject share a title, named once.
+        public override string Name => "Behebt: " + string.Join(", ", this.Members.Select(m => m.Title).Distinct());
         /// <inheritdoc/>
         public override string Title => "Spielfehler";
         /// <inheritdoc/>
@@ -1876,9 +1880,6 @@ namespace A2GPatch
             return found.Count == 1 ? found[0] : -1;
         }
 
-        // Where the call or jump at at leads.
-        private static long Target(byte[] image, long at) => at + 5 + BitConverter.ToInt32(image, (int)at + 1);
-
         /// <inheritdoc/>
         public override Site[] Find(byte[] image)
         {
@@ -2065,47 +2066,61 @@ namespace A2GPatch
 
     /// <summary>
     /// Lets the manager's private life bring all its events. FUN_0055c900 (texts of EreigGld.saq, places in
-    /// the original) has 38 cases; FUN_0055c840 draws one from a weighted table at 0x784CE8, which
+    /// the original) has 39 cases; FUN_0055c840 draws one from a weighted table at 0x784CE8, which
     /// FUN_0055c820 builds, and skips one of the last 20 shown once. The game builds it from the table of
-    /// FUN_0055c230 (0x6BD248, 14 pairs {weight, case}, all of the other kind's events), so cases 15 to 38
+    /// FUN_0055c230 (0x6BD248, 14 pairs {weight, case}, all of the other kind's events), so cases 15 to 39
     /// never come; its own table (0x6BD280, 39 pairs, 56 bytes behind, referenced nowhere) gives them
-    /// weights from 1 to 25 (the fans' honking and tomatoes 25 each, both only for a manager with less
-    /// than 60 points of standing). The patch builds the dispatcher from it, in the builder's bytes and 4 of
-    /// the 12 nops behind them (the dispatcher's start, add ecx,28000, tells it from the other one):
+    /// weights from 1 to 25 (the fans' honking and tomatoes 25 each, both only while the board's trust is
+    /// below 60). The patch builds the dispatcher from it, in the builder's bytes and 4 of the 12 nops
+    /// behind them (the dispatcher's start, add ecx,28000, tells it from the other one):
     /// <code>
     ///   push -1 / push 6BD248 / push 0E / mov ecx,dispatcher / call / ret
     ///   ->  push -1 / mov eax,6BD248 / add eax,38 / push eax / push 27 / mov ecx,dispatcher / call / ret
     /// </code>
-    /// Two of the cases never tried need more. Case 34 (text 530) names "%s, der Sie eigentlich gar nicht
-    /// leiden kann" with an empty string; its weight 4 becomes 0. Case 32 (text 528, the honking) holds the
-    /// manager's name twice, but FUN_00565860 passes it once, and sprintf reads the caller's esi, saved
-    /// behind, as the second string. The patch passes it twice (keeping the buffer in esi saves the room);
-    /// texts with one name ignore the second:
+    /// Case 32 (text 528, the honking) holds the manager's name twice, but FUN_00565860 passes it once, and
+    /// sprintf reads the caller's esi, saved behind, as the second string. The patch passes it twice
+    /// (keeping the buffer in esi saves the room); texts with one name ignore the second:
     /// <code>
     ///   lea eax,[esp+4] / lea ecx,[esp+1F8] / push eax / push esi / push ecx / call sprintf / ... / lea eax,[esp+1F8]
     ///   ->  lea eax,[esp+4] / push eax / push eax / push esi / lea esi,[esp+204] / push esi / call sprintf / ... / mov eax,esi
     /// </code>
-    /// Case 25 (an inheritance, text 521) builds its text but neither shows it nor books anything; cases 21,
-    /// 35 and 39 do nothing. The events counted: 20, among them suspicion of rioting with hooligans, a
-    /// national order, a book, angry fans and a microphone that records the manager's language.
+    /// Six cases get code of their own (tools/manager_events.asm, <see cref="ManagerCode"/>): 13, 21, 35 and
+    /// 39 have their texts but no code, 25 (an inheritance) builds its text but neither shows it nor books
+    /// anything, 34 names "%s, der Sie eigentlich gar nicht leiden kann" with an empty string. The code
+    /// goes into three functions of the game nothing refers to (the questions of 13, 21 and 35 behind it,
+    /// where the question dialog reaches them), and the switch's jump table leads there. The builds are
+    /// known by the switch's address (<see cref="ManagerCode.Builds"/>, the 2007 CD release has GOG's); the
+    /// three functions go back to their original bytes when the patch is taken back.
     /// </summary>
-    internal sealed class ManagerEvents : RewritesPatch
+    internal sealed class ManagerEvents : Patch
     {
-        /// <inheritdoc/>
-        internal override byte?[][][] Places => ManagerPlaces;
-
-        private static readonly byte?[][][] ManagerPlaces =
+        private static readonly byte?[][][] Places =
         {
-            Place("6AFF68????????6A0EB9????????E8????????C390909090909090909090909053565733F6B9????????E8????????8BD86685DB0F849500"
-                  + "0000668B15????????33C06685D27E260FBFCB81C1606D0000",
-                  "6AFFB8????????83C038506A27B9????????E8????????C3909090909090909053565733F6B9????????E8????????8BD86685DB0F849500"
-                  + "0000668B15????????33C06685D27E260FBFCB81C1606D0000"),
-            Place("1900200019002100040022000200230001002400", "1900200019002100000022000200230001002400"),   // case 34: weight 0
-            Place("8D480A515068????????52E8????????83C4108D4424048D8C24F8010000505651E8????????8B94240C0400008B8C240004000083C40C8D"
-                  + "8424F8010000",
-                  "8D480A515068????????52E8????????83C4108D4424045050568DB4240402000056E8????????8B9424100400008B8C240404000083C410"
-                  + "8BC690909090"),
+            RewritesPatch.Place(
+                "6AFF68????????6A0EB9????????E8????????C390909090909090909090909053565733F6B9????????E8????????8BD86685DB0F849500"
+                + "0000668B15????????33C06685D27E260FBFCB81C1606D0000",
+                "6AFFB8????????83C038506A27B9????????E8????????C3909090909090909053565733F6B9????????E8????????8BD86685DB0F849500"
+                + "0000668B15????????33C06685D27E260FBFCB81C1606D0000"),
+            RewritesPatch.Place(
+                "8D480A515068????????52E8????????83C4108D4424048D8C24F8010000505651E8????????8B94240C0400008B8C240004000083C40C8D"
+                + "8424F8010000",
+                "8D480A515068????????52E8????????83C4108D4424045050568DB4240402000056E8????????8B9424100400008B8C240404000083C410"
+                + "8BC690909090"),
         };
+
+        /// <summary>The switch: movsx eax,word [esp+7F4] / dec eax / cmp eax,26 / ja return 1 / jmp [eax*4+table].</summary>
+        internal static readonly byte?[] SwitchPattern = "0FBF8424F40700004883F8260F87????????FF2485????????".Pattern();
+        private const int TableAt = 21;
+
+        /// <summary>The weights of cases 32 to 36 as version 0.5.0 left them, case 34's set to 0, and as the game has them.</summary>
+        internal static readonly byte[] OldWeights = "1900200019002100000022000200230001002400".Hex(), Weights = "1900200019002100040022000200230001002400".Hex();
+
+        /// <summary>The block each of <see cref="ManagerCode.Blocks"/> goes into: MAIN and the questions into the first function.</summary>
+        private static readonly int[] RegionOf = { 0, 0, 1, 2 };
+        /// <summary>The size of an entry of the question table.</summary>
+        internal const int QuestionSize = 0x2C;
+        /// <summary>What the three functions hold where the code leaves room (int3).</summary>
+        internal const byte Fill = 0xCC;
 
         /// <inheritdoc/>
         public override string Name => "Weitere Ereignisse rund um den Manager: Presse, Fans, Privatleben";
@@ -2115,6 +2130,85 @@ namespace A2GPatch
         public override PatchGroup Group => PatchGroup.Balancing;
         /// <inheritdoc/>
         public override uint Flag => 16777216;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => Places.SelectMany(p => p).Concat(new[] { SwitchPattern });
+
+        /// <summary>The three functions with the code of <paramref name="build"/> in place, and where the cases now start.</summary>
+        internal static byte[][] Link(ManagerBuild build, out uint[] entries)
+        {
+            byte[][] blocks = ManagerCode.Blocks;
+            long mainEnd = build.Regions[0] + blocks[0].Length;
+            uint questions = (uint)(mainEnd + ((build.Questions - mainEnd) % QuestionSize + QuestionSize) % QuestionSize);
+            uint[] bases = { build.Regions[0], questions, build.Regions[1], build.Regions[2] };
+            int first = (int)((questions - (long)build.Questions) / QuestionSize);
+            uint[] values = bases.Concat(build.Symbols).Concat(new[] { (uint)first, (uint)(first + 1), (uint)(first + 2) }).ToArray();
+            byte[][] regions = build.Originals.Select(o => Enumerable.Repeat(Fill, o.Length).ToArray()).ToArray();
+            for (int b = 0; b < blocks.Length; b++)
+            {
+                byte[] code = (byte[])blocks[b].Clone();
+                int[] fields = ManagerCode.Fields[b];
+                for (int i = 0; i < fields.Length; i += 4)
+                {
+                    uint value = values[fields[i + 2]] + (uint)fields[i + 3];
+                    if (fields[i + 1] != 0)
+                        value -= bases[b] + (uint)fields[i] + 4;
+                    BitConverter.GetBytes(value).CopyTo(code, fields[i]);
+                }
+                int region = RegionOf[b];
+                code.CopyTo(regions[region], bases[b] - build.Regions[region]);
+            }
+            entries = ManagerCode.Entries.Select(e => bases[e[0]] + (uint)e[1]).ToArray();
+            return regions;
+        }
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image) => Find(image, ManagerCode.Builds);
+
+        /// <summary>The places in <paramref name="image"/> for one of <paramref name="builds"/>, as <see cref="Find(byte[])"/>.</summary>
+        internal static Site[] Find(byte[] image, IEnumerable<ManagerBuild> builds)
+        {
+            Site[] places = Places.Select(p => RewritePatch.FindOnce(image, p[0], p[1])).ToArray();
+            PeFile pe = PeFile.Read(image);
+            List<long> switches = FindAll(image, SwitchPattern);
+            if (places.Contains(null) || pe == null || switches.Count != 1)
+                return null;
+            uint at = (uint)pe.VaAt(switches[0]), table = BitConverter.ToUInt32(image, (int)switches[0] + TableAt);
+            pe.Imports.TryGetValue("GetAsyncKeyState", out uint keyState);
+            // GOG and the 2007 CD release share the addresses, not the imports.
+            ManagerBuild build = builds.FirstOrDefault(b => b.Switch == at && b.Table == table && b.KeyState == keyState);
+            Site[] code = build == null ? null : CodeSites(image, pe, build);
+            if (code == null)
+                return null;
+            List<Site> sites = places.Concat(code).ToList();
+            // Version 0.5.0 set case 34's weight to 0; it goes back to 4 whether the patch is switched on or off.
+            List<long> old = FindAll(image, Exact(OldWeights));
+            if (old.Count == 1)
+            {
+                sites.Add(new Site { Offset = old[0], Original = Weights, Patched = Weights, IsPatched = true });
+                sites.Add(new Site { Offset = old[0], Original = Weights, Patched = Weights, IsPatched = false });
+            }
+            return sites.ToArray();
+        }
+
+        // The jump table's entries and the three functions for build; null if one holds neither its original nor the code.
+        private static Site[] CodeSites(byte[] image, PeFile pe, ManagerBuild build)
+        {
+            byte[][] regions = Link(build, out uint[] entries);
+            List<Site> sites = new List<Site>();
+            for (int k = 0; k < ManagerCode.Cases.Length; k++)
+                sites.Add(StateAt(image, pe.FileOffset(build.Table + 4 * (uint)(ManagerCode.Cases[k] - 1)), BitConverter.GetBytes(build.Cases[k]), BitConverter.GetBytes(entries[k])));
+            for (int r = 0; r < regions.Length; r++)
+                sites.Add(StateAt(image, pe.FileOffset(build.Regions[r]), build.Originals[r], regions[r]));
+            return sites.Contains(null) ? null : sites.ToArray();
+        }
+
+        // The place at offset holding original or patched; null if it holds neither (or lies outside the file, -1).
+        private static Site StateAt(byte[] image, long offset, byte[] original, byte[] patched)
+        {
+            byte[] now = image.Slice(Math.Max(offset, 0), offset < 0 ? 0 : original.Length);
+            bool isPatched = now.SequenceEqual(patched);
+            return isPatched || now.SequenceEqual(original) ? new Site { Offset = offset, Original = original, Patched = patched, IsPatched = isPatched } : null;
+        }
     }
 
     /// <summary>A patch that rewrites several blocks, each found as by <see cref="RewritePatch.FindOnce"/>, offered only if all of them are there.</summary>
@@ -2229,6 +2323,36 @@ namespace A2GPatch
     }
 
     /// <summary>
+    /// Lets a referee's grudge hit the club he holds it against in the match's scenes. A referee's record
+    /// (+7, read by FUN_0057d550) holds the club's number or -1; the match copies it to +22E
+    /// (FUN_005f0120), and the microphone (manager event 36), interview answers and the affair (event 39,
+    /// <see cref="ManagerEvents"/>) set it. The cards (FUN_005f3640) compare it with the club's number,
+    /// but the scenes (FUN_00404ec0 in the original) with the number plus one and skip 0, so they hit the
+    /// club with the next lower number:
+    /// <code>
+    ///   mov ax,[ebx+22E] / test ax,ax / je / xor edx,edx / mov dl,[edi+102] / movsx eax,ax / inc edx / cmp eax,edx / jne
+    ///   ->  ... / test ax,ax / nop x2 / ... / nop / cmp eax,edx / jne
+    /// </code>
+    /// No grudge (-1) never equals a number (0 to 255).
+    /// </summary>
+    internal sealed class RefereeGrudge : RewritePatch
+    {
+        /// <inheritdoc/>
+        internal override byte?[] OriginalCode => "668B832E0200006685C0742733D28A97020100000FBFC0423BC27517".Pattern();
+        /// <inheritdoc/>
+        internal override byte?[] PatchedCode => "668B832E0200006685C0909033D28A97020100000FBFC0903BC27517".Pattern();
+
+        /// <inheritdoc/>
+        public override string Name => "Schiedsrichter mit Groll treffen in den Spielszenen den richtigen Verein";
+        /// <inheritdoc/>
+        public override string Title => "Schiedsrichter-Groll";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 67108864;
+    }
+
+    /// <summary>
     /// Keeps appearances without a mark out of two averages of marks: the player's season average in his
     /// details (FUN_004fbd60 in the original) and the fans' check for a hated player (FUN_00639f70, the last
     /// matches, at least 4 marks, average 4.5 or worse). The match day byte (player +0x130) holds bit 7 for
@@ -2257,6 +2381,64 @@ namespace A2GPatch
         public override PatchGroup Group => PatchGroup.Patches;
         /// <inheritdoc/>
         public override uint Flag => 524288;
+    }
+
+    /// <summary>
+    /// Labels the axis of the grade chart in the statistics. FUN_0045ceb0 (case 0x17, from 0x461476 in the
+    /// original) draws the average marks per week and loads the axis label with FUN_00619c10 as text 5800 of
+    /// RESDLL.dll, "Formpunkte/6", the form chart's (5803 "Formpunkte/20" belongs to the team form). RESDLL.dll
+    /// has no text for the marks, so the patch assigns "Noten/6" from the exe, in the same 18 bytes; the call
+    /// pushes the address behind it, which the add moves to the string in the 9 nops behind the function's ret:
+    /// <code>
+    ///   lea ecx,[esp+C] / push 16A8 / push ecx / call text / add esp,8
+    ///   ->  call $+5 / add dword [esp],5C / lea ecx,[esp+10] / call CString::operator=(const char*)
+    /// </code>
+    /// The next label (5801, "Woche") calls the same FUN_00619c10, whose first call is the assignment (ret 4);
+    /// both give the patch the targets in either state.
+    /// </summary>
+    internal sealed class GradeChartLabel : Patch
+    {
+        // From the second label to the function's end, as in all three builds.
+        private const string Rest = "8D54241068A916000052E8????????83C404" + "8D4424108BCC50E8????????518D5424188BCC52E8????????"
+            + "8B8EFC050100E8????????8D4C2410E8????????8D4C240CE8????????5F5E5B83C468C3";
+
+        /// <summary>The place with the label and the nops behind the function, as the game has it.</summary>
+        internal static readonly byte?[] OriginalCode = ("8D4C240C68A816000051E8????????83C408" + Rest + "909090909090909090").Pattern();
+        /// <summary>The place patched: the string "Noten/6" behind the function.</summary>
+        internal static readonly byte?[] PatchedCode = ("E800000000830424" + "5C" + "8D4C2410E8????????" + Rest + "4E6F74656E2F360090").Pattern();
+
+        // FUN_00619c10: the text by its number into the CString, through CString::operator=.
+        private static readonly byte?[] LoaderCode = ("8B4C240881EC000200008D44240068000100005051E8????????85C07518"
+            + "8B8C240402000068????????E8????????81C400020000C3").Pattern();
+
+        private const int TextCall = 0x0A, AssignCall = 0x0D, NextTextCall = 0x1C, LoaderAssignCall = 0x2A;
+
+        /// <inheritdoc/>
+        public override string Name => "Notenverlauf in der Statistik mit „Noten/6“ statt „Formpunkte/6“ beschriften";
+        /// <inheritdoc/>
+        public override string Title => "Notenschnitt";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 33554432;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[] { OriginalCode, PatchedCode };
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            Site site = RewritePatch.FindOnce(image, OriginalCode, PatchedCode);
+            if (site == null)
+                return null;
+            long loader = Target(image, site.Offset + NextTextCall);
+            if (loader < 0 || FindAll(image.Slice(loader, LoaderCode.Length), LoaderCode).Count != 1)
+                return null;
+            long assign = Target(image, loader + LoaderAssignCall);
+            BitConverter.GetBytes((int)(loader - (site.Offset + TextCall + 5))).CopyTo(site.Original, TextCall + 1);
+            BitConverter.GetBytes((int)(assign - (site.Offset + AssignCall + 5))).CopyTo(site.Patched, AssignCall + 1);
+            // The call that changes must reach the same function as the one behind it, or the assignment.
+            return image.Slice(site.Offset, site.Original.Length).SequenceEqual(site.IsPatched ? site.Patched : site.Original) ? new[] { site } : null;
+        }
     }
 
     /// <summary>

@@ -87,7 +87,7 @@ jobs:
 
           Patches:
 
-          - Spielfehler, ein Schalter für vierzehn Fehlerbehebungen:
+          - Spielfehler, ein Schalter für fünfzehn Fehlerbehebungen:
             - Geldanlagen: Das Spiel zieht jeden Gewinn einer Geldanlage vom Kontostand ab; je
               besser sie läuft, desto weniger Geld ist auf dem Konto. Erst beim Auflösen kommt alles
               auf einmal zurück. Mit dem Patch sinkt der Kontostand nur um die Einlage, der Gewinn
@@ -109,12 +109,18 @@ jobs:
             - Ereignis-Abstürze: Einige Zufallsereignisse losen einen Spieler aus und verwenden ihn,
               ohne zu prüfen, ob sich einer gefunden hat. Dann stürzt das Spiel ab. Mit dem Patch
               fällt das Ereignis aus.
+            - Schiedsrichter-Groll: Ein Schiedsrichter kann einem Verein etwas nachtragen, etwa wenn
+              der Manager ihn vor einem Mikrofon beschimpft hat. Dann zeigt er dessen Spielern in
+              Ligaspielen mehr Karten. Die Spielszenen, in denen er entscheidet, treffen aber den Verein
+              mit der nächstniedrigeren Nummer. Mit dem Patch trifft es den Verein, dem er grollt.
             - Trainerkompetenz: Einmal im Jahr hebt das Spiel in Ländern mit schwachen Trainern und
               Managern (Schnitt unter 6) jeden Zehnten um 1 oder 2 Punkte an, speichert den neuen
               Wert aber nie. Mit dem Patch bleibt er.
             - Notenschnitt: Ein Kurzeinsatz ohne Note, aber mit Karte zählt im Saisonschnitt der
               Spielerdetails und bei der Prüfung der Fans auf einen verhassten Spieler als Note 0,
-              besser als eine 1. Mit dem Patch zählen nur Noten.
+              besser als eine 1. Mit dem Patch zählen nur Noten. Außerdem steht an der Achse des
+              Notenverlaufs in der Statistik "Noten/6" statt "Formpunkte/6", der Beschriftung der
+              Formkurve.
             - Meiste Einsätze: Die Vereinsliste der Spieler mit den meisten Einsätzen nimmt nach
               50 Spielern niemanden mehr auf, weil ehemalige Spieler dort als Vereinsspieler
               markiert bleiben. Mit dem Patch folgt die Markierung dem Kader; auch eine schon
@@ -178,10 +184,15 @@ jobs:
             einer: Die Meldung spricht von drei Wochen, eingetragen wird eine Fischvergiftung mit den
             üblichen 7 Tagen. Mit dem Patch fehlt der Spieler die drei Wochen.
           - Weitere Ereignisse rund um den Manager: Presse, Fans, Privatleben: Die Ereignisse aus dem
-            Privatleben des Managers werden aus der falschen Tabelle gewürfelt, 24 ihrer 38 Fälle
-            kommen nie vor. Mit ihrer eigenen Tabelle kommen rund 20 Ereignisse hinzu, etwa ein
-            Staatsorden, ein eigenes Buch oder Fans, die nachts hupen oder mit Tomaten werfen, wenn
-            der Manager bei ihnen schlecht dasteht. Die bekannten kommen dafür seltener.
+            Privatleben des Managers werden aus der falschen Tabelle gewürfelt, 25 ihrer 39 Fälle
+            kommen nie vor. Mit ihrer eigenen Tabelle kommen sie hinzu, etwa ein Staatsorden, ein
+            eigenes Buch oder Fans, die nachts hupen oder mit Tomaten werfen, wenn der Vorstand dem
+            Manager wenig vertraut. Die bekannten kommen dafür seltener. Sechs Fälle bekommen
+            eigenen Code, weil das Spiel für sie keinen funktionierenden hat: eine Podiumsdiskussion
+            über Stehplätze, ein anonymer Anrufer, der gegen Bezahlung die Geschäftsstelle eines
+            Mitspielers aufmischen will, die Erbschaft von 100 Aktien des Erzrivalen, der Respekt
+            eines Journalisten, der den Manager nicht leiden kann, die Wahl zum Spieler des Monats und
+            eine Affäre mit der Frau eines Schiedsrichters.
 
           Nur für die GOG-Version (bei den anderen ausgegraut):
 

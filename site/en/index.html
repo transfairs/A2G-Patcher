@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>The patches</h2>
-    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes fourteen of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device), and the upper limit for the bank balance. <b>Balancing</b> changes how the game plays. Four more patches are for the GOG release only.</p>
+    <p class="intro">Three groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes fifteen of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device), and the upper limit for the bank balance. <b>Balancing</b> changes how the game plays. Four more patches are for the GOG release only.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -88,6 +88,14 @@
       <article class="card">
         <div class="card-head">
           <span class="tag tag-fix">Game bug</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M12 8v5M12 16h.01"/></svg>
+        </div>
+        <h3>Referees with a grudge hit the right club</h3>
+        <p>A referee can hold a grudge against a club, for instance after the manager insulted him in front of a microphone. In league matches he then shows that club’s players more cards, as intended. The match scenes he decides, though, compare the grudge with the club’s number plus one, so they hit the club with the next lower number and never the one with number&nbsp;0. With the patch they hit the club he holds the grudge against.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Game bug</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/></svg>
         </div>
         <h3>Trainers and managers in weak countries get better</h3>
@@ -99,7 +107,7 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="1"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
         </div>
         <h3>Appearances without a mark don't count in the average</h3>
-        <p>A player who plays less than 20 minutes gets no mark. If he gets a card, the season average in his details and the fans' check for a hated player count that appearance as mark&nbsp;0, better than a 1. With the patch only marks count, as in the team statistics.</p>
+        <p>A player who plays less than 20 minutes gets no mark. If he gets a card, the season average in his details and the fans' check for a hated player count that appearance as mark&nbsp;0, better than a 1. With the patch only marks count, as in the team statistics. The axis of the grade chart in the statistics also reads “Noten/6” (marks) instead of “Formpunkte/6” (form points), the label of the form chart.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -265,7 +273,8 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M18 3l1.5 1.5M20 8h2"/></svg>
         </div>
         <h3>More events around the manager</h3>
-        <p>The events of the manager’s private life are drawn from the wrong table, so 24 of their 38 cases never come. With their own table about 20 events join in: suspicion of rioting with hooligans, a national order, a book of his own, a microphone that records every word, and fans honking at night or throwing tomatoes when the manager stands badly with them. The known ones come less often. Two of the new ones needed a fix; one that would show without its name stays out.</p>
+        <p>The events of the manager’s private life are drawn from the wrong table, so 25 of their 39 cases never come. With their own table they join in: suspicion of rioting with hooligans, a national order, a book of his own, a microphone that records every word, and fans honking at night or throwing tomatoes while the board has little trust in the manager. The known ones come less often.</p>
+        <p>Six cases had no working code in the game and get it: a panel debate about standing room, an anonymous caller who, paid from the manager’s own money, offers to wreck the office of another human player’s club, an inheritance of 100&nbsp;shares of the arch rival, respect from a journalist who can’t stand the manager, the vote for player of the month among the three best players of the last four match days, and an affair with the wife of a referee, who then holds it against the club.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -470,9 +479,11 @@ place back without an entry: competence 2   →  3 + 4 × random(3): 3 to 11, mo
       </details>
       <details class="tech-item">
         <summary><b>Manager events</b><span>The table next door</span></summary>
-        <p>The dispatcher for the manager’s private life is built from the same table as the one for another kind of events (14 pairs of weight and case). Its own table of 39 pairs lies 56&nbsp;bytes behind and is used nowhere. The new cases never ran, so each was read. The honking text holds the name twice, it is passed once, and <code>sprintf</code> takes the caller’s saved <code>esi</code> as the second string: garbage or a crash. A case that leaves its name empty gets weight&nbsp;0.</p>
+        <p>The dispatcher for the manager’s private life is built from the same table as the one for another kind of events (14 pairs of weight and case). Its own table of 39 pairs lies 56&nbsp;bytes behind and is used nowhere. The new cases never ran, so each was read. The honking text holds the name twice, it is passed once, and <code>sprintf</code> takes the caller’s saved <code>esi</code> as the second string: garbage or a crash.</p>
+        <p>Six cases get code of their own (MASM, <code>tools/manager_events.asm</code>): 13, 21, 35 and 39 have only their texts, 25 builds its message but never shows it, 34 fills the name with an empty string. The code lies in three functions nothing refers to (a news item never drawn, debug keys of the game, tab stops of a list box), the three questions behind the first part, where the question dialog reaches them. The switch’s jump table leads the six cases there. Case 34 reads the journalist’s first name from <code>KLEINIG.SAV</code>; the game keeps only outlet and last name.</p>
 <pre><code>push 6BD248 / push 0E             →  mov eax,6BD248 / add eax,38 / push eax / push 27
-push name / push text / push dest  →  push name / push name / push text / push dest</code></pre>
+push name / push text / push dest  →  push name / push name / push text / push dest
+jmp [eax*4+table]: cases 13, 21, 25, 34, 35, 39  →  code of their own</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Most appearances</b><span>A flag nobody clears</span></summary>
@@ -505,6 +516,11 @@ sort: selection with three copy loops       →  bubble sort, the routine in fro
 876/877 works delay: random(10) of 12 reasons  →  random(12); a reason’s leading “wegen ” is skipped</code></pre>
       </details>
       <details class="tech-item">
+        <summary><b>Referee grudge</b><span>One too many</span></summary>
+        <p>A referee keeps the number of a club he holds a grudge against, else −1. The cards compare it with the club’s number, the match scenes with the number plus one, and there zero counts as “no grudge”. The patch drops both.</p>
+<pre><code>test ax,ax / je / … / inc edx / cmp eax,edx  →  test ax,ax / nop / nop / … / nop / cmp eax,edx</code></pre>
+      </details>
+      <details class="tech-item">
         <summary><b>Event crashes</b><span>A player who isn’t there</span></summary>
         <p>Two functions draw a player of the squad and return NULL when the one drawn has a certain flag or nobody fits. Of their 71 calls, four read the result without a test. The patch tests it at all four places, in their own bytes; <code>pop ecx</code> twice instead of <code>add esp,8</code> makes room.</p>
 <pre><code>mov esi,eax / add esp,8 / cmp byte [esi+25],0A  →  pop ecx / pop ecx / xchg eax,esi / test esi,esi / je out / …</code></pre>
@@ -518,6 +534,11 @@ sort: selection with three copy loops       →  bubble sort, the routine in fro
         <summary><b>Grade average</b><span>Card and mark in one byte</span></summary>
         <p>For each match day a byte of the player holds the appearance (bit&nbsp;7), the mark (bits&nbsp;2–4) and cards (bits&nbsp;0–1). The team statistics count an appearance only with a mark. The season average in the player's details and the fans' check test mark and cards together, so a short appearance with a card counts as mark&nbsp;0 there.</p>
 <pre><code>test al,80 / je / test al,1F / je  →  test al,1C (the mark alone), in both places</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Grade chart</b><span>A text that isn't there</span></summary>
+        <p>The statistics' charts load their texts from <code>RESDLL.dll</code>. The grade chart takes text&nbsp;5800, “Formpunkte/6”, the form chart's, for its axis; <code>RESDLL.dll</code> has no text for marks. The patch assigns “Noten/6” from the exe, in the same 18&nbsp;bytes. The string goes into the 9&nbsp;NOPs behind the function's <code>ret</code>; its address comes from the return address of a <code>call</code>, so it doesn't depend on where the code lies.</p>
+<pre><code>push 16A8 / push ecx / call text / add esp,8  →  call $+5 / add dword [esp],5C / lea ecx,[esp+10] / call CString::operator=</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>

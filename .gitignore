@@ -31,3 +31,6 @@ dll/*.dll
 dll/*.obj
 dll/*.exp
 dll/*.lib
+
+# Python
+__pycache__/

@@ -58,6 +58,7 @@
     </Compile>
     <Compile Include="GameInstall.cs" />
     <Compile Include="GogPatches.cs" />
+    <Compile Include="ManagerCode.cs" />
     <Compile Include="Patches.cs" />
     <Compile Include="PatchTile.cs">
       <SubType>Component</SubType>

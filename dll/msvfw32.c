@@ -35,6 +35,7 @@
 // 4194304 fish:    the poisoning of text 732 lasts 7 days     ->  21, as the message says
 // 8388608 appearances: "at the club" never cleared, list full ->  set anew from the squad before each count
 // 16777216 manager: private life built from the other kind's table -> its own (39 cases), two cases fixed
+// 33554432 grade chart: axis label text 5800 "Formpunkte/6"   ->  "Noten/6", kept behind the function
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -148,7 +149,9 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_FISH         4194304
 #define FLAG_APPEARANCES  8388608
 #define FLAG_MANAGER      16777216   // the first bit of the fourth flags byte
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\xFF\x01";   // all on
+#define FLAG_GRADE_CHART  33554432
+#define FLAG_REFEREE      67108864
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\xFF\x07";   // all on
 #define CONFIG_FLAGS ((DWORD)g_config[14] | (DWORD)g_config[15] << 8 | (DWORD)g_config[16] << 16 | (DWORD)g_config[17] << 24)
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -1360,14 +1363,133 @@ static const RewritePlace kListPlaces[] = { PLACE(kListStart), PLACE(kListSort),
 // ---- 16777216: manager events ------------------------------------------------------------------
 
 // As in Patches.cs (ManagerEvents): the manager's private life gets its own table of 39 cases (56 bytes behind
-// the one the game uses), case 34 weight 0, and FUN_00565860 passes the manager's name twice.
+// the one the game uses), and FUN_00565860 passes the manager's name twice.
 static const WORD kManagerBuild[] = { 0x6A, 0xFF, 0x68, ANY, ANY, ANY, ANY, 0x6A, 0x0E, 0xB9, ANY, ANY, ANY, ANY, 0xE8, ANY, ANY, ANY, ANY, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x53, 0x56, 0x57, 0x33, 0xF6, 0xB9, ANY, ANY, ANY, ANY, 0xE8, ANY, ANY, ANY, ANY, 0x8B, 0xD8, 0x66, 0x85, 0xDB, 0x0F, 0x84, 0x95, 0x00, 0x00, 0x00, 0x66, 0x8B, 0x15, ANY, ANY, ANY, ANY, 0x33, 0xC0, 0x66, 0x85, 0xD2, 0x7E, 0x26, 0x0F, 0xBF, 0xCB, 0x81, 0xC1, 0x60, 0x6D, 0x00, 0x00 };
 static const WORD kManagerBuildPatched[] = { 0x6A, 0xFF, 0xB8, ANY, ANY, ANY, ANY, 0x83, 0xC0, 0x38, 0x50, 0x6A, 0x27, 0xB9, ANY, ANY, ANY, ANY, 0xE8, ANY, ANY, ANY, ANY, 0xC3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x53, 0x56, 0x57, 0x33, 0xF6, 0xB9, ANY, ANY, ANY, ANY, 0xE8, ANY, ANY, ANY, ANY, 0x8B, 0xD8, 0x66, 0x85, 0xDB, 0x0F, 0x84, 0x95, 0x00, 0x00, 0x00, 0x66, 0x8B, 0x15, ANY, ANY, ANY, ANY, 0x33, 0xC0, 0x66, 0x85, 0xD2, 0x7E, 0x26, 0x0F, 0xBF, 0xCB, 0x81, 0xC1, 0x60, 0x6D, 0x00, 0x00 };
-static const WORD kManagerWeight[] = { 0x19, 0x00, 0x20, 0x00, 0x19, 0x00, 0x21, 0x00, 0x04, 0x00, 0x22, 0x00, 0x02, 0x00, 0x23, 0x00, 0x01, 0x00, 0x24, 0x00 };
-static const WORD kManagerWeightPatched[] = { 0x19, 0x00, 0x20, 0x00, 0x19, 0x00, 0x21, 0x00, 0x00, 0x00, 0x22, 0x00, 0x02, 0x00, 0x23, 0x00, 0x01, 0x00, 0x24, 0x00 };
 static const WORD kManagerNames[] = { 0x8D, 0x48, 0x0A, 0x51, 0x50, 0x68, ANY, ANY, ANY, ANY, 0x52, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x10, 0x8D, 0x44, 0x24, 0x04, 0x8D, 0x8C, 0x24, 0xF8, 0x01, 0x00, 0x00, 0x50, 0x56, 0x51, 0xE8, ANY, ANY, ANY, ANY, 0x8B, 0x94, 0x24, 0x0C, 0x04, 0x00, 0x00, 0x8B, 0x8C, 0x24, 0x00, 0x04, 0x00, 0x00, 0x83, 0xC4, 0x0C, 0x8D, 0x84, 0x24, 0xF8, 0x01, 0x00, 0x00 };
 static const WORD kManagerNamesPatched[] = { 0x8D, 0x48, 0x0A, 0x51, 0x50, 0x68, ANY, ANY, ANY, ANY, 0x52, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x10, 0x8D, 0x44, 0x24, 0x04, 0x50, 0x50, 0x56, 0x8D, 0xB4, 0x24, 0x04, 0x02, 0x00, 0x00, 0x56, 0xE8, ANY, ANY, ANY, ANY, 0x8B, 0x94, 0x24, 0x10, 0x04, 0x00, 0x00, 0x8B, 0x8C, 0x24, 0x04, 0x04, 0x00, 0x00, 0x83, 0xC4, 0x10, 0x8B, 0xC6, 0x90, 0x90, 0x90, 0x90 };
-static const RewritePlace kManagerPlaces[] = { PLACE(kManagerBuild), PLACE(kManagerWeight), PLACE(kManagerNames) };
+static const RewritePlace kManagerPlaces[] = { PLACE(kManagerBuild), PLACE(kManagerNames) };
+
+// The code for the cases 13, 21, 25, 34, 35 and 39 (managercode.h, generated with ManagerCode.cs by
+// tools/make_manager.py): linked as ManagerEvents.Link does for the 2007 CD release's build, into three
+// functions nothing calls, and the switch's jump table points there. Only if all of them hold their
+// original bytes; NOT_YET until the switch is in memory.
+#include "managercode.h"
+// movsx eax,word [esp+7F4] / dec eax / cmp eax,26 / ja return 1 / jmp [eax*4+table]
+static const WORD kManagerSwitch[] = { 0x0F, 0xBF, 0x84, 0x24, 0xF4, 0x07, 0x00, 0x00, 0x48, 0x83, 0xF8, 0x26, 0x0F, 0x87, ANY, ANY, ANY, ANY,
+    0xFF, 0x24, 0x85, ANY, ANY, ANY, ANY };
+#define MANAGER_TABLE_AT 21
+#define QUESTION_SIZE 0x2C
+static const BYTE kManagerRegionOf[4] = { 0, 0, 1, 2 };   // MAIN and the questions into the first function
+static BYTE g_managerCode[3][1216];                       // the three functions as linked (the first is the largest)
+
+// Links the blocks into g_managerCode as ManagerEvents.Link does; entries: where the cases now start.
+static void ManagerLink(DWORD *entries)
+{
+    DWORD values[4 + ARRAYSIZE(kManagerSymbols) + 3];
+    // Where the blocks go: the questions at the first entry of the question table behind MAIN.
+    DWORD mainEnd = kManagerRegions[0] + kManagerBlockSizes[0];
+    DWORD questions = mainEnd + (MANAGER_QUESTIONS - mainEnd) % QUESTION_SIZE;
+    int first = ((int)questions - (int)MANAGER_QUESTIONS) / QUESTION_SIZE;
+    values[0] = kManagerRegions[0];
+    values[1] = questions;
+    values[2] = kManagerRegions[1];
+    values[3] = kManagerRegions[2];
+    for (int i = 0; i < ARRAYSIZE(kManagerSymbols); i++) values[4 + i] = kManagerSymbols[i];
+    for (int i = 0; i < 3; i++) values[4 + ARRAYSIZE(kManagerSymbols) + i] = (DWORD)(first + i);
+    for (int r = 0; r < 3; r++)
+        for (int i = 0; i < kManagerRegionSizes[r]; i++) g_managerCode[r][i] = 0xCC;
+    for (int b = 0; b < 4; b++)
+    {
+        BYTE *code = g_managerCode[kManagerRegionOf[b]] + (values[b] - kManagerRegions[kManagerRegionOf[b]]);
+        Copy(code, kManagerBlocks[b], kManagerBlockSizes[b]);
+        for (int i = 0; i < kManagerFieldCounts[b]; i++)
+        {
+            const int *field = kManagerFields[b] + 4 * i;
+            DWORD value = values[field[2]] + (DWORD)field[3];
+            if (field[1]) value -= values[b] + (DWORD)field[0] + 4;
+            Copy(code + field[0], (const BYTE *)&value, 4);
+        }
+    }
+    for (int k = 0; k < ARRAYSIZE(kManagerCases); k++) entries[k] = values[kManagerEntries[k][0]] + kManagerEntries[k][1];
+}
+
+static int PatchManagerCode(BYTE *base, SIZE_T size)
+{
+    BYTE *at;
+    DWORD table, entries[ARRAYSIZE(kManagerCases)];
+    int found = Count(base, size, kManagerSwitch, ARRAYSIZE(kManagerSwitch), &at);
+    if (found == 0) return NOT_YET;
+    Copy((BYTE *)&table, at + MANAGER_TABLE_AT, 4);
+    if (found != 1 || (DWORD)(ULONG_PTR)at != MANAGER_SWITCH || table != MANAGER_TABLE) return DONE;
+    // Only from the original state: the three functions, then the jump table.
+    for (int r = 0; r < 3; r++)
+    {
+        BYTE *region = (BYTE *)(ULONG_PTR)kManagerRegions[r];
+        if (region < base || region + kManagerRegionSizes[r] > base + size || !Equal(region, kManagerOriginals[r], kManagerRegionSizes[r])) return DONE;
+    }
+    for (int k = 0; k < ARRAYSIZE(kManagerCases); k++)
+    {
+        DWORD entry;
+        Copy((BYTE *)&entry, (BYTE *)(ULONG_PTR)(table + 4 * (kManagerCases[k] - 1)), 4);
+        if (entry != kManagerCaseTargets[k]) return DONE;
+    }
+    ManagerLink(entries);
+    for (int r = 0; r < 3; r++) Write((BYTE *)(ULONG_PTR)kManagerRegions[r], g_managerCode[r], kManagerRegionSizes[r]);
+    for (int k = 0; k < ARRAYSIZE(kManagerCases); k++) Write((BYTE *)(ULONG_PTR)(table + 4 * (kManagerCases[k] - 1)), (const BYTE *)&entries[k], 4);
+    return DONE;
+}
+
+// ---- 67108864: referee grudge ----------------------------------------------------------------------
+
+// As in Patches.cs (RefereeGrudge): the match's scenes compare a referee's grudge (match +22E, the club's
+// number or -1) with the club's number plus one and skip 0; the patch drops both (je -> nop x2, inc edx -> nop).
+static const WORD kReferee[] = { 0x66, 0x8B, 0x83, 0x2E, 0x02, 0x00, 0x00, 0x66, 0x85, 0xC0, 0x74, 0x27, 0x33, 0xD2, 0x8A, 0x97, 0x02, 0x01, 0x00, 0x00, 0x0F, 0xBF, 0xC0, 0x42, 0x3B, 0xC2, 0x75, 0x17 };
+static const WORD kRefereePatched[] = { 0x66, 0x8B, 0x83, 0x2E, 0x02, 0x00, 0x00, 0x66, 0x85, 0xC0, 0x90, 0x90, 0x33, 0xD2, 0x8A, 0x97, 0x02, 0x01, 0x00, 0x00, 0x0F, 0xBF, 0xC0, 0x90, 0x3B, 0xC2, 0x75, 0x17 };
+
+// ---- 33554432: grade chart label ----------------------------------------------------------------
+
+// As in Patches.cs (GradeChartLabel): the grade chart in the statistics (FUN_0045ceb0) loads its axis label as
+// text 5800 "Formpunkte/6" through FUN_00619c10. The patch assigns "Noten/6" instead, kept in the 9 nops behind
+// the function's ret: call $+5 / add dword [esp],5C / lea ecx,[esp+10] / call CString::operator=(const char*),
+// the first call of FUN_00619c10, which the next label (5801) calls too.
+#define CHART_REST \
+    0x8D, 0x54, 0x24, 0x10, 0x68, 0xA9, 0x16, 0x00, 0x00, 0x52, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x04, \
+    0x8D, 0x44, 0x24, 0x10, 0x8B, 0xCC, 0x50, 0xE8, ANY, ANY, ANY, ANY, 0x51, 0x8D, 0x54, 0x24, 0x18, 0x8B, 0xCC, 0x52, 0xE8, ANY, ANY, ANY, ANY, \
+    0x8B, 0x8E, 0xFC, 0x05, 0x01, 0x00, 0xE8, ANY, ANY, ANY, ANY, 0x8D, 0x4C, 0x24, 0x10, 0xE8, ANY, ANY, ANY, ANY, \
+    0x8D, 0x4C, 0x24, 0x0C, 0xE8, ANY, ANY, ANY, ANY, 0x5F, 0x5E, 0x5B, 0x83, 0xC4, 0x68, 0xC3
+static const WORD kChart[] = { 0x8D, 0x4C, 0x24, 0x0C, 0x68, 0xA8, 0x16, 0x00, 0x00, 0x51, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x08, CHART_REST,
+    0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+static const WORD kChartPatched[] = { 0xE8, 0x00, 0x00, 0x00, 0x00, 0x83, 0x04, 0x24, 0x5C, 0x8D, 0x4C, 0x24, 0x10, 0xE8, ANY, ANY, ANY, ANY, CHART_REST,
+    'N', 'o', 't', 'e', 'n', '/', '6', 0x00, 0x90 };
+static const WORD kChartLoader[] = { 0x8B, 0x4C, 0x24, 0x08, 0x81, 0xEC, 0x00, 0x02, 0x00, 0x00, 0x8D, 0x44, 0x24, 0x00, 0x68, 0x00, 0x01, 0x00, 0x00,
+    0x50, 0x51, 0xE8, ANY, ANY, ANY, ANY, 0x85, 0xC0, 0x75, 0x18, 0x8B, 0x8C, 0x24, 0x04, 0x02, 0x00, 0x00, 0x68, ANY, ANY, ANY, ANY,
+    0xE8, ANY, ANY, ANY, ANY, 0x81, 0xC4, 0x00, 0x02, 0x00, 0x00, 0xC3 };
+static const BYTE kChartCode[18] = { 0xE8, 0x00, 0x00, 0x00, 0x00, 0x83, 0x04, 0x24, 0x5C, 0x8D, 0x4C, 0x24, 0x10, 0xE8, 0x00, 0x00, 0x00, 0x00 };
+static const BYTE kChartLabel[9] = { 'N', 'o', 't', 'e', 'n', '/', '6', 0x00, 0x90 };
+#define CHART_TEXT_CALL 0x0A
+#define CHART_ASSIGN_CALL 0x0D
+#define CHART_NEXT_TEXT_CALL 0x1C
+#define CHART_LABEL_AT 0x61
+#define LOADER_ASSIGN_CALL 0x2A
+
+// Writes the string behind the function, then the assignment, once the loader is where both labels' calls lead.
+static int PatchChart(BYTE *base, SIZE_T size)
+{
+    BYTE *site, *patchedSite, code[sizeof kChartCode];
+    int count = Count(base, size, kChart, ARRAYSIZE(kChart), &site);
+    int countPatched = Count(base, size, kChartPatched, ARRAYSIZE(kChartPatched), &patchedSite);
+    if (count + countPatched == 0) return NOT_YET;
+    if (count != 1 || countPatched != 0) return DONE;
+    BYTE *loader = CallTarget(site + CHART_NEXT_TEXT_CALL);
+    if (CallTarget(site + CHART_TEXT_CALL) != loader || !ReadableAt(loader, ARRAYSIZE(kChartLoader))
+        || !Matches(loader, kChartLoader, ARRAYSIZE(kChartLoader))) return DONE;
+    Copy(code, kChartCode, sizeof code);
+    PutDword(code + CHART_ASSIGN_CALL + 1, (DWORD)(CallTarget(loader + LOADER_ASSIGN_CALL) - (site + CHART_ASSIGN_CALL + 5)));
+    Write(site + CHART_LABEL_AT, kChartLabel, sizeof kChartLabel);
+    Write(site, code, sizeof code);
+    return DONE;
+}
 
 // ---- the patch thread -----------------------------------------------------------------------------
 
@@ -1390,7 +1512,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL coachDone = !(flags & FLAG_COACH), moneyDone = !(flags & FLAG_MONEY);
     BOOL eventsDone = !(flags & FLAG_EVENTS), gradesDone = !(flags & FLAG_GRADES), competenceDone = !(flags & FLAG_COMPETENCE);
     BOOL crashesDone = !(flags & FLAG_CRASHES), fishDone = !(flags & FLAG_FISH), appearancesDone = !(flags & FLAG_APPEARANCES), managerDone = !(flags & FLAG_MANAGER);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone && moneyDone && eventsDone && gradesDone && competenceDone && crashesDone && fishDone && appearancesDone && managerDone)
+    BOOL chartDone = !(flags & FLAG_GRADE_CHART), refereeDone = !(flags & FLAG_REFEREE);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone && moneyDone && eventsDone && gradesDone && competenceDone && crashesDone && fishDone && appearancesDone && managerDone && chartDone && refereeDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -1417,7 +1540,9 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!crashesDone) crashesDone = PatchRewrites(base, size, kCrashPlaces, ARRAYSIZE(kCrashPlaces)) == DONE;
         if (!fishDone) fishDone = PatchRewrite(base, size, kFish, kFishPatched, ARRAYSIZE(kFish)) == DONE;
         if (!appearancesDone) appearancesDone = PatchRewrites(base, size, kListPlaces, ARRAYSIZE(kListPlaces)) == DONE;
-        if (!managerDone) managerDone = PatchRewrites(base, size, kManagerPlaces, ARRAYSIZE(kManagerPlaces)) == DONE;
+        if (!managerDone) managerDone = (PatchRewrites(base, size, kManagerPlaces, ARRAYSIZE(kManagerPlaces)) == DONE) & (PatchManagerCode(base, size) == DONE);
+        if (!chartDone) chartDone = PatchChart(base, size) == DONE;
+        if (!refereeDone) refereeDone = PatchRewrite(base, size, kReferee, kRefereePatched, ARRAYSIZE(kReferee)) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

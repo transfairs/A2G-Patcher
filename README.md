@@ -4,7 +4,7 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
 
 "Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes and current Windows.
 
-- **Spielfehler** (Behebt: Geldanlagen, Ereignisse, …), one switch for fourteen bug fixes; each keeps its own places
+- **Spielfehler** (Behebt: Geldanlagen, Ereignisse, …), one switch for fifteen bug fixes; each keeps its own places
   and DLL flag, and the switch counts as on once one of them is applied (an exe patched by an older
   version keeps its fixes, and applying completes the rest):
   - **Geldanlagen** (Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen): the game takes every
@@ -27,6 +27,11 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   - **Ereignis-Abstürze** (Kein Absturz bei Ereignissen, für die kein passender Spieler da ist): some random
     events draw a player and use him without checking that one was found (for instance when the one drawn
     is on loan). The game then crashes. With the patch the event doesn't happen.
+  - **Schiedsrichter-Groll** (Schiedsrichter mit Groll treffen in den Spielszenen den richtigen Verein): a
+    referee can hold a grudge against a club, for instance after the manager insulted him in front of a
+    microphone. In league matches he then shows that club's players more cards, as intended, but the scenes
+    he decides compare the grudge with the club's number plus one: they hit the club with the next lower
+    number, and never club 0. With the patch they hit the club he holds the grudge against.
   - **Trainerkompetenz** (Trainer und Manager in schwachen Ländern werden jährlich besser): once a year the
     game raises every tenth trainer or manager by 1 or 2 points in countries where their average is below
     6, but it never stores the new value. With the patch they keep it; the cut in countries with an
@@ -34,7 +39,8 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   - **Notenschnitt** (Einsätze ohne Note zählen nicht im Notenschnitt (Spielerdetails, Fans)): a player who
     plays less than 20 minutes gets no mark. If he gets a card, the season average in his details and the
     fans' check for a hated player count that appearance as mark 0, better than a 1. With the patch only
-    marks count, as in the team statistics.
+    marks count, as in the team statistics. The chart of the average marks per week in the statistics
+    labels its axis "Formpunkte/6", the label of the form chart; with the patch it reads "Noten/6".
   - **Meiste Einsätze** (Vereinsliste der meisten Einsätze nimmt nach 50 Spielern wieder neue auf): the
     club list of the players with the most appearances keeps 50 players. A player who leaves stays marked as
     still at the club, so once 50 have played for the club nobody new gets in, and the list stays as it is
@@ -112,11 +118,23 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   ("Fischvergiftung"): the message of this random event says the player is out for three weeks, but the
   game enters a fish poisoning with its usual 7 days. With the patch he misses the three weeks.
 - **Weitere Ereignisse rund um den Manager: Presse, Fans, Privatleben** ("Manager-Ereignisse"): the
-  events of the manager's private life draw from the wrong table, so 24 of their 38 cases never come. Their
-  own table gives about 20 more events: suspicion of rioting with hooligans, a national order, a book of his
-  own, a speech the microphones caught, fans honking at night or throwing tomatoes when the manager stands
-  badly with them, and more. The ones known so far come less often. Two of the new ones needed a fix to
-  show properly; one that would show without its name stays out.
+  events of the manager's private life draw from the wrong table, so 25 of their 39 cases never come. Their
+  own table brings them: suspicion of rioting with hooligans, a national order, a book of his own, a speech
+  the microphones caught, fans honking at night or throwing tomatoes while the board's trust is low, and
+  more. The ones known so far come less often. Six cases had no working code in the game, and get it:
+  - a standing-room debate (a question: for removing the standing room angers the fans; against it pleases
+    fans and public, but not the board),
+  - an anonymous caller who offers, for a fee from the manager's own money, to wreck the office of another
+    human player's club (a question; the damage goes to that club or its insurance),
+  - an inheritance of 100 shares of the club's arch rival (with the stock market on, a free slot and within
+    the 10 % a manager may hold),
+  - respect from a journalist who can't stand the manager (outlet and full name; he turns friendly in the
+    interviews; only with the "Interviews" tile, which gives journalists their mood),
+  - the player of the month (a question with three players to choose from: the best average mark of the
+    last four match days gains three form points, another choice costs some players one),
+  - an affair with the wife of the referee of the last league match, who then holds a grudge against the
+    club.
+  The honking fans' message names the manager twice and gets his name both times.
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -526,10 +544,10 @@ mov eax,[esp+8] / add eax,36C (876 or 877) / ... / call sprintf / add esp,10 / p
 mov cl,[ebx+esi+884] / lea eax,[eax+ecx+1] / jmp message
 ```
 
-**Manager events** (Balancing). `0x55c900` holds the manager's private life, 38 cases (texts from 491 on);
+**Manager events** (Balancing). `0x55c900` holds the manager's private life, 39 cases (texts from 491 on);
 `0x55c840` draws one from a weighted dispatcher (`0x784ce8`, pairs {weight, case}, one of the last 20
 shown is drawn again once). `0x55c820` builds it from `0x6bd248`, the 14 pairs the other kind of events
-(`0x55c230`) uses, so cases 15 to 38 never come. The table 56 bytes behind (`0x6bd280`, 39 pairs, weights
+(`0x55c230`) uses, so cases 15 to 39 never come. The table 56 bytes behind (`0x6bd280`, 39 pairs, weights
 1 to 25) is referenced nowhere. The patch builds the dispatcher from it, in the builder's bytes and 4 of
 the 12 nops behind (the dispatcher's start, `add ecx,6D60`, tells it from the other one):
 
@@ -539,21 +557,49 @@ push -1 / push 6BD248 / push 0E / mov ecx,dispatcher / call / ret
 ```
 
 The new cases were never played, so each was read: most show a message and change a value of the manager
-or the club. Two needed more. Case 34 (text 530) fills "%s, der Sie eigentlich gar nicht leiden kann" with
-an empty string; its weight 4 becomes 0. Case 32 (text 528, fans honking at night) names the manager twice,
-but `0x565860` passes his name once, and `sprintf` takes the caller's `esi`, saved behind the arguments, as
-the second string: garbage or a crash. The patch passes the name twice; texts with one name ignore the
-second (`0x565896`):
+or the club. Case 32 (text 528, fans honking at night) names the manager twice, but `0x565860` passes his
+name once, and `sprintf` takes the caller's `esi`, saved behind the arguments, as the second string:
+garbage or a crash. The patch passes the name twice; texts with one name ignore the second (`0x565896`):
 
 ```
 lea eax,[esp+4] / lea ecx,[esp+1F8] / push eax / push esi / push ecx / call sprintf / ... / lea eax,[esp+1F8]
 ->  lea eax,[esp+4] / push eax / push eax / push esi / lea esi,[esp+204] / push esi / call sprintf / ... / mov eax,esi
 ```
 
-Case 25 (text 521, an inheritance) builds its text but neither shows it nor books anything, cases 21, 35
-and 39 do nothing; they stay as they are. The honking and the tomatoes (weight 25 each of 112) only come
-for a manager with less than 60 points of standing; else the draw brings nothing that day. GOG and 2007 CD:
-`0x55eb10`, `0x6c03fc`, `0x567b73`.
+The honking, the tomatoes (weight 25 each of 112) and the two front pages only come while the board's
+trust (`0x639100`) is below 60, the front pages only in the first division (`+0x104` 0); else the draw
+brings nothing that day. GOG and 2007 CD: `0x55eb10`, `0x6c03fc`, `0x567b73`.
+
+Six cases get code of their own (`tools/manager_events.asm`, MASM, assembled by `tools/make_manager.py` into
+`ManagerCode.cs` and `dll/managercode.h`):
+
+| Case | Texts | In the game | With the patch |
+|---|---|---|---|
+| 13 | 503-505 | no code (drawn, nothing happens) | question (standing room); yes: fans -10, no: public and fans +5, board -5 |
+| 21 | 514-517 | no code | with a second human player: question, fee 10,000 DM x money factor from the manager's own money; yes: damage 50,000 DM x factor to the other club, or its insurance pays (half the time) |
+| 25 | 521 | text built, never shown, nothing booked | 100 shares of the arch rival (`+0xF4`) at 0 DM into the manager's slots (`+0xD8`, six of 16 bytes), with the stock market on (`0x826ba5`), the rival listed and within 10 % of its shares |
+| 34 | 530 | name empty | the most hostile journalist of the club's country (mood `+0x30 + number - 1` of his record at `0x78d768 + slot * 0x19EA + i * 0x34`, 4 and above), outlet and full name; his mood becomes 1 (friendly) |
+| 35 | 531-533 | no code | question with the three best average marks of the last four match days (`+0x130 + day`) as buttons, in random order; the best: +3 form, else some players -1 |
+| 39 | 537 | no code | the referee of the last league match (`0x58a090`) holds a grudge against the club (`+7` of his record) |
+
+The game keeps a journalist's outlet and last name only; case 34 reads his first name from `KLEINIG.SAV`
+(the line behind outlet and last name) and leaves it out if the file doesn't hold them. The journalists'
+moods only change with the interviews' effects (see **Interviews**). The questions are entries of the
+question table (`0x6bd610`, 0x2C bytes each), which the dialog reads at table + number * 0x2C with a 16-bit
+number, so they must lie within 0x160000 bytes below or above it.
+
+The code goes into three functions nothing refers to (no call, jump, operand or table entry): `0x56e820`
+(a news item never drawn, 1216 bytes with its padding) holds `MAIN` and behind it the questions, `0x603cd0`
+(debug keys of the match, 640) `KEYS`, `0x5b45c0` (tab stops of a list box, 400) `TABS`; the rest is `int3`.
+The jump table of `0x55c900` (`0x55d5d4`) then leads cases 13, 21, 25, 34, 35 and 39 there. Each entry
+point keeps `0x55c900`'s frame and returns from it. GOG and 2007 CD: `0x570ad0`, `0x608630`, `0x5b7320`,
+table `0x55f8c4`, outside the 2007 release's CRC stretches. The patch knows the three builds by the switch's
+address and the import table entry of `GetAsyncKeyState` (GOG and the 2007 CD share addresses, not
+imports), with their functions' original bytes (`tools/manager_builds.py`), and puts those back when it's
+taken back. The code was checked in an x86 emulator against the game's functions as stand-ins; the DLL and
+`ManagerEvents.Link` link it to the same bytes.
+
+Version 0.5.0 left case 34 out with weight 0 (`0x6bd304`); the patch puts the 4 back, switched on or off.
 
 **Fish poisoning** (Balancing). Text 732 says "fällt drei Wochen aus". `0x633a60` is called only by the
 referee events, event 0 being the poisoning; the patch gives it 21 days whatever kind the table holds, in
@@ -598,6 +644,20 @@ the result without testing it:
 Each in its own bytes: `pop ecx` twice instead of `add esp,8` makes room (`0x5bb160` reads the player's
 number as a word). In GOG and the 2007 CD the places lie 0x22F0 bytes (`0x5bbcb0`: 0x2D30) further on.
 
+**Referee grudge.** A referee's record (10 bytes at `0x9133e8 + id * 10`, read and written by `0x57d550` and
+`0x57d590`) holds at `+7` the number of a club he holds a grudge against, or -1. The microphone (manager
+event 36), two interview answers and the affair (event 39 with the manager events) set it; a match copies
+it to `+0x22E` (`0x5f0120`). The cards (`0x5f3640`) compare it with the club's number and lower the threshold
+by 10 in league matches. The scenes he decides (`0x404ec0`, at `0x404fa1` in all three builds) compare it with
+the number plus one and skip 0, so they hit the club with the next lower number. The patch drops both:
+
+```
+mov ax,[ebx+22E] / test ax,ax / je / xor edx,edx / mov dl,[edi+102] / movsx eax,ax / inc edx / cmp eax,edx / jne
+->  ... / test ax,ax / nop / nop / ... / nop / cmp eax,edx / jne
+```
+
+No grudge (-1) never equals a club's number (0 to 255).
+
 **Appearances list.** Each human manager's club keeps two lists of 50 entries of 20 bytes (`0x793030` and
 `0x79347c`, plus `0x4210` per manager): goals and appearances, each entry with the player's number (`+0`),
 birth year (`+6`) and a flag "at the club" (`+8`). After a match `0x61ef70` counts the appearances
@@ -638,6 +698,21 @@ team statistics count an appearance only with a mark (`0x460f0b`), but the seaso
 details (`0x4fcc46`) and the fans' check for a hated player (`0x639fcd`, at least 4 marks, average 4.5 or
 worse) test mark and cards together, so a short appearance with a card counts as mark 0. The patch tests
 the mark alone in both (`test al,1F` -> `test al,1C`; GOG and 2007 CD `0x4fee76`, `0x63eb0d`).
+
+**Grade chart.** The statistics' charts (`0x45ceb0`) load their texts from `RESDLL.dll` through `0x619c10`
+(text number into a `CString`). The grade chart (case `0x17`, title 2426 "Notenschnitt") takes text 5800
+"Formpunkte/6" for its axis, the form chart's; `RESDLL.dll` has no text for marks. The patch assigns
+"Noten/6" from the exe instead, in the same 18 bytes at `0x461476` (GOG and 2007 CD `0x463536`, outside the
+2007 release's CRC stretches). The string goes into the 9 NOPs behind the function's `ret`; the call pushes
+the address behind it, which the `add` moves to the string, so nothing depends on where the code is loaded:
+
+```
+lea ecx,[esp+C] / push 16A8 / push ecx / call 0x619c10 / add esp,8
+->  call $+5 / add dword [esp],5C / lea ecx,[esp+10] / call CString::operator=(const char*)
+```
+
+`CString::operator=` (`ret 4`) is the first call in `0x619c10`, which the next label (5801 "Woche") calls
+too; the patch takes both targets from there, in either state.
 
 ### GOG release
 
@@ -770,7 +845,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
   counters, 32768 investments, 65536 trainer supply, 131072 money limit, 262144 events, 524288 grade
-  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events; the
+  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events, 33554432 grade chart, 67108864 referee grudge; the
   build has all on). Older versions had two or three bytes; the NUL ending their string and its padding
   follow them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the

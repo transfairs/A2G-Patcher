@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
-    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ vierzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät) sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen vier Patches nur für die GOG-Version.</p>
+    <p class="intro">Im Fenster in drei Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ fünfzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät) sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Dazu kommen vier Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -88,6 +88,14 @@
       <article class="card">
         <div class="card-head">
           <span class="tag tag-fix">Spielfehler</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M12 8v5M12 16h.01"/></svg>
+        </div>
+        <h3>Schiedsrichter mit Groll treffen den richtigen Verein</h3>
+        <p>Ein Schiedsrichter kann einem Verein etwas nachtragen, etwa wenn der Manager ihn vor einem Mikrofon beschimpft hat. In Ligaspielen zeigt er dessen Spielern dann mehr Karten, wie vorgesehen. Die Spielszenen, in denen er entscheidet, vergleichen den Groll aber mit der Vereinsnummer plus eins und treffen so den Verein mit der nächstniedrigeren Nummer, den Verein mit der Nummer&nbsp;0 nie. Mit dem Patch trifft es den Verein, dem er grollt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Spielfehler</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-5 4 3 7-8"/><path d="M15 8h5v5"/></svg>
         </div>
         <h3>Trainer und Manager in schwachen Ländern werden besser</h3>
@@ -99,7 +107,7 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="1"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
         </div>
         <h3>Einsätze ohne Note zählen nicht im Notenschnitt</h3>
-        <p>Wer weniger als 20&nbsp;Minuten spielt, bekommt keine Note. Sieht er dabei eine Karte, zählen der Saisonschnitt in den Spielerdetails und die Prüfung der Fans auf einen verhassten Spieler diesen Einsatz als Note&nbsp;0, besser als eine 1. Mit dem Patch zählen nur Noten, wie in der Mannschaftsstatistik.</p>
+        <p>Wer weniger als 20&nbsp;Minuten spielt, bekommt keine Note. Sieht er dabei eine Karte, zählen der Saisonschnitt in den Spielerdetails und die Prüfung der Fans auf einen verhassten Spieler diesen Einsatz als Note&nbsp;0, besser als eine 1. Mit dem Patch zählen nur Noten, wie in der Mannschaftsstatistik. Außerdem steht an der Achse des Notenverlaufs in der Statistik „Noten/6“ statt „Formpunkte/6“, der Beschriftung der Formkurve.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -265,7 +273,8 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/><path d="M18 3l1.5 1.5M20 8h2"/></svg>
         </div>
         <h3>Weitere Ereignisse rund um den Manager</h3>
-        <p>Die Ereignisse aus dem Privatleben des Managers werden aus der falschen Tabelle gewürfelt, 24 ihrer 38 Fälle kommen deshalb nie vor. Mit ihrer eigenen Tabelle kommen rund 20 Ereignisse hinzu: der Verdacht, mit Hooligans randaliert zu haben, ein Staatsorden, ein eigenes Buch, ein Mikrofon, das jedes Wort mitschneidet, und Fans, die nachts hupen oder mit Tomaten werfen, wenn der Manager bei ihnen schlecht dasteht. Die bekannten kommen dafür seltener. Zwei der neuen brauchten eine Korrektur; eines, das ohne seinen Namen erschiene, bleibt draußen.</p>
+        <p>Die Ereignisse aus dem Privatleben des Managers werden aus der falschen Tabelle gewürfelt, 25 ihrer 39 Fälle kommen deshalb nie vor. Mit ihrer eigenen Tabelle kommen sie hinzu: der Verdacht, mit Hooligans randaliert zu haben, ein Staatsorden, ein eigenes Buch, ein Mikrofon, das jedes Wort mitschneidet, und Fans, die nachts hupen oder mit Tomaten werfen, wenn der Vorstand dem Manager wenig vertraut. Die bekannten kommen dafür seltener.</p>
+        <p>Sechs Fälle hatten im Spiel keinen funktionierenden Code und bekommen ihn: eine Podiumsdiskussion über Stehplätze, ein anonymer Anrufer, der gegen Bezahlung aus dem eigenen Vermögen die Geschäftsstelle eines Mitspielers aufmischen will, die Erbschaft von 100&nbsp;Aktien des Erzrivalen, der Respekt eines Journalisten, der den Manager nicht leiden kann, die Wahl zum Spieler des Monats aus den drei besten Spielern der letzten vier Spieltage und eine Affäre mit der Frau eines Schiedsrichters, der dem Verein das nachträgt.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -470,9 +479,11 @@ Platz zurück ohne Eintrag: Kompetenz 2      →  3 + 4 × Zufall(3): 3 bis 11, 
       </details>
       <details class="tech-item">
         <summary><b>Manager-Ereignisse</b><span>Die Tabelle daneben</span></summary>
-        <p>Der Verteiler für das Privatleben des Managers wird aus derselben Tabelle gebaut wie der für eine andere Art Ereignisse (14 Paare aus Gewicht und Fall). Die eigene Tabelle mit 39 Paaren liegt 56&nbsp;Bytes dahinter und wird nirgends benutzt. Die neuen Fälle liefen nie, deshalb wurde jeder gelesen. Beim Hupkonzert steht der Name zweimal im Text, übergeben wird er einmal, und <code>sprintf</code> nimmt das gesicherte <code>esi</code> des Aufrufers als zweiten Text: Müll oder Absturz. Ein Fall, der seinen Namen leer lässt, bekommt Gewicht&nbsp;0.</p>
+        <p>Der Verteiler für das Privatleben des Managers wird aus derselben Tabelle gebaut wie der für eine andere Art Ereignisse (14 Paare aus Gewicht und Fall). Die eigene Tabelle mit 39 Paaren liegt 56&nbsp;Bytes dahinter und wird nirgends benutzt. Die neuen Fälle liefen nie, deshalb wurde jeder gelesen. Beim Hupkonzert steht der Name zweimal im Text, übergeben wird er einmal, und <code>sprintf</code> nimmt das gesicherte <code>esi</code> des Aufrufers als zweiten Text: Müll oder Absturz.</p>
+        <p>Sechs Fälle bekommen eigenen Code (MASM, <code>tools/manager_events.asm</code>): 13, 21, 35 und 39 haben nur ihre Texte, 25 baut seine Meldung, zeigt sie aber nie, 34 setzt für den Namen einen leeren Text ein. Der Code liegt in drei Funktionen, auf die nichts verweist (eine nie ausgewürfelte Nachricht, Debug-Tasten des Spiels, Tabstopps einer Listbox), die drei Fragen hinter dem ersten Teil, wo der Fragedialog sie erreicht. Die Sprungtabelle des <code>switch</code> führt die sechs Fälle dorthin. Den Vornamen des Journalisten liest der Fall aus <code>KLEINIG.SAV</code>; das Spiel behält nur Sender und Nachnamen.</p>
 <pre><code>push 6BD248 / push 0E          →  mov eax,6BD248 / add eax,38 / push eax / push 27
-push Name / push Text / push Ziel →  push Name / push Name / push Text / push Ziel</code></pre>
+push Name / push Text / push Ziel →  push Name / push Name / push Text / push Ziel
+jmp [eax*4+Tabelle]: Fälle 13, 21, 25, 34, 35, 39  →  eigener Code</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Meiste Einsätze</b><span>Ein Kennzeichen, das niemand löscht</span></summary>
@@ -505,6 +516,11 @@ Sortierung: Auswahl mit drei Kopierschleifen  →  Bubblesort, davor die Routine
 876/877 Bauverzögerung: Zufall(10) von 12 Gründen  →  Zufall(12); „wegen “ am Anfang eines Grundes wird übersprungen</code></pre>
       </details>
       <details class="tech-item">
+        <summary><b>Schiedsrichter-Groll</b><span>Eins zu viel</span></summary>
+        <p>Ein Schiedsrichter merkt sich die Nummer eines Vereins, dem er grollt, sonst −1. Die Karten vergleichen sie mit der Vereinsnummer, die Spielszenen mit der Nummer plus eins, und dort gilt die Null als „kein Groll“. Der Patch entfernt beides.</p>
+<pre><code>test ax,ax / je / … / inc edx / cmp eax,edx  →  test ax,ax / nop / nop / … / nop / cmp eax,edx</code></pre>
+      </details>
+      <details class="tech-item">
         <summary><b>Ereignis-Abstürze</b><span>Ein Spieler, den es nicht gibt</span></summary>
         <p>Zwei Funktionen losen einen Spieler des Kaders aus und geben NULL zurück, wenn der ausgeloste ein bestimmtes Kennzeichen hat oder keiner passt. Von ihren 71 Aufrufen lesen vier das Ergebnis ohne Prüfung. Der Patch prüft es an allen vier Stellen in deren eigenen Bytes; Platz schafft <code>pop ecx</code> zweimal statt <code>add esp,8</code>.</p>
 <pre><code>mov esi,eax / add esp,8 / cmp byte [esi+25],0A  →  pop ecx / pop ecx / xchg eax,esi / test esi,esi / je raus / …</code></pre>
@@ -518,6 +534,11 @@ Sortierung: Auswahl mit drei Kopierschleifen  →  Bubblesort, davor die Routine
         <summary><b>Notenschnitt</b><span>Karte und Note in einem Byte</span></summary>
         <p>Je Spieltag hält ein Byte des Spielers den Einsatz (Bit&nbsp;7), die Note (Bits&nbsp;2–4) und Karten (Bits&nbsp;0–1). Die Mannschaftsstatistik zählt einen Einsatz nur mit Note. Der Saisonschnitt in den Spielerdetails und die Prüfung der Fans prüfen Note und Karten zusammen, ein Kurzeinsatz mit Karte zählt dort also als Note&nbsp;0.</p>
 <pre><code>test al,80 / je / test al,1F / je  →  test al,1C (nur die Note), an beiden Stellen</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Notenverlauf</b><span>Ein Text, den es nicht gibt</span></summary>
+        <p>Die Grafiken der Statistik laden ihre Texte aus der <code>RESDLL.dll</code>. Der Notenverlauf nimmt für die Achse Text&nbsp;5800, „Formpunkte/6“, den der Formkurve; einen Text für Noten hat die <code>RESDLL.dll</code> nicht. Der Patch weist „Noten/6“ aus der Exe zu, in denselben 18&nbsp;Bytes. Die Zeichenkette steht in den 9&nbsp;NOPs hinter dem <code>ret</code> der Funktion; ihre Adresse ergibt sich aus der Rücksprungadresse eines <code>call</code>, also unabhängig davon, wo der Code liegt.</p>
+<pre><code>push 16A8 / push ecx / call Text / add esp,8  →  call $+5 / add dword [esp],5C / lea ecx,[esp+10] / call CString::operator=</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>
