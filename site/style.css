@@ -253,6 +253,8 @@ h1 {
 .icon { width: 30px; height: 30px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .card-alt .icon { stroke: var(--warm); }
 .card-alt:hover { border-color: color-mix(in srgb, var(--warm) 40%, var(--border)); }
+.card-text .icon { stroke: var(--accent-2); }
+.card-text:hover { border-color: color-mix(in srgb, var(--accent-2) 40%, var(--border)); }
 
 .tag {
   font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
@@ -261,6 +263,7 @@ h1 {
 .tag-fix { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .tag-opt { color: var(--warm); background: color-mix(in srgb, var(--warm) 14%, transparent); }
 .tag-gog { color: var(--text); background: color-mix(in srgb, var(--text) 10%, transparent); }
+.tag-text { color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 12%, transparent); }
 
 /* Scoreboard digits */
 .score {

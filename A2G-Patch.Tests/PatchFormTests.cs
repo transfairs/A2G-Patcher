@@ -161,33 +161,44 @@ namespace A2GPatch.Tests
             Assert.Equal(Color.FromArgb(255, 255, 255), PatchTile.Blend(Color.Black, Color.White, 1));
         }
 
-        // The tiles in their groups, three to a row, and the window drawn with banner and lines.
+        private static PatchTile[] TilesOf(Form form, PatchGroup group) =>
+            Patch.All.Where(p => p.Group == group).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
+
+        // One entry per group on the left; only the chosen group's tiles are in view, three to a row,
+        // and the window is drawn with banner and line.
         [Fact]
         public void Tiles_StandInTheirGroups() => StaThread.Run(() =>
         {
             using (PatchForm form = Form(new List<string>(), DialogResult.OK))
             {
-                Label[] headings = Enum.GetValues(typeof(PatchGroup)).Cast<PatchGroup>().Select(g => Find<Label>(form, g + "Label")).ToArray();
-                Assert.Equal(PatchForm.GroupTitles, headings.Select(h => h.Text));
+                GroupList groups = Find<GroupList>(form, "GroupList");
+                Assert.Same(groups, form.Groups);
+                Assert.Equal(PatchForm.GroupTitles, groups.Entries.Select(e => e.Title));
+                Assert.Equal(form.Theme.Groups, groups.Entries.Select(e => e.Accent));
+                Assert.Equal(0, groups.Selected);
                 foreach (Patch patch in Patch.All)
                 {
                     PatchTile tile = Find<PatchTile>(form, patch.GetType().Name + "Input");
                     Assert.Equal(patch.Title, tile.Title);
                     Assert.Equal(patch.Name, tile.Text);
                     Assert.Equal(form.Theme.Groups[(int)patch.Group], tile.Accent);
-                    // Below its own heading, above the next one.
-                    Assert.True(tile.Top > headings[(int)patch.Group].Bottom);
-                    Assert.True((int)patch.Group == headings.Length - 1 || tile.Bottom < headings[(int)patch.Group + 1].Top);
+                }
+                form.Show();
+                foreach (PatchGroup group in Enum.GetValues(typeof(PatchGroup)))
+                {
+                    groups.Selected = (int)group;
+                    Assert.All(Patch.All, p => Assert.Equal(p.Group == group, Find<PatchTile>(form, p.GetType().Name + "Input").Visible));
+                    Assert.All(TilesOf(form, group), t => Assert.True(t.Parent.Left >= groups.Right && t.Top >= 0));
                 }
                 // Five tiles in two rows.
-                Assert.Equal(2, Patch.All.Where(p => p.Group == PatchGroup.Patches).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input").Top).Distinct().Count());
-                form.Show();
+                groups.Selected = 0;
+                Assert.Equal(2, TilesOf(form, PatchGroup.Patches).Select(t => t.Top).Distinct().Count());
                 Draw(form);
             }
         });
 
         // Narrow, the tiles stand in one column and scroll; wide, three to a row. They never stick out
-        // of the panel, and rearranging keeps the scroll position.
+        // of the panel, and rearranging keeps the scroll position; another group starts at the top.
         [Fact]
         public void Tiles_FollowTheWindowSize() => StaThread.Run(() =>
         {
@@ -195,17 +206,16 @@ namespace A2GPatch.Tests
             {
                 form.Show();
                 Panel panel = Find<Panel>(form, "TilePanel");
-                PatchTile[] game = Patch.All.Where(p => p.Group == PatchGroup.Patches).Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
-                PatchTile[] all = Patch.All.Select(p => Find<PatchTile>(form, p.GetType().Name + "Input")).ToArray();
+                PatchTile[] game = TilesOf(form, PatchGroup.Patches);
 
                 form.Size = form.MinimumSize;
                 Application.DoEvents();
                 Assert.Equal(5, game.Select(t => t.Top).Distinct().Count());
                 Assert.True(panel.VerticalScroll.Visible);
                 Assert.False(panel.HorizontalScroll.Visible);
-                Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
+                Assert.All(game, t => Assert.True(t.Right <= panel.ClientSize.Width));
                 // Each tile as tall as its text needs, at least the usual height.
-                Assert.All(all, t => Assert.True(t.Height >= t.GetPreferredSize(new Size(t.Width, 0)).Height));
+                Assert.All(game, t => Assert.True(t.Height >= t.GetPreferredSize(new Size(t.Width, 0)).Height));
                 Draw(form);
 
                 panel.AutoScrollPosition = new Point(0, 10000);
@@ -215,11 +225,127 @@ namespace A2GPatch.Tests
                 Application.DoEvents();
                 Assert.Equal(top - scrolled, game[0].Top - panel.AutoScrollPosition.Y);
 
+                form.Groups.Selected = (int)PatchGroup.Texts;
+                Application.DoEvents();
+                Assert.Equal(0, panel.AutoScrollPosition.Y);
+                Assert.All(TilesOf(form, PatchGroup.Texts), t => Assert.True(t.Right <= panel.ClientSize.Width));
+
+                form.Groups.Selected = 0;
                 form.Size = SystemInformation.MaxWindowTrackSize;
                 Application.DoEvents();
                 Assert.Equal(2, game.Select(t => t.Top).Distinct().Count());
-                Assert.All(all, t => Assert.True(t.Right <= panel.ClientSize.Width));
+                Assert.All(game, t => Assert.True(t.Right <= panel.ClientSize.Width));
                 Draw(form);
+            }
+        });
+
+        // The groups count their switches that are on, show changes not yet applied and grey out when
+        // none of their patches fit the folder; Ctrl+Tab moves through them from anywhere.
+        [Fact]
+        public void Groups_ShowTheirSwitches_AndFollowCtrlTab() => StaThread.Run(() =>
+        {
+            using (GameFolder folder = new GameFolder())
+            {
+                File.WriteAllBytes(folder.File("anstoss2.exe"), GameCode.Both());
+                using (PatchForm form = Form(new List<string>(), DialogResult.OK, folder.Path))
+                {
+                    GroupEntry patches = form.Groups.Entries[(int)PatchGroup.Patches], gog = form.Groups.Entries[(int)PatchGroup.Gog];
+                    Assert.Equal(0, patches.On);
+                    Assert.False(patches.Pending);
+                    Assert.True(patches.Enabled);
+                    Assert.False(gog.Enabled);
+
+                    BugsInput(form).Checked = true;
+                    Assert.Equal(1, patches.On);
+                    Assert.True(patches.Pending);
+                    Assert.False(gog.Pending);
+
+                    MethodInfo command = typeof(PatchForm).GetMethod("ProcessCmdKey", BindingFlags.NonPublic | BindingFlags.Instance);
+                    bool Press(Keys keys) => (bool)command.Invoke(form, new object[] { new Message(), keys });
+                    Assert.True(Press(Keys.Control | Keys.Tab));
+                    Assert.Equal(1, form.Groups.Selected);
+                    Assert.True(Press(Keys.Control | Keys.Shift | Keys.Tab));
+                    Assert.True(Press(Keys.Control | Keys.Shift | Keys.Tab));
+                    Assert.Equal(form.Groups.Entries.Count - 1, form.Groups.Selected);
+                    Assert.False(Press(Keys.Tab));
+                    Assert.Equal(form.Groups.Entries.Count - 1, form.Groups.Selected);
+                }
+            }
+        });
+
+        // Click, arrow keys, Home and End choose an entry and the bar slides over; the mouse tints the
+        // entry under it. Drawn with every look, also empty.
+        [Fact]
+        public void GroupList_ChoosesAndAnimates() => StaThread.Run(() =>
+        {
+            using (Form form = new Form())
+            using (GroupList list = new GroupList { Size = new Size(100, 100) })
+            {
+                form.Controls.Add(list);
+                form.Show();
+                Draw(list);
+                foreach (string title in new[] { "Eins", "Zwei", "Drei" })
+                    list.Entries.Add(new GroupEntry { Title = title, Accent = Color.SeaGreen });
+                list.Size = list.GetPreferredSize(Size.Empty);
+                Draw(list);
+                // Nobody listening yet.
+                list.Selected = 1;
+                list.Selected = 0;
+                for (DateTime end = DateTime.Now.AddSeconds(30); list.Moving && DateTime.Now < end; Thread.Sleep(5))
+                    Application.DoEvents();
+                Assert.False(list.Moving);
+                Assert.Equal(0f, list.Bar);
+                int changes = 0;
+                list.SelectedChanged += (s, e) => changes++;
+
+                Point middle(int index) => new Point(list.ItemBounds(index).X + 5, list.ItemBounds(index).Y + 5);
+                Raise(list, "OnMouseDown", new MouseEventArgs(MouseButtons.Left, 1, middle(2).X, middle(2).Y, 0));
+                Assert.Equal(2, list.Selected);
+                Assert.True(list.Moving);
+                list.Animate();
+                Assert.True(list.Bar > 0 && list.Bar < 2);
+                Raise(list, "OnMouseDown", new MouseEventArgs(MouseButtons.Left, 1, 0, list.Height - 1, 0));
+                Assert.Equal(2, list.Selected);
+                Assert.Equal(1, changes);
+
+                Raise(list, "OnMouseMove", new MouseEventArgs(MouseButtons.None, 0, middle(1).X, middle(1).Y, 0));
+                Assert.Equal(1, list.Hovered);
+                Draw(list);
+                Raise(list, "OnMouseLeave", EventArgs.Empty);
+                Assert.Equal(-1, list.Hovered);
+
+                MethodInfo inputKey = typeof(GroupList).GetMethod("IsInputKey", BindingFlags.NonPublic | BindingFlags.Instance);
+                Assert.True((bool)inputKey.Invoke(list, new object[] { Keys.Up }));
+                Assert.True((bool)inputKey.Invoke(list, new object[] { Keys.Down }));
+                Assert.False((bool)inputKey.Invoke(list, new object[] { Keys.Tab }));
+                foreach (var step in new[] { (Keys.Down, 2), (Keys.Up, 1), (Keys.Up, 0), (Keys.Up, 0), (Keys.End, 2), (Keys.Down, 2), (Keys.Home, 0), (Keys.Enter, 0) })
+                {
+                    Raise(list, "OnKeyDown", new KeyEventArgs(step.Item1));
+                    Assert.Equal(step.Item2, list.Selected);
+                }
+                list.Cycle(-1);
+                Assert.Equal(2, list.Selected);
+
+                // Screen readers see a tab list and the chosen group.
+                Assert.Equal(AccessibleRole.PageTabList, list.AccessibilityObject.Role);
+                Assert.Equal("Drei", list.AccessibilityObject.Value);
+                list.AccessibilityObject.Value = "Eins";
+                Assert.Equal("Drei", list.AccessibilityObject.Value);
+
+                // Every look: counts of one and of two digits, the dot, greyed out, focused, dark.
+                list.Entries[0].On = 3;
+                list.Entries[1].On = 12;
+                list.Entries[1].Pending = true;
+                list.Entries[2].Pending = true;
+                list.Entries[2].Enabled = false;
+                list.Focus();
+                Assert.True(list.Focused);
+                Draw(list);
+                list.Theme = Theme.Dark;
+                Assert.Same(Theme.Dark, list.Theme);
+                form.ActiveControl = null;
+                Assert.False(list.Focused);
+                Draw(list);
             }
         });
 
@@ -260,18 +386,17 @@ namespace A2GPatch.Tests
                     Assert.True(GoalsInput(form).Enabled && BugsInput(form).Enabled);
                     Assert.False(GoalsInput(form).Checked || BugsInput(form).Checked);
                     Assert.False(ApplyButton(form).Enabled);
-                    // The GOG patches under their heading, greyed out for another release.
-                    Label gog = Find<Label>(form, "GogLabel");
-                    Assert.Equal("Nur für die GOG-Version", gog.Text);
+                    // The GOG patches in their group, greyed out for another release.
+                    Assert.Equal("Nur für die GOG-Version", form.Groups.Entries[(int)PatchGroup.Gog].Title);
                     Assert.All(new[] { "CopyProtectionInput", "DialogStylesInput", "AnimationEdgeInput" }, name =>
                     {
                         PatchTile tile = Find<PatchTile>(form, name);
                         Assert.False(tile.Enabled);
-                        Assert.True(tile.Top > gog.Top);
+                        Assert.Contains(tile, TilesOf(form, PatchGroup.Gog));
                     });
-                    // Patch 1.01 is for the 2007 CD as well: above the heading, greyed out here too.
+                    // Patch 1.01 is for the 2007 CD as well: among the fixes, greyed out here too.
                     Assert.False(Find<PatchTile>(form, "Patch101Input").Enabled);
-                    Assert.True(Find<PatchTile>(form, "Patch101Input").Top < gog.Top);
+                    Assert.Contains(Find<PatchTile>(form, "Patch101Input"), TilesOf(form, PatchGroup.Patches));
 
                     // A change gets its dot, the button counts the changes.
                     BugsInput(form).Checked = true;

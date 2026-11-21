@@ -23,6 +23,8 @@ namespace A2GPatch
         Patches,
         /// <summary>Changes to how the game plays, each a matter of taste.</summary>
         Balancing,
+        /// <summary>Names and terms in the game's texts.</summary>
+        Texts,
         /// <summary>Only for GOG's release.</summary>
         Gog,
     }
@@ -41,6 +43,7 @@ namespace A2GPatch
             new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new MoneyLimit(),
             new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new FishPoisoning(), new ManagerEvents(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(), new WrapperClipping(),
+            new Currency(), new CentreBack(), new CupNames(), new LeagueNames(), new GroupLetters(), new ContractTerms(),
         };
 
         /// <summary>The patch of type <typeparamref name="T"/>, a switch of its own or one of the game's bugs.</summary>
@@ -106,7 +109,7 @@ namespace A2GPatch
         internal readonly Patch[] Members =
         {
             new InvestmentBalance(), new EventEffects(), new EventCrashes(), new RefereeGrudge(), new CompetenceBalance(), new GradeAverage(), new GradeChartLabel(), new AppearancesList(), new SquadLimit(), new CupDraw(), new PictureButtonInit(), new CalculationInit(),
-            new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(), new SleepFreeze(),
+            new DiskSpaceWarning(), new ArrowRepeat(), new DisplayModeRestore(), new SleepFreeze(), new TextTypos(),
         };
 
         /// <inheritdoc/>
@@ -2502,6 +2505,8 @@ namespace A2GPatch
         public uint CertificateAt { get; private set; }
         /// <summary>The size of the signature.</summary>
         public uint CertificateSize { get; private set; }
+        /// <summary>Where the resource directory is loaded, relative to the image base; 0 without resources.</summary>
+        public uint ResourceRva { get; private set; }
         /// <summary>The sections in the order of the headers.</summary>
         public List<Section> Sections { get; } = new List<Section>();
         /// <summary>Each imported function's import address table entry (an address in the loaded exe).</summary>
@@ -2548,8 +2553,11 @@ namespace A2GPatch
                     RawSize = this.U32(at + 16), Raw = this.U32(at + 20), Characteristics = this.U32(at + 36),
                 });
             }
-            // The import descriptors up to the empty one: names by the import lookup table, entries in the address table.
-            for (long descriptor = this.Offset(this.U32(optional + 104)); this.U32(descriptor + 12) != 0; descriptor += 20)
+            this.ResourceRva = this.U32(optional + 112);
+            // The import descriptors up to the empty one: names by the import lookup table, entries in the address table
+            // (a DLL that only holds resources has none).
+            uint imports = this.U32(optional + 104);
+            for (long descriptor = imports == 0 ? 0 : this.Offset(imports); imports != 0 && this.U32(descriptor + 12) != 0; descriptor += 20)
             {
                 long lookup = this.Offset(this.U32(descriptor)), table = this.U32(descriptor + 16);
                 for (int i = 0; this.U32(lookup + 4 * i) != 0; i++)
@@ -2567,12 +2575,13 @@ namespace A2GPatch
 
         /// <summary>
         /// <paramref name="image"/> with a section <paramref name="name"/> added that holds <paramref name="data"/>
-        /// as executable, writable code, loaded right behind the image. Its data goes behind everything in the
+        /// (by default as executable, writable code; <paramref name="characteristics"/> are the section's flags),
+        /// loaded right behind the image. Its data goes behind everything in the
         /// file, a signature included. GOG's run.exe has leftovers behind its section headers; the 40 bytes the
         /// new header overwrites are kept right behind the data, so <see cref="RemoveLastSection"/> restores the
         /// exe to the byte.
         /// </summary>
-        public static byte[] AddSection(byte[] image, string name, byte[] data)
+        public static byte[] AddSection(byte[] image, string name, byte[] data, uint characteristics = WritableCode)
         {
             PeFile pe = Read(image);
             long raw = FilePatch.Align(image.Length, pe.FileAlignment);
@@ -2588,7 +2597,7 @@ namespace A2GPatch
             Put(result, header + 12, pe.SizeOfImage);
             Put(result, header + 16, rawSize);
             Put(result, header + 20, (uint)raw);
-            Put(result, header + 36, WritableCode);
+            Put(result, header + 36, characteristics);
             BitConverter.GetBytes((ushort)(pe.Sections.Count + 1)).CopyTo(result, pe.OptionalHeader - 18);   // NumberOfSections
             Put(result, pe.OptionalHeader + 56, pe.SizeOfImage + FilePatch.Align(data.Length, pe.SectionAlignment));
             return result;
@@ -2611,8 +2620,11 @@ namespace A2GPatch
 
         // IMAGE_SCN_CNT_CODE | MEM_EXECUTE | MEM_READ | MEM_WRITE
         private const uint WritableCode = 0xE0000020;
+        /// <summary>Section flags for data that is only read: IMAGE_SCN_CNT_INITIALIZED_DATA | MEM_READ.</summary>
+        internal const uint ReadOnlyData = 0x40000040;
 
-        private static void Put(byte[] image, long at, uint value) => BitConverter.GetBytes(value).CopyTo(image, at);
+        /// <summary>Writes <paramref name="value"/> at <paramref name="at"/>, low byte first.</summary>
+        internal static void Put(byte[] image, long at, uint value) => BitConverter.GetBytes(value).CopyTo(image, at);
 
         /// <summary>The address <paramref name="offset"/> in the file is loaded at, or -1 outside every section.</summary>
         public long VaAt(long offset)

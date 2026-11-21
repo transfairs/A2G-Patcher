@@ -22,20 +22,21 @@ namespace A2GPatch
         /// <summary>The entries of the "Darstellung" menu, by <see cref="ThemeChoice"/>.</summary>
         internal static readonly string[] ThemeTitles = { "Wie Windows", "Hell", "Dunkel" };
         /// <summary>The headings of the groups, by <see cref="PatchGroup"/>.</summary>
-        internal static readonly string[] GroupTitles = { "Patches", "Balancing", "Nur für die GOG-Version" };
+        internal static readonly string[] GroupTitles = { "Patches", "Balancing", "Texte", "Nur für die GOG-Version" };
         // The banner and the apply button look the same in both themes.
         private static readonly Color Grass = Color.FromArgb(0x1B, 0x7A, 0x45), DarkGrass = Color.FromArgb(0x0C, 0x4D, 0x2A),
             Apply = Color.FromArgb(0x1E, 0x8E, 0x4E), ApplyHover = Color.FromArgb(0x18, 0x78, 0x41), ApplyDown = Color.FromArgb(0x12, 0x62, 0x35);
         private const int WmSettingChange = 0x1A;
-        private const int Width96 = 900, MinWidth96 = 480, Margin96 = 16, Gap96 = 10, TileHeight96 = 70, MinTileWidth96 = 240, MaxColumns = 3;
+        private const int ContentWidth96 = 800, Margin96 = 16, Gap96 = 10, TileHeight96 = 70, MinTileWidth96 = 240, MaxColumns = 3;
 
         private readonly ComboBox folderInput;
         private readonly Button browseButton, applyButton, closeButton;
         private readonly Label statusLabel, progressLabel;
         private readonly BusyIndicator progress;
+        private readonly GroupList groupList;
         private readonly TilePanel tilePanel;
         private readonly Dictionary<Patch, PatchTile> switches = new Dictionary<Patch, PatchTile>();
-        private readonly List<KeyValuePair<Label, PatchTile[]>> groups = new List<KeyValuePair<Label, PatchTile[]>>();
+        private readonly List<PatchTile[]> groups = new List<PatchTile[]>();
         private readonly ToolTip tips = new ToolTip();
         private readonly ContextMenuStrip themeMenu = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true };
         private readonly float scale;
@@ -75,11 +76,15 @@ namespace A2GPatch
             };
 
             // Laid out for 96 dpi and scaled to the screen's (the program is dpiAware, see app.manifest).
-            // Header and footer stick to the window's edges; the tiles scroll in between and arrange
-            // themselves for the window's width (LayOutTiles).
+            // Header and footer stick to the window's edges; in between the groups on the left and the
+            // chosen group's tiles, which scroll and arrange themselves for the window's width (LayOutTiles).
             using (Graphics screen = Graphics.FromHwnd(IntPtr.Zero))
                 this.scale = screen.DpiX / 96f;
-            int width = this.Px(Width96), margin = this.Px(Margin96);
+            this.groupList = new GroupList { Name = "GroupList", AccessibleName = "Gruppen", Font = this.Font, Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left };
+            foreach (PatchGroup group in Enum.GetValues(typeof(PatchGroup)))
+                this.groupList.Entries.Add(new GroupEntry { Title = GroupTitles[(int)group] });
+            Size rail = this.groupList.GetPreferredSize(Size.Empty);
+            int width = rail.Width + this.Px(ContentWidth96), margin = this.Px(Margin96);
             this.bannerHeight = this.Px(60);
             int buttonHeight = this.Px(30), footerHeight = this.Px(12) + buttonHeight + this.Px(14), tilesTop = this.bannerHeight + this.Px(84);
             // A first size for the anchors to measure from; the real one follows once the tiles are in.
@@ -131,21 +136,17 @@ namespace A2GPatch
             this.tips.SetToolTip(themeLink, "Hell, dunkel oder wie Windows");
             this.Controls.Add(themeLink);
 
-            // The tiles by group, in the order of Patch.All within a group, in a panel that scrolls.
+            // The groups on the left; right of them the chosen group's tiles, in the order of Patch.All,
+            // in a panel that scrolls.
+            this.groupList.Bounds = new Rectangle(0, tilesTop, rail.Width, this.ClientSize.Height - tilesTop - footerHeight);
             this.tilePanel = new TilePanel
             {
                 Name = "TilePanel", AutoScroll = true, AutoScrollMargin = new Size(0, this.Px(Gap96 + 6)),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-                Bounds = new Rectangle(0, tilesTop, width, this.ClientSize.Height - tilesTop - footerHeight),
+                Bounds = new Rectangle(rail.Width, tilesTop, width - rail.Width, this.ClientSize.Height - tilesTop - footerHeight),
             };
             foreach (PatchGroup group in Enum.GetValues(typeof(PatchGroup)))
             {
-                Label heading = new Label
-                {
-                    Name = group + "Label", Text = GroupTitles[(int)group], AutoSize = true,
-                    Font = new Font(this.Font, FontStyle.Bold),
-                };
-                this.tilePanel.Controls.Add(heading);
                 List<PatchTile> tiles = new List<PatchTile>();
                 foreach (Patch patch in Patch.All.Where(p => p.Group == group))
                 {
@@ -164,10 +165,11 @@ namespace A2GPatch
                     this.tilePanel.Controls.Add(tile);
                     tiles.Add(tile);
                 }
-                this.groups.Add(new KeyValuePair<Label, PatchTile[]>(heading, tiles.ToArray()));
+                this.groups.Add(tiles.ToArray());
             }
             this.tilePanel.Arrange = this.ArrangeTiles;
-            this.tilePanel.Paint += (s, e) => this.PaintRules(e.Graphics);
+            this.groupList.SelectedChanged += (s, e) => this.ShowGroup();
+            this.Controls.Add(this.groupList);
             this.Controls.Add(this.tilePanel);
 
             y = this.tilePanel.Bottom + this.Px(12);
@@ -202,13 +204,15 @@ namespace A2GPatch
             this.themeChoice = Theme.LoadChoice();
             this.ApplyTheme(Theme.For(this.themeChoice));
 
-            // As tall as the tiles need at full width, but no larger than the screen; the user may
-            // shrink it down to one column with a few tiles in view.
+            // As tall as the largest group's tiles need at full width and the groups on the left, but no
+            // larger than the screen; the user may shrink it down to one column with a few tiles in view.
             Rectangle screenArea = Screen.FromPoint(Cursor.Position).WorkingArea;
             Size frame = this.SizeFromClientSize(Size.Empty);
-            this.MinimumSize = this.SizeFromClientSize(new Size(this.Px(MinWidth96), tilesTop + this.Px(120) + footerHeight));
-            this.ClientSize = new Size(Math.Min(width, screenArea.Width - frame.Width),
-                Math.Min(tilesTop + this.LayOutTiles(width) + footerHeight, screenArea.Height - frame.Height));
+            int tilesHeight = Math.Max(rail.Height, this.groups.Max(tiles => this.LayOutTiles(tiles, width - rail.Width)));
+            this.MinimumSize = this.SizeFromClientSize(new Size(rail.Width + this.Px(MinTileWidth96 + 2 * Margin96) + SystemInformation.VerticalScrollBarWidth,
+                tilesTop + Math.Max(rail.Height, this.Px(120)) + footerHeight));
+            this.ClientSize = new Size(Math.Min(width, screenArea.Width - frame.Width), Math.Min(tilesTop + tilesHeight + footerHeight, screenArea.Height - frame.Height));
+            this.ShowGroup();
 
             this.BrowseFolder = start =>
             {
@@ -267,13 +271,14 @@ namespace A2GPatch
             this.applyButton.BackColor = this.applyButton.Enabled ? Apply : theme.ApplyDisabled;
             for (int group = 0; group < this.groups.Count; group++)
             {
-                this.groups[group].Key.ForeColor = theme.Groups[group];
-                foreach (PatchTile tile in this.groups[group].Value)
+                this.groupList.Entries[group].Accent = theme.Groups[group];
+                foreach (PatchTile tile in this.groups[group])
                 {
                     tile.Accent = theme.Groups[group];
                     tile.Theme = theme;
                 }
             }
+            this.groupList.Theme = theme;
             this.progress.Theme = theme;
             theme.Style(this.themeMenu);
             foreach (ToolStripMenuItem item in this.themeMenu.Items)
@@ -342,9 +347,41 @@ namespace A2GPatch
             }
             this.applyButton.Enabled = changes > 0 || (this.install != null && this.install.DllOutdated && this.switches.Values.Any(tile => tile.Checked));
             this.applyButton.Text = changes > 0 ? $"Übernehmen ({changes})" : "Übernehmen";
+            // The groups on the left count their switches that are on and show the changes in groups not in view.
+            for (int group = 0; group < this.groups.Count; group++)
+            {
+                GroupEntry entry = this.groupList.Entries[group];
+                entry.On = this.groups[group].Count(tile => tile.Checked);
+                entry.Pending = this.groups[group].Any(tile => tile.Pending);
+                entry.Enabled = this.groups[group].Any(tile => tile.Enabled);
+            }
+            this.groupList.Invalidate();
         }
 
-        /// <summary>Draws the banner (a strip of pitch with its markings and the program's name) and the lines under the headings and above the buttons.</summary>
+        /// <summary>The navigation on the left: which group's tiles are in view.</summary>
+        internal GroupList Groups => this.groupList;
+
+        // Shows the chosen group's tiles from the top and hides the others.
+        private void ShowGroup()
+        {
+            for (int group = 0; group < this.groups.Count; group++)
+                foreach (PatchTile tile in this.groups[group])
+                    tile.Visible = group == this.groupList.Selected;
+            this.tilePanel.AutoScrollPosition = Point.Empty;
+            this.tilePanel.PerformLayout();
+        }
+
+        /// <summary>Ctrl+Tab and Ctrl+Shift+Tab move to the next and previous group, wherever the focus is.</summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            int step = keyData == (Keys.Control | Keys.Tab) ? 1 : keyData == (Keys.Control | Keys.Shift | Keys.Tab) ? -1 : 0;
+            if (step == 0)
+                return base.ProcessCmdKey(ref msg, keyData);
+            this.groupList.Cycle(step);
+            return true;
+        }
+
+        /// <summary>Draws the banner (a strip of pitch with its markings and the program's name) and the line above the buttons.</summary>
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -374,50 +411,33 @@ namespace A2GPatch
                 g.DrawLine(rule, 0, this.tilePanel.Bottom, width, this.tilePanel.Bottom);
         }
 
-        // The line right of each heading, up to the right edge of its tiles.
-        private void PaintRules(Graphics g)
-        {
-            foreach (KeyValuePair<Label, PatchTile[]> group in this.groups)
-            {
-                Label heading = group.Key;
-                int middle = heading.Top + heading.Height / 2;
-                using (Pen rule = new Pen(PatchTile.Blend(heading.ForeColor, this.theme.Page, 0.75f)))
-                    g.DrawLine(rule, heading.Right + this.Px(6), middle, group.Value.Max(t => t.Right), middle);
-            }
-        }
-
-        // Lays the tiles out for the panel's width, leaving room for the scroll bar if they don't all fit.
+        // Lays the chosen group's tiles out for the panel's width, leaving room for the scroll bar if they don't all fit.
         private void ArrangeTiles()
         {
-            if (this.LayOutTiles(this.tilePanel.Width) > this.tilePanel.Height)
-                this.LayOutTiles(this.tilePanel.Width - SystemInformation.VerticalScrollBarWidth);
+            PatchTile[] tiles = this.groups[this.groupList.Selected];
+            if (this.LayOutTiles(tiles, this.tilePanel.Width) > this.tilePanel.Height)
+                this.LayOutTiles(tiles, this.tilePanel.Width - SystemInformation.VerticalScrollBarWidth);
         }
 
         /// <summary>
-        /// Places headings and tiles for a panel <paramref name="width"/> wide: as many columns as fit
+        /// Places a group's tiles for a panel <paramref name="width"/> wide: as many columns as fit
         /// (one to three), each row as tall as its longest text needs. Returns the height they take.
         /// </summary>
-        private int LayOutTiles(int width)
+        private int LayOutTiles(PatchTile[] tiles, int width)
         {
             int margin = this.Px(Margin96), gap = this.Px(Gap96), minHeight = this.Px(TileHeight96);
             int columns = Math.Max(1, Math.Min(MaxColumns, (width - 2 * margin + gap) / (this.Px(MinTileWidth96) + gap)));
             int tileWidth = (width - 2 * margin - (columns - 1) * gap) / columns;
-            int scrolled = this.tilePanel.AutoScrollPosition.Y, y = 0;
-            foreach (KeyValuePair<Label, PatchTile[]> group in this.groups)
+            int scrolled = this.tilePanel.AutoScrollPosition.Y, y = this.Px(4);
+            for (int first = 0; first < tiles.Length; first += columns)
             {
-                group.Key.Location = new Point(margin - 2, y + scrolled);
-                y += this.Px(26);
-                for (int first = 0; first < group.Value.Length; first += columns)
-                {
-                    PatchTile[] row = group.Value.Skip(first).Take(columns).ToArray();
-                    int height = Math.Max(minHeight, row.Max(t => t.GetPreferredSize(new Size(tileWidth, 0)).Height));
-                    for (int i = 0; i < row.Length; i++)
-                        row[i].Bounds = new Rectangle(margin + i * (tileWidth + gap), y + scrolled, tileWidth, height);
-                    y += height + gap;
-                }
-                y += this.Px(6);
+                PatchTile[] row = tiles.Skip(first).Take(columns).ToArray();
+                int height = Math.Max(minHeight, row.Max(t => t.GetPreferredSize(new Size(tileWidth, 0)).Height));
+                for (int i = 0; i < row.Length; i++)
+                    row[i].Bounds = new Rectangle(margin + i * (tileWidth + gap), y + scrolled, tileWidth, height);
+                y += height + gap;
             }
-            return y;
+            return y + this.Px(6);
         }
 
         /// <summary>The tiles' scrolling area: double buffered, and it has the window place the tiles before it works out how far to scroll.</summary>

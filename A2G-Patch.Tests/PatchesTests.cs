@@ -164,10 +164,11 @@ namespace A2GPatch.Tests
                 "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Kontostand",
                 "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs", "Fischvergiftung", "Manager-Ereignisse",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen", "Mausklicks",
+                "Euro statt DM", "Innenverteidiger", "Europapokale", "Liganamen", "Gruppen A bis H", "Vertragsbegriffe",
             }, Patch.All.Select(p => p.Title));
             Assert.Equal(new[]
             {
-                "Behebt: Geldanlagen, Ereignisse, Ereignis-Abstürze, Schiedsrichter-Groll, Trainerkompetenz, Notenschnitt, Meiste Einsätze, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb",
+                "Behebt: Geldanlagen, Ereignisse, Ereignis-Abstürze, Schiedsrichter-Groll, Trainerkompetenz, Notenschnitt, Meiste Einsätze, Kadergröße, Pokalauslosung, Aufstellung, Kalkulation, Große Festplatten, Pfeile gedrückt halten, Bildschirmauflösung, Langer Windows-Betrieb, Tippfehler",
                 "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Ton über das Standard-Audiogerät von Windows",
@@ -183,15 +184,21 @@ namespace A2GPatch.Tests
                 "Dialoge mit Titelleiste und Rahmen wie im Original von 1999",
                 "Kein schwarzer Strich an den Animationen (z. B. im Hauptmenü)",
                 "Keine Verzögerung nach Mausklicks mit manchen Grafikkarten",
+                "Beträge in € statt DM, auch in Ereignissen und Tipps; die Zahlen bleiben gleich",
+                "Innenverteidiger (IV) statt Manndecker (MD)",
+                "UEFA-Cup, Cup der Pokalsieger, Weltcup und ECL-Cup statt UEFA-Pokal, Pokal der Pokalsieger, Weltpokal und UI-Cup",
+                "Heutige Ligennamen: 1. und 2. Bundesliga, Regionalliga West, Championship, League One, Ligue 1 und 2",
+                "Gruppen A bis H statt 1 bis 8",
+                "Grundgehalt statt Festgehalt, Ausstiegsklausel statt Freigabeklausel und fixer Ablöse, Rekordtransfers statt Supertransfers",
             }, Patch.All.Select(p => p.Name));
-            // The bugs' switch carries all their bits; the GOG-only patches (0) last, under their own heading.
-            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
-            PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog;
-            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o }, Patch.All.Select(p => p.Group));
+            // The bugs' switch carries all their bits; the file patches without a flag (0) last.
+            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog, t = PatchGroup.Texts;
+            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o, t, t, t, t, t, t }, Patch.All.Select(p => p.Group));
 
-            // The bugs, each with a bit of its own; together with the switches every bit once.
+            // The bugs, each with a bit of its own (the typing errors, a text patch, have none); together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;
-            Assert.Equal(new[] { "Geldanlagen", "Ereignisse", "Ereignis-Abstürze", "Schiedsrichter-Groll", "Trainerkompetenz", "Notenschnitt", "Notenschnitt", "Meiste Einsätze", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb" },
+            Assert.Equal(new[] { "Geldanlagen", "Ereignisse", "Ereignis-Abstürze", "Schiedsrichter-Groll", "Trainerkompetenz", "Notenschnitt", "Notenschnitt", "Meiste Einsätze", "Kadergröße", "Pokalauslosung", "Aufstellung", "Kalkulation", "Große Festplatten", "Pfeile gedrückt halten", "Bildschirmauflösung", "Langer Windows-Betrieb", "Tippfehler" },
                 bugs.Select(p => p.Title));
             Assert.Equal(new[]
             {
@@ -207,8 +214,9 @@ namespace A2GPatch.Tests
                 "Kein Hänger beim Öffnen der Kalkulation in der Vorsaison", "Keine falsche Warnung „Festplatte fast voll“ beim Speichern",
                 "Pfeile zählen beim Gedrückthalten weiter", "Desktop-Auflösung auch nach einem Absturz zurückholen",
                 "Kein Einfrieren nach über 24 Tagen Windows-Laufzeit",
+                "Satzzeichen und Schreibfehler in Texten des Spiels (z. B. „rechter Verteidiger..“)",
             }, bugs.Select(p => p.Name));
-            Assert.Equal(new uint[] { 32768, 262144, 2097152, 67108864, 1048576, 524288, 33554432, 8388608, 64, 256, 2048, 512, 32, 2, 128, 8 }, bugs.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 32768, 262144, 2097152, 67108864, 1048576, 524288, 33554432, 8388608, 64, 256, 2048, 512, 32, 2, 128, 8, 0 }, bugs.Select(p => p.Flag));
             Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
             uint[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
             Assert.Equal(27, bits.Length);
