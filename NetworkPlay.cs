@@ -8,7 +8,7 @@ namespace A2GPatch
     /// <summary>
     /// Network play: the game holds a client/server layer for up to four computers that was never
     /// switched on (DirectPlay never created, no send thread, no receive pump). msvfw32.dll supplies it
-    /// (dll/net.c, docs/network.md) once a2gnet.ini next to the exe says Enabled=1; then the game asks at
+    /// (dll/net.c) once a2gnet.ini next to the exe says Enabled=1; then the game asks at
     /// its first main menu whether to play alone, open a network game or join one. On the exes patched on
     /// disk the DLL carries no patch flags, it only adds network play. Offered where the exe holds the
     /// network layer's places (the 1999 exe and GOG's run.exe; the 2007 CD exe is packed). Taking it back

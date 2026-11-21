@@ -190,8 +190,7 @@ Under *Erweiterungen* (original release and GOG release):
   internet. The game holds a client/server layer that was never switched on; `msvfw32.dll` supplies
   what it lacks. At its first main menu the game asks whether to play alone, open a network game or join
   one (address of the host, the manager's name). The host plays as usual and simulates; a joining
-  computer gets the game state, takes part with a manager of its own and shows its screens. Prototype
-  state and details in [docs/network.md](docs/network.md).
+  computer gets the game state, takes part with a manager of its own and shows its screens.
 
 Works with the original release (1999), the GOG release and the 2007 CD release. Like the game, the
 user interface is in German.
@@ -907,6 +906,44 @@ answered 2 to 3 seconds late with a Radeon RX 6800 XT. The patch stores 1 (`shr 
 original or all patched; the name stays, so the animation edge still finds the wrapper. Without it (another
 `ddraw.dll`, e.g. WineD3D's) the tile is greyed out.
 
+### Network play
+
+The game holds a client/server layer that was never switched on: data accessors ask "am I the server?"
+and fetch records from the server otherwise, the main loop lets only the server simulate, and a message
+dispatcher (`0x5dd6a0` in the original exe) handles requests, replies, tasks and the transfer of the whole
+game state to a joining computer. The runtime is missing: DirectPlay is never created, nothing sends the
+queued packets, nothing calls the receive pump (`0x5dd580`), and the packet size is never set.
+`dll/net.c` supplies it in place of DirectPlay:
+
+- The game's enqueue function (`0x5ebf70`) jumps to the DLL, which sends each slot over TCP at once in the
+  packet format the receive side expects and frees it, so the send list stays empty and the game's "wait
+  until sent" loops pass. Waiting for a reply waits for the open requests instead, at most 30 seconds.
+- The broadcast to all other computers (`0x5d3c00`) goes to every connected computer that has the game
+  state, and the stub "network game?" (`0x5d3fb0`, always 0) says yes while clients are connected.
+- A small object with the vtable of DirectPlay 1 sits in the game's DirectPlay pointer; its `Receive`
+  hands over what came in, and the DLL's network thread calls the game's receive pump.
+- The host is computer 1 (the game's own ID in single player), clients get 2 to 4. A new client is
+  announced to the host's game as `DPSYS_ADDPLAYER`, so the game itself tells it the server's ID. The
+  host sends a new client the game's own distribution of names, teams and leagues, then its manager
+  joins through the game's waiting list; the call that enters him in the managers' table gets the
+  computer he plays on, which the game always set to 1.
+- Before a step or a task goes to a client, the host sends the parts of the saved game state that
+  changed since the last time (compared in units of 256 bytes against a copy per client), since the game
+  fetches only some of its data from the server.
+- A manager's event is a task for the computer he plays on, plus tasks without a manager for every other
+  one, whose screens then look up manager 0 and end the game; those are left out.
+- If a client is gone, its managers leave the game and its open tasks count as done. A client that loses
+  the host says so and ends.
+
+Between the computers each TCP connection carries frames of a 32-bit length, a type byte and the
+payload; clients talk to each other through the host. The settings are in `a2gnet.ini` next to the exe
+(section `[A2GNet]`: `Enabled`, `Mode`, `Host`, `Port` 47720, the manager's names), the log in
+`a2gnet.log`. The DLL recognizes the 1999 exe and GOG's `run.exe` by the first bytes of every function
+and call it changes; with another exe it does nothing. The switch (`NetworkPlay.cs`) is offered where the
+exe holds the network layer's places once each, so not for the packed 2007 CD exe; it writes the DLL with
+flags 0 (the other patches are on disk) and sets `Enabled=1`. Taking it back deletes the DLL and sets
+`Enabled=0`, keeping the address and names.
+
 ## msvfw32.dll (`dll/`)
 
 A proxy like A2G-Scaler's `dsound.dll`: `msvfw32` is not a KnownDLL, so the copy in the program folder
@@ -931,7 +968,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 - No C runtime (`/Zl /GS- /NODEFAULTLIB`, subsystem 5.01), so it loads on Windows XP.
 - `net.c`: network play, active only with `a2gnet.ini` (`Enabled=1`) next to the exe, which the
   *Netzwerkspiel* switch writes together with the DLL (flags 0 on the exes patched on disk). It knows the
-  1999 exe and GOG's `run.exe` by signatures; see [docs/network.md](docs/network.md).
+  1999 exe and GOG's `run.exe` by signatures (see *Network play* above).
 
 ## Building
 

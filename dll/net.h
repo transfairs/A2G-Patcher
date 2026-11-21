@@ -1,4 +1,4 @@
-// A2GNet: network play (prototype). See net.c.
+// A2GNet: network play. See net.c.
 #pragma once
 
 // Called from DllMain on process attach. Does nothing unless a2gnet.ini next to the exe enables it;

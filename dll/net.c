@@ -1,4 +1,4 @@
-// A2GNet: network play for Anstoss 2 Gold (prototype; 1999 exe and GOG run.exe).
+// A2GNet: network play for Anstoss 2 Gold (1999 exe and GOG run.exe).
 //
 // The game ships a nearly complete client/server layer that was never switched on: data accessors ask
 // "am I the server?" and fetch records from the server otherwise, the main loop lets only the server
@@ -43,6 +43,7 @@ void *memcpy(void *dst, const void *src, size_t count)
     return dst;
 }
 
+// Zeroed memory from the process heap; Free accepts NULL.
 static void *Alloc(DWORD n) { return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, n); }
 static void Free(void *p) { if (p) HeapFree(GetProcessHeap(), 0, p); }
 
@@ -177,6 +178,7 @@ static WORD g_port;
 static CRITICAL_SECTION g_logLock;
 static HANDLE g_log = INVALID_HANDLE_VALUE;
 
+// Appends a line with the time to a2gnet.log, if the log is open.
 static void Log(const char *format, ...)
 {
     char line[512];
@@ -199,6 +201,7 @@ static void Log(const char *format, ...)
     LeaveCriticalSection(&g_logLock);
 }
 
+// "host" or "join" (any case) as a mode; anything else means without network.
 static int ModeFromText(const char *text)
 {
     if (!lstrcmpiA(text, "host")) return MODE_HOST;
@@ -206,6 +209,7 @@ static int ModeFromText(const char *text)
     return MODE_OFF;
 }
 
+// Reads the [A2GNet] section of a2gnet.ini. With Ask=1 (the default) the mode is chosen over the main menu.
 static void ReadSettings(void)
 {
     char mode[16];
@@ -220,6 +224,7 @@ static void ReadSettings(void)
     g_difficulty = GetPrivateProfileIntA("A2GNet", "Difficulty", 2, g_ini);
 }
 
+// Keeps the chosen mode, the host's address and the manager's name in a2gnet.ini for the next start.
 static void SaveSettings(int mode)
 {
     WritePrivateProfileStringA("A2GNet", "Mode", mode == MODE_HOST ? "host" : mode == MODE_CLIENT ? "join" : "off", g_ini);
@@ -230,6 +235,7 @@ static void SaveSettings(int mode)
 
 // ---- code changes -----------------------------------------------------------------------------------
 
+// Writes bytes into the game's code, which is made writable for the moment.
 static void WriteCode(DWORD at, const void *bytes, DWORD n)
 {
     DWORD old;
@@ -239,6 +245,7 @@ static void WriteCode(DWORD at, const void *bytes, DWORD n)
     FlushInstructionCache(GetCurrentProcess(), (void *)at, n);
 }
 
+// Writes a jmp to `to` at `from`.
 static void Jump(DWORD from, void *to)
 {
     BYTE code[5];
@@ -256,8 +263,10 @@ static DWORD RedirectCall(DWORD call, void *to)
     return old;
 }
 
+// Where the call instruction at `call` goes.
 static DWORD CallTarget(DWORD call) { return call + 5 + *(const DWORD *)(call + 1); }
 
+// Whether the memory at `at` is readable and begins with `bytes`.
 static BOOL Starts(DWORD at, const BYTE *bytes, int n)
 {
     int k;
@@ -277,6 +286,7 @@ static const BYTE kLeave[]     = { 0x0F, 0xBF, 0x44, 0x24, 0x04, 0x66, 0x83, 0x7
 static const BYTE kWaitSent[]  = { 0x85, 0xC0, 0x74, 0x2F, 0x57, 0x8B, 0x3D };   // from +5
 static const BYTE kEventCall[] = { 0x6A, 0x00, 0x56, 0x8D, 0x4C, 0x24, 0x40, 0xE8 };  // push 0 / push esi / lea ecx,[esp+40] / call
 
+// The build whose functions and call sites all start as expected, or NULL.
 static const Build *DetectBuild(void)
 {
     int i;
@@ -319,6 +329,7 @@ static struct {
     GetHostFn gethostbyname; InetAddrFn inet_addr; HtonsFn htons; SetOptFn setsockopt; LastErrorFn lastError;
 } ws;
 
+// Loads ws2_32.dll, takes the functions used here and starts Winsock 2.2.
 static BOOL LoadWinsock(void)
 {
     HMODULE m = LoadLibraryA("ws2_32.dll");
@@ -382,6 +393,7 @@ static BOOL IsSet(SOCKET s, const fd_set *set)
     return FALSE;
 }
 
+// Sends all n bytes; FALSE if the socket fails.
 static BOOL SendAll(SOCKET s, const BYTE *p, int n)
 {
     while (n > 0)
@@ -394,6 +406,8 @@ static BOOL SendAll(SOCKET s, const BYTE *p, int n)
     return TRUE;
 }
 
+// Sends one frame (length, type, then a and b as payload) under the send lock; FALSE if the connection
+// is closed or fails.
 static BOOL SendFrame(Connection *c, BYTE type, const void *a, DWORD na, const void *b, DWORD nb)
 {
     BYTE head[5];
@@ -416,6 +430,7 @@ static Connection *Route(DWORD to)
     return g_conn[1].s != INVALID_SOCKET ? &g_conn[1] : NULL;
 }
 
+// Host: the clients that are connected and have announced themselves.
 static int ConnectedClients(void)
 {
     int n = 0, id;
@@ -430,6 +445,7 @@ static Incoming *g_inHead, *g_inTail;
 static CRITICAL_SECTION g_inLock;
 static SHORT g_nextSeq;
 
+// Queues a packet for DpReceive. from 0 is a DirectPlay system message.
 static void Deliver(DWORD from, const void *data, DWORD size)
 {
     Incoming *m = (Incoming *)Alloc(sizeof(Incoming) + size);
@@ -467,6 +483,7 @@ static void AnnouncePlayer(DWORD id, const char *name)
     Deliver(0, msg, sizeof msg);
 }
 
+// Logs a game message: tasks (class 0x6A) always, everything else with LogVerbose=1.
 static void LogMessage(const char *dir, DWORD who, const BYTE *msg, DWORD size)
 {
     WORD cls = *(const WORD *)(msg + 4), kind = *(const WORD *)(msg + 6);
@@ -518,12 +535,15 @@ static BOOL g_shadowValid[MAX_COMPUTERS + 1];
 static CRITICAL_SECTION g_stateLock;
 static DWORD g_stateTotal;
 
+// Sends the runs collected in `frame` as one FRAME_STATE and empties it.
 static void FlushState(Connection *c, BYTE *frame, DWORD *used)
 {
     if (*used) SendFrame(c, FRAME_STATE, frame, *used, NULL, 0);
     *used = 0;
 }
 
+// Host: sends client `to` the units of the state blocks that differ from its shadow copy (all of them
+// the first time) and updates the shadow copy.
 static void SyncState(DWORD to)
 {
     Connection *c;
@@ -570,6 +590,7 @@ static void SyncState(DWORD to)
     LeaveCriticalSection(&g_stateLock);
 }
 
+// Whether a range of 1999 addresses lies inside one state block.
 static BOOL InState(DWORD addr, DWORD n)
 {
     int b;
@@ -578,6 +599,8 @@ static BOOL InState(DWORD addr, DWORD n)
     return FALSE;
 }
 
+// Client: writes the runs of a FRAME_STATE into the game's memory; stops at a run outside the state
+// blocks.
 static void ApplyState(const BYTE *p, DWORD n)
 {
     while (n >= 8)
@@ -594,11 +617,14 @@ static void ApplyState(const BYTE *p, DWORD n)
 
 typedef struct { void **vtbl; } FakeDirectPlay;
 
+// Methods of the fake object: the unused ones fail, AddRef, Release and Close do nothing.
 static HRESULT WINAPI DpNotImpl(FakeDirectPlay *self) { (void)self; return E_NOTIMPL_DP; }
 static ULONG WINAPI DpAddRef(FakeDirectPlay *self) { (void)self; return 1; }
 static ULONG WINAPI DpRelease(FakeDirectPlay *self) { (void)self; return 1; }
 static HRESULT WINAPI DpClose(FakeDirectPlay *self) { (void)self; return DP_OK; }
 
+// IDirectPlay::Receive: hands over the oldest queued packet (DPERR_BUFFERTOOSMALL with the size needed
+// if it doesn't fit) and notes when the host's collected globals arrive.
 static HRESULT WINAPI DpReceive(FakeDirectPlay *self, DWORD *from, DWORD *to, DWORD flags, void *buffer, DWORD *size)
 {
     Incoming *m;
@@ -636,6 +662,7 @@ static HRESULT WINAPI DpReceive(FakeDirectPlay *self, DWORD *from, DWORD *to, DW
 static void *g_dpVtbl[32];
 static FakeDirectPlay g_dp = { g_dpVtbl };
 
+// Fills the vtable and puts the fake object into the game's DirectPlay pointer.
 static void SetUpDirectPlay(void)
 {
     int i;
@@ -849,6 +876,7 @@ static __declspec(naked) void EventTaskThunk(void)
     }
 }
 
+// Client: asks the host to take the manager from the settings into its game.
 static void SendJoin(void)
 {
     BYTE p[28];
@@ -873,6 +901,7 @@ static void SendJoin(void)
 static volatile LONG g_dialogDone;
 static int g_dialogMode;
 
+// The address and name fields are only used when joining.
 static void EnableJoinFields(HWND w)
 {
     BOOL join = IsDlgButtonChecked(w, ID_JOIN) == BST_CHECKED;
@@ -881,6 +910,8 @@ static void EnableJoinFields(HWND w)
     EnableWindow(GetDlgItem(w, ID_LAST), join);
 }
 
+// The choice window: "Weiter" or Enter takes the choice (joining needs an address and both names),
+// closing the window means without network.
 static LRESULT CALLBACK ChoiceProc(HWND w, UINT msg, WPARAM wp, LPARAM lp)
 {
     if (msg == WM_COMMAND)
@@ -909,6 +940,7 @@ static LRESULT CALLBACK ChoiceProc(HWND w, UINT msg, WPARAM wp, LPARAM lp)
     return DefWindowProcA(w, msg, wp, lp);
 }
 
+// Creates a child control with the given font; edit fields get a sunken border.
 static HWND Control(HWND parent, const char *cls, const char *text, DWORD style, int x, int y, int cx, int cy, int id, HFONT font)
 {
     HWND c = CreateWindowExA(lstrcmpA(cls, "EDIT") ? 0 : WS_EX_CLIENTEDGE, cls, text, WS_CHILD | WS_VISIBLE | style,
@@ -1078,6 +1110,8 @@ static void ClientLeft(DWORD id)
     FinishTasksOfGoneComputers();
 }
 
+// Closes a connection. The host lets the client's managers leave; a client already playing the host's
+// game tells the player and ends.
 static void CloseConnection(Connection *c, const char *why)
 {
     DWORD id = c->id;
@@ -1100,6 +1134,8 @@ static void CloseConnection(Connection *c, const char *why)
     }
 }
 
+// Handles one frame: HELLO and WELCOME hand out computer IDs, JOIN puts a manager on the waiting list
+// (at most 4 managers), STATE goes into memory, GAME packets are delivered or forwarded by the host.
 static void HandleFrame(Connection *c, BYTE type, const BYTE *p, DWORD n)
 {
     if (type == FRAME_HELLO && IS_HOST && n >= 1)
@@ -1178,6 +1214,8 @@ static BOOL ReadFrames(Connection *c)
     }
 }
 
+// Reads what arrived on a connection and handles the whole frames; closes it when it ends or sends
+// something that is not a frame.
 static void Receive(Connection *c)
 {
     int k = ws.recv(c->s, (char *)c->buf + c->have, FRAME_MAX + 8 - c->have, 0);
@@ -1186,6 +1224,7 @@ static void Receive(Connection *c)
     if (!ReadFrames(c)) CloseConnection(c, "ungueltige Daten");
 }
 
+// The host's address from the settings, given as an IP address or a name.
 static BOOL ResolveHost(struct sockaddr_in *a)
 {
     ZeroMemory(a, sizeof *a);
@@ -1201,6 +1240,7 @@ static BOOL ResolveHost(struct sockaddr_in *a)
     return TRUE;
 }
 
+// Waits up to two minutes for the game's main window; FALSE if it doesn't appear.
 static BOOL WaitForGame(void)
 {
     // The main window exists once the game's InitInstance ran; the game's heap is up by then.
@@ -1218,6 +1258,7 @@ static BOOL WaitForGame(void)
     return FALSE;
 }
 
+// Host: listens on the port; if that fails, tells the player and returns INVALID_SOCKET.
 static SOCKET Listen(void)
 {
     struct sockaddr_in a;
@@ -1239,6 +1280,7 @@ static SOCKET Listen(void)
     return l;
 }
 
+// Client: connects to the host and announces itself with the manager's name.
 static void TryConnect(void)
 {
     struct sockaddr_in a;
@@ -1262,6 +1304,7 @@ static void TryConnect(void)
     SendFrame(&g_conn[1], FRAME_HELLO, name, lstrlenA(name) + 1, NULL, 0);
 }
 
+// Host: gives a new connection a free place (computers 2 to 4) or turns it away.
 static void Accept(SOCKET listener)
 {
     SOCKET s = ws.accept(listener, NULL, NULL);
@@ -1295,6 +1338,8 @@ static void DistributeToNewClients(void)
         }
 }
 
+// The network thread: sets up the game's network layer and the fake DirectPlay, waits for the mode, then
+// accepts, connects and receives, and runs the game's receive pump until the network is off.
 static DWORD WINAPI NetThread(LPVOID param)
 {
     SOCKET listener = INVALID_SOCKET;
@@ -1368,6 +1413,8 @@ static DWORD WINAPI NetThread(LPVOID param)
 
 // ---- entry ------------------------------------------------------------------------------------------
 
+// Called from DllMain: with Enabled=1 in a2gnet.ini and a known build, hooks the game and starts the
+// network thread.
 void NetEarlyInit(void)
 {
     char path[MAX_PATH], *slash = NULL, *p;
