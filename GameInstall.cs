@@ -64,8 +64,17 @@ namespace A2GPatch
 
         // Exe: the places of each patch found in the exe (patches not found are missing).
         private readonly Dictionary<Patch, Site[]> sites = new Dictionary<Patch, Site[]>();
-        // Exe: where each GOG patch stands (those that aren't possible here are missing).
+        // Where each file patch stands (those that aren't possible here are missing); for Dll only those that need no exe.
         private readonly Dictionary<FilePatch, FileState> fileStates = new Dictionary<FilePatch, FileState>();
+
+        /// <summary>
+        /// Each file patch with the switch that turns it on, in the order they are switched: a switch of its
+        /// own, or the game's bugs for one of them (<see cref="TextTypos"/>).
+        /// </summary>
+        internal static readonly KeyValuePair<FilePatch, Patch>[] FileSwitches =
+            Patch.All.OfType<FilePatch>().Select(p => new KeyValuePair<FilePatch, Patch>(p, p))
+            .Concat(Patch.All.OfType<GameBugs>().SelectMany(b => b.Members.OfType<FilePatch>().Select(m => new KeyValuePair<FilePatch, Patch>(m, b))))
+            .ToArray();
         // Dll: the flags of the installed msvfw32.dll (0 without one).
         private uint flags;
 
@@ -114,35 +123,50 @@ namespace A2GPatch
             return Enumerable.Range(0, installed.Length).Any(i => (i < flagsAt || i >= flagsAt + FlagsBytes) && installed[i] != embedded[i]);
         }
 
-        /// <summary>Whether <paramref name="patch"/> can be switched here (the GOG patches never through the DLL).</summary>
+        /// <summary>
+        /// Whether <paramref name="patch"/> can be switched here (through the DLL only those with a flag, or the
+        /// file patches that need no exe; the GOG patches never).
+        /// </summary>
         public bool CanApply(Patch patch) =>
-            this.Kind == PatchKind.Dll ? !this.ForeignDll && patch.Flag != 0
-            : patch is FilePatch file ? this.State(file) == FileState.Off || this.State(file) == FileState.On
+            this.Kind == PatchKind.Dll ? !this.ForeignDll && (patch.Flag != 0 || this.IsSwitchable(patch))
+            : patch is FilePatch ? this.IsSwitchable(patch)
             : this.sites.ContainsKey(patch);
 
         /// <summary>Whether <paramref name="patch"/> is applied here.</summary>
         public bool IsApplied(Patch patch) =>
-            this.Kind == PatchKind.Dll ? (this.flags & patch.Flag) != 0
-            : patch is FilePatch file ? this.State(file) == FileState.On || this.State(file) == FileState.Fixed
+            this.Kind == PatchKind.Dll ? (this.flags & patch.Flag) != 0 || this.State(patch) == FileState.On
+            : patch is FilePatch ? this.State(patch) == FileState.On || this.State(patch) == FileState.Fixed
             : this.sites.TryGetValue(patch, out Site[] found) && patch.IsApplied(found);
 
-        private FileState State(FilePatch patch) => this.fileStates.TryGetValue(patch, out FileState state) ? state : FileState.Unknown;
+        private FileState State(Patch patch) => patch is FilePatch file && this.fileStates.TryGetValue(file, out FileState state) ? state : FileState.Unknown;
 
-        // Finds each patch's places in the exe's image, and where the GOG patches stand.
+        private bool IsSwitchable(Patch patch) => this.State(patch) == FileState.Off || this.State(patch) == FileState.On;
+
+        // Finds each patch's places in the exe's image (none for Dll, exe null), and where the file patches stand.
         private void Load(byte[] exe)
         {
             this.sites.Clear();
             this.fileStates.Clear();
             GameFiles files = new GameFiles(this.Folder, exe);
-            foreach (Patch patch in Patch.All)
+            foreach (Patch patch in exe == null ? new Patch[0] : Patch.All)
             {
                 Site[] found = patch.Find(exe);
                 if (found != null)
                     this.sites[patch] = found;
-                FileState state = patch is FilePatch file ? file.State(files) : FileState.Unknown;
-                if (state != FileState.Unknown)
-                    this.fileStates[(FilePatch)patch] = state;
             }
+            foreach (FilePatch patch in FileSwitches.Select(s => s.Key).Where(p => exe != null || !p.NeedsExe))
+            {
+                FileState state = patch.State(files);
+                if (state != FileState.Unknown)
+                    this.fileStates[patch] = state;
+            }
+        }
+
+        // Switches the file patches to the choice in wanted (each by its switch), CopyProtection last as it stores the CRC of the finished exe.
+        private void SwitchFiles(GameFiles files, ICollection<Patch> wanted)
+        {
+            foreach (KeyValuePair<FilePatch, Patch> patch in FileSwitches.Where(s => this.State(s.Key) == FileState.Off || this.State(s.Key) == FileState.On).OrderBy(s => s.Key is CopyProtection))
+                patch.Key.Switch(files, wanted.Contains(patch.Value));
         }
 
         /// <summary>
@@ -163,7 +187,11 @@ namespace A2GPatch
                 if (install.sites.Count > 0)
                     return install;
                 if (name == "run.exe" && Patch.All.SelectMany(p => p.Patterns).All(p => Patch.FindAll(exe, p).Count == 0))
-                    return new GameInstall(folder, PatchKind.Dll, path);
+                {
+                    GameInstall packed = new GameInstall(folder, PatchKind.Dll, path);
+                    packed.Load(null);
+                    return packed;
+                }
             }
             return new GameInstall(folder, PatchKind.None, null);
         }
@@ -206,8 +234,7 @@ namespace A2GPatch
                     (site.IsPatched ? site.Original : site.Patched).CopyTo(image, site.Offset);
             }
             GameFiles files = new GameFiles(this.Folder, image);
-            foreach (FilePatch patch in this.fileStates.Where(s => s.Value != FileState.Fixed).Select(s => s.Key).OrderBy(p => p is CopyProtection))
-                patch.Switch(files, wanted.Contains(patch));
+            this.SwitchFiles(files, wanted);
 
             if (!files.Exe.SequenceEqual(current))
             {
@@ -256,10 +283,12 @@ namespace A2GPatch
             }
             this.flags = flags;
             this.DllOutdated = false;
-            // The DLL changes the program of patch 1.01 in memory, its data files are changed here.
+            // The DLL changes the program of patch 1.01 in memory, its data files are changed here, as are the texts.
             GameFiles files = new GameFiles(this.Folder, null);
             Patch101.SwitchData(files, wanted.Any(p => p is Patch101));
+            this.SwitchFiles(files, wanted);
             this.WriteFiles(files);
+            this.Load(null);
         }
 
         /// <summary>

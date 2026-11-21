@@ -83,11 +83,11 @@ jobs:
           A2G-Patch $tag
           =================
 
-          Patches für Anstoss 2 Gold (Original, GOG und 2007er-CD), im Fenster in drei Gruppen:
+          Patches für Anstoss 2 Gold (Original, GOG und 2007er-CD), im Fenster in Gruppen:
 
           Patches:
 
-          - Spielfehler, ein Schalter für fünfzehn Fehlerbehebungen:
+          - Spielfehler, ein Schalter für sechzehn Fehlerbehebungen:
             - Geldanlagen: Das Spiel zieht jeden Gewinn einer Geldanlage vom Kontostand ab; je
               besser sie läuft, desto weniger Geld ist auf dem Konto. Erst beim Auflösen kommt alles
               auf einmal zurück. Mit dem Patch sinkt der Kontostand nur um die Einlage, der Gewinn
@@ -145,6 +145,10 @@ jobs:
             - Langer Windows-Betrieb: Kein Einfrieren nach über 24 Tagen Windows-Laufzeit; eine
               Wartezeit von 3 Sekunden wird sonst zu Wochen (der Schnellstart von Windows zählt die
               Laufzeit weiter).
+            - Tippfehler: Lernt ein Spieler eine neue Hauptposition, meldet das Spiel etwa "er ist
+              nun rechter Verteidiger..". Dazu ein doppeltes "mehr", ein Komma am Satzanfang,
+              fehlende Punkte, "das" statt "daß", "UEFA - Pokals" und die abgeschnittene Überschrift
+              "Europäischer Superc.".
           - Patch 1.01 (GOG und 2007er-CD): Beide sind aus dem Stand 1.00 gebaut. Der Patch bringt
             Programm und Daten auf den Stand des offiziellen Patches 1.01, den die Version von 1999
             schon hat: das Trainingslager in der Winterpause, Zweitpositionen für neue Spieler,
@@ -194,6 +198,22 @@ jobs:
             eines Journalisten, der den Manager nicht leiden kann, die Wahl zum Spieler des Monats und
             eine Affäre mit der Frau eines Schiedsrichters.
 
+          Texte (alle Versionen):
+
+          - Euro statt DM: Alle Beträge erscheinen in €, auch in vier Ereignissen und den Tipps. Die
+            Zahlen bleiben gleich, aus 1 DM wird 1 €. "DM" als Kürzel für das defensive Mittelfeld
+            bleibt.
+          - Innenverteidiger: Innenverteidiger (IV) statt Manndecker (MD), auch in der Meldung über
+            eine neue Hauptposition.
+          - Europapokale: UEFA-Cup, Cup der Pokalsieger, Weltcup und ECL-Cup statt UEFA-Pokal,
+            Pokal der Pokalsieger, Weltpokal und UI-Cup.
+          - Liganamen: 1. und 2. Bundesliga, Regionalliga West statt West/Südwest, Championship und
+            League One statt Division One und Two, Ligue 1 und 2. Die Regionalliga Nordost behält
+            ihren Namen.
+          - Gruppen A bis H statt 1 bis 8.
+          - Vertragsbegriffe: Grundgehalt statt Festgehalt, Ausstiegsklausel statt Freigabeklausel
+            und fixer Ablöse, Rekordtransfers statt Supertransfers.
+
           Nur für die GOG-Version (bei den anderen ausgegraut):
 
           - Keine Kopierschutz-Strafen (z. B. "Raubkopie" als Vereinsname): Die Reste des
@@ -232,6 +252,8 @@ jobs:
             Originalzustand und die Sicherung verschwindet.
           - Die GOG-Patches ändern auch RESDLL.dll (Sicherung RESDLL.dll.vor-a2g-patch) und die
             Datendateien von Patch 1.01. Ausschalten stellt auch sie wieder her.
+          - Die Texte und die Tippfehler ändern in jeder Version RESDLL.dll, die Ereignistexte und
+            die Tipps, ohne Sicherung. Ausgeschaltet sind die Dateien wieder wie vorher.
           - 2007er-CD: Deren run.exe ist gepackt. A2G-Patch legt stattdessen eine msvfw32.dll in den
             Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Die Datendateien
             von Patch 1.01 ändert A2G-Patch direkt, Ausschalten stellt sie wieder her. Manche

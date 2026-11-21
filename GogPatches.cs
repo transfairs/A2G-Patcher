@@ -29,6 +29,8 @@ namespace A2GPatch
     {
         private readonly string folder;
         private readonly Dictionary<string, byte[]> changed = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        // The files read from disk so far (null for missing ones): RESDLL.dll is 64 MB, and every text patch looks at it.
+        private readonly Dictionary<string, byte[]> read = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
         private readonly List<string> order = new List<string>();
 
         /// <summary>The files in <paramref name="folder"/>, the exe's image being <paramref name="exe"/>.</summary>
@@ -41,13 +43,16 @@ namespace A2GPatch
         /// <summary>The exe's image; patches replace it.</summary>
         public byte[] Exe { get; set; }
 
-        /// <summary>The file <paramref name="name"/> (relative to the game folder) as it is or will be; null if it doesn't exist.</summary>
+        /// <summary>
+        /// The file <paramref name="name"/> (relative to the game folder) as it is or will be; null if it doesn't
+        /// exist. Read from disk once; callers don't change the bytes they get.
+        /// </summary>
         public byte[] Read(string name)
         {
-            if (this.changed.TryGetValue(name, out byte[] bytes))
+            if (this.changed.TryGetValue(name, out byte[] bytes) || this.read.TryGetValue(name, out bytes))
                 return bytes;
             string path = Path.Combine(this.folder, name);
-            return File.Exists(path) ? File.ReadAllBytes(path) : null;
+            return this.read[name] = File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
 
         /// <summary>Will write <paramref name="bytes"/> to the file <paramref name="name"/>; null deletes it.</summary>
@@ -88,6 +93,12 @@ namespace A2GPatch
         public sealed override IEnumerable<byte?[]> Patterns => Enumerable.Empty<byte?[]>();
         /// <inheritdoc/>
         public sealed override Site[] Find(byte[] image) => null;
+
+        /// <summary>
+        /// Whether the patch needs the exe's code on disk; one that doesn't (the text patches) is offered for
+        /// the packed 2007 CD exe as well, its <see cref="State"/> and <see cref="Switch"/> then see no exe.
+        /// </summary>
+        internal virtual bool NeedsExe => true;
 
         /// <summary>Where the patch stands in <paramref name="files"/>.</summary>
         public abstract FileState State(GameFiles files);
@@ -408,8 +419,9 @@ namespace A2GPatch
         private static List<DataFile> Data(GameFiles files)
         {
             List<DataFile> data = new List<DataFile>();
+            // Known by the texts as GOG or 1.01 has them; the text patches may have changed others.
             byte[] events = files.Read(Events);
-            string hash = GameFiles.Sha256(events);
+            string hash = GameFiles.Sha256(TextPatch.PlainEvents(events));
             if (hash == EventsGog || hash == Events101)
             {
                 byte[] gog = hash == EventsGog ? events : ChangeEvents(events, (byte)'.', (byte)':');
@@ -675,10 +687,13 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override string Title => "Fensterrahmen anzeigen";
 
+        // The file is known by its hash without the text patches' changes; they stay as they are, on the dialogs
+        // with GOG's styles or with those of 1999.
+
         /// <inheritdoc/>
         public override FileState State(GameFiles files)
         {
-            string hash = GameFiles.Sha256(files.Read(Dll));
+            string hash = GameFiles.Sha256(TextPatch.PlainResources(files.Read(Dll)));
             if (hash == Gog)
                 return FileState.Off;
             if (hash != Result)
@@ -689,20 +704,21 @@ namespace A2GPatch
         /// <inheritdoc/>
         public override void Switch(GameFiles files, bool on)
         {
-            bool isOn = GameFiles.Sha256(files.Read(Dll)) == Result;
+            byte[] current = files.Read(Dll), plain = TextPatch.PlainResources(current);
+            bool isOn = GameFiles.Sha256(plain) == Result;
             if (on == isOn)
                 return;
             if (!on)
             {
-                files.Write(Dll, files.Read(Backup));
+                files.Write(Dll, TextPatch.WithTextsOf(current, files.Read(Backup)));
                 files.Write(Backup, null);
                 return;
             }
-            byte[] original = files.Read(Dll), result = Restore(original);
+            byte[] result = Restore(plain);
             if (GameFiles.Sha256(result) != Result)
                 throw new InvalidOperationException($"{Dll}: Das Ergebnis ist nicht wie erwartet, die Dialoge bleiben unverändert.");
-            files.Write(Backup, original);
-            files.Write(Dll, result);
+            files.Write(Backup, plain);
+            files.Write(Dll, TextPatch.WithTextsOf(current, result));
         }
 
         /// <summary>A copy of the DLL <paramref name="dll"/> with the 1999 styles in every dialog template.</summary>

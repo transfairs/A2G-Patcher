@@ -57,6 +57,10 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="GameInstall.cs" />
+    <Compile Include="GameTexts.cs" />
+    <Compile Include="GroupList.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GogPatches.cs" />
     <Compile Include="ManagerCode.cs" />
     <Compile Include="NetworkPlay.cs" />
@@ -70,6 +74,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
+    <Compile Include="TextPatches.cs" />
     <Compile Include="Theme.cs" />
     <Compile Include="V101Code.cs" />
   </ItemGroup>

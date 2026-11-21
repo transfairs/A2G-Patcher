@@ -1,10 +1,10 @@
 # A2G-Patch
 
-Patches for **Anstoss 2 Gold**, switched on and off in one small window, one tile each in three groups:
+Patches for **Anstoss 2 Gold**, switched on and off in one small window, one tile each in groups:
 
 "Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes and current Windows.
 
-- **Spielfehler** (Behebt: Geldanlagen, Ereignisse, …), one switch for fifteen bug fixes; each keeps its own places
+- **Spielfehler** (Behebt: Geldanlagen, Ereignisse, …), one switch for sixteen bug fixes; each keeps its own places
   and DLL flag, and the switch counts as on once one of them is applied (an exe patched by an older
   version keeps its fixes, and applying completes the rest):
   - **Geldanlagen** (Wertzuwachs von Geldanlagen nicht mehr vom Kontostand abziehen): the game takes every
@@ -72,6 +72,12 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
     there this fix is left out.
   - **Langer Windows-Betrieb** (Kein Einfrieren nach über 24 Tagen Windows-Laufzeit): a 3-second wait in a
     reply sequence turns into weeks once Windows has run for 2^31 ms (Fast Startup keeps the uptime).
+  - **Tippfehler** (Satzzeichen und Schreibfehler in Texten des Spiels (z. B. „rechter Verteidiger..“)): the
+    message about a player's new main position ends with a full stop, and three of the position names it
+    takes bring their own ("rechter Verteidiger.."). Also a doubled "mehr" when the club ends the
+    contract, a comma at the start and a full stop in the middle of player descriptions, missing full
+    stops, "das" for "daß", "UEFA - Pokals", "Nationalen Pokals", and the Supercup heading cut to
+    "Europäischer Superc.". Changes texts like the switches under *Texte*, in every release.
 - **Patch 1.01** (Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01): the GOG
   release and the 2007 CD release are built from the 1.00 source. The patch brings program and data to the
   official patch 1.01, which the 1999 release contains already, among them the training camp in the winter
@@ -136,6 +142,29 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
     club.
   The honking fans' message names the manager twice and gets his name both times.
 
+"Texte": names and terms in the game's texts (`RESDLL.dll`, the event texts and the tips), for every
+release. They take up the Euro patch of 2022 (a `RESDLL.dll` for the 1999 release), change only texts and
+leave out its swap of the season goals "Klassenerhalt" and "ehrliche Arbeit" (the game asks for 15th
+and 13th place of 18).
+
+- **Euro statt DM** (Beträge in € statt DM, auch in Ereignissen und Tipps; die Zahlen bleiben gleich): the
+  three money formats every amount the game shows goes through, the amounts in 79 dialogs, a sentence with
+  "Mark", four event texts and the tips. 1 DM shows as 1 €. "DM" alone, the defensive midfielder, stays.
+- **Innenverteidiger** (Innenverteidiger (IV) statt Manndecker (MD)): the position's name and abbreviation
+  in lists, search dialogs and the national squad, and in the message about a new main position.
+- **Europapokale** (UEFA-Cup, Cup der Pokalsieger, Weltcup und ECL-Cup statt UEFA-Pokal, Pokal der
+  Pokalsieger, Weltpokal und UI-Cup): the European cups in tables, results, trophies, contracts and
+  questions.
+- **Liganamen** (Heutige Ligennamen: 1. und 2. Bundesliga, Regionalliga West, Championship, League One,
+  Ligue 1 und 2): the leagues' names and short names; Regionalliga West/Südwest becomes Regionalliga West,
+  Nordost keeps its name, which it has again since 2012; Spain's short name "1a Division" becomes
+  "Primera D.".
+- **Gruppen A bis H** (Gruppen A bis H statt 1 bis 8): the groups of the cups and the
+  championships.
+- **Vertragsbegriffe** (Grundgehalt statt Festgehalt, Ausstiegsklausel statt Freigabeklausel und fixer
+  Ablöse, Rekordtransfers statt Supertransfers): the contract dialogs, the player info, the search for
+  players and the transfer records.
+
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
 releases don't need):
@@ -195,6 +224,10 @@ What happens depends on the release:
 | Original (1999) | `anstoss2.exe` | Patched on disk. A backup `anstoss2.exe.vor-a2g-patch` is written first; once all patches are taken back, the exe is byte-identical again and the backup goes. |
 | GOG | `run.exe` | Same, `run.exe.vor-a2g-patch`. A GOG Galaxy file check restores the original; then apply again. The GOG patches also change other files: `RESDLL.dll` (backup `RESDLL.dll.vor-a2g-patch`) and the data files of patch 1.01 (taken back without a backup, see below). |
 | 2007 CD | `run.exe` (packed) | The code only exists decrypted in memory, so `msvfw32.dll` is put into the game folder. The game loads it instead of the Windows DLL; it forwards everything to the real one and patches the code at every game start. Taking all patches back deletes it. Patch 1.01's data files are changed on disk as for GOG. A `msvfw32.dll` from another version of A2G-Patch is replaced on *Übernehmen*, even with the same patches switched on. |
+
+The switches under *Texte* and the typing errors change `RESDLL.dll`, `TEXTE\EreigGld.saq`,
+`TEXTE\EreigGold.saq` and `TEXTE\tips.txt` in every release, without a backup: taken back, the files
+are the originals to the byte.
 
 Under *Program Files*, writing needs administrator rights; A2G-Patch then offers to restart itself
 as administrator. A `msvfw32.dll` in the game folder that isn't A2G-Patch's is never touched.
@@ -722,6 +755,39 @@ lea ecx,[esp+C] / push 16A8 / push ecx / call 0x619c10 / add esp,8
 
 `CString::operator=` (`ret 4`) is the first call in `0x619c10`, which the next label (5801 "Woche") calls
 too; the patch takes both targets from there, in either state.
+
+### Texts
+
+The text switches (`TextPatches.cs`, the files in `GameTexts.cs`) need no code of the exe and work the
+same for every release, the packed 2007 CD exe included. Each change names its texts by number: strings
+of `RESDLL.dll`, dialogs (caption and controls), event texts; the tips as a whole. In strings, dialogs and
+tips a text is replaced as a whole word, so "Gruppe 1" leaves "Gruppe 10" alone and " DM" behind an amount
+isn't "DM" alone (string 1147, the defensive midfielder). A switch is offered only if every text it
+changes is in the original file; a `RESDLL.dll` that isn't the game's (the Euro patch of 2022, for one)
+greys them out.
+
+**Resources.** A longer text doesn't fit in place, so the changed string table blocks (16 strings each)
+and dialog templates go into a section `.a2gtxt` added at the end of `RESDLL.dll`, read-only data, and
+the resource directory points there. The section starts with `A2GPatchTexts\0`, the names of the switches
+on, and for each moved resource where its data entry is and the address and size it had. Every switch
+builds the section anew from the original resources for the switches that are on, in a fixed order (the
+cup names before the typing errors, which share "UEFA - Pokals"); with none on, the section and the
+entries go back and the file is the original to the byte. A dialog keeps every byte but its texts; items
+are aligned to four bytes again behind a text that changed its length. Styles stay: the game tells its
+picture buttons from labels by `WS_EX_CLIENTEDGE` (it makes the pressed picture only for those), which the
+Euro patch's file lost on 35 controls, among them the stadium screen's buttons.
+
+**Event texts.** `TEXTE\EreigGld.saq` (GOG and 2007 CD also `EreigGold.saq`): the length of the text block
+and the number of texts (1384), then the block, each byte XORed with the stored byte before it. The game
+reads the block only at exactly 0x1DB3A bytes. Each switch replaces whole texts and keeps the sum of their
+lengths: "€" instead of "DM" gets a space at the end of its text; "Innenverteidiger" is six bytes longer
+than "Manndecker", so the message about a new main position (text 906) becomes "… hat eine neue
+Hauptposition gelernt: %s." with spaces behind it; the typing errors put the bytes they drop behind the
+stadium message (905). `TEXTE\tips.txt` is read line by line, so its length is free.
+
+Patch 1.01 knows GOG's event file and the GOG dialog styles know GOG's `RESDLL.dll` by SHA-256; both take
+the text changes back before they hash, and the dialog styles put the switches' texts back over the
+dialogs they change.
 
 ### GOG release
 
