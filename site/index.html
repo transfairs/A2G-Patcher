@@ -47,7 +47,7 @@
         </a>
         <a class="btn btn-ghost" href="https://github.com/transfairs/A2G-Patcher/releases">Alle Versionen</a>
       </div>
-      <p class="fine">Windows XP (SP3) bis 11 · .NET Framework 4.0 oder neuer · GPL-3.0</p>
+      <p class="fine">Windows XP (SP3) bis 11 · .NET Framework 4.0 oder neuer · Windows 2000 (SP4): <code>A2G-Patch-Win2000.exe</code> mit .NET Framework 2.0 · GPL-3.0</p>
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
@@ -630,7 +630,7 @@ Blit:    call GetClientRect(Fenster, Ziel)   →  call CopyRect(Ziel, Quelle)</c
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>Ein Proxy für die 2007er-CD</span></summary>
-        <p><code>msvfw32</code> ist keine KnownDLL, also gewinnt die Kopie im Spielordner. Alle 47 Exporte springen an die echte DLL weiter, die erst beim ersten Aufruf geladen wird. Ein Thread wartet, bis der entpackte Code im Speicher liegt, und schreibt dann nur die aktivierten Patches. Ohne C-Laufzeit gebaut, damit sie auch unter Windows XP lädt.</p>
+        <p><code>msvfw32</code> ist keine KnownDLL, also gewinnt die Kopie im Spielordner. Alle 47 Exporte springen an die echte DLL weiter, die erst beim ersten Aufruf geladen wird. Ein Thread wartet, bis der entpackte Code im Speicher liegt, und schreibt dann nur die aktivierten Patches. Ohne C-Laufzeit gebaut, damit sie auch unter Windows 2000 und XP lädt.</p>
       </details>
     </div>
     <p class="more"><a href="https://github.com/transfairs/A2G-Patcher#readme">Ganze Beschreibung im README →</a></p>

@@ -290,7 +290,7 @@ namespace A2GPatch
         /// <summary><paramref name="texts"/> as an event file, the number of texts as in <paramref name="original"/>.</summary>
         public static byte[] Write(byte[] original, string[] texts)
         {
-            byte[] plain = TextPatch.Ansi.GetBytes(string.Concat(texts.Select(t => t + "\0")));
+            byte[] plain = TextPatch.Ansi.GetBytes(string.Concat(texts.Select(t => t + "\0").ToArray()));
             byte[] result = new byte[8 + plain.Length];
             BitConverter.GetBytes(plain.Length).CopyTo(result, 0);
             Array.Copy(original, 4, result, 4, 4);

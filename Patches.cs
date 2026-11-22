@@ -114,7 +114,7 @@ namespace A2GPatch
 
         /// <inheritdoc/>
         // Fixes of one subject share a title, named once.
-        public override string Name => "Behebt: " + string.Join(", ", this.Members.Select(m => m.Title).Distinct());
+        public override string Name => "Behebt: " + string.Join(", ", this.Members.Select(m => m.Title).Distinct().ToArray());
         /// <inheritdoc/>
         public override string Title => "Spielfehler";
         /// <inheritdoc/>
@@ -1828,7 +1828,7 @@ namespace A2GPatch
             "8B442404" + "0554010000" + "50" + "E800000000" + "59" + "038138030000" + "2B813C030000" + "C3909090"
             + "8B8E540100008BC103C7710A8BC7C1F81F35FFFFFF7F3D" + Le(Limit) + "7E0F3BC17E0BB8" + Le(Limit)
             + "3BC17D028BC15F8986540100005E5B83C424C3"
-            + string.Concat(Enumerable.Repeat("90", 208 - 0x59)), 0x0A);
+            + string.Concat(Enumerable.Repeat("90", 208 - 0x59).ToArray()), 0x0A);
         private const int WeekPatchedCall = 0x0A;
         /// <summary>Where the check starts in the rewritten week's result.</summary>
         internal const int CheckAt = 0x20;
@@ -1845,10 +1845,10 @@ namespace A2GPatch
 
         // The booking, behind the call that ends the human clubs' statistics (call / add esp,8).
         private static readonly byte?[] BookingOriginal = Code("E80000000083C408" + "8B865401000003C75F8986540100005E5B83C424C39090", 0);
-        private static readonly byte?[] BookingPatched = Code("E80000000083C408" + "E900000000" + string.Concat(Enumerable.Repeat("90", 18)), 0, 8);
+        private static readonly byte?[] BookingPatched = Code("E80000000083C408" + "E900000000" + string.Concat(Enumerable.Repeat("90", 18).ToArray()), 0, 8);
         private const int BookingAt = 8;
 
-        private static string Le(int value) => string.Concat(BitConverter.GetBytes(value).Select(b => b.ToString("X2")));
+        private static string Le(int value) => string.Concat(BitConverter.GetBytes(value).Select(b => b.ToString("X2")).ToArray());
 
         /// <inheritdoc/>
         public override string Name => "Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen";
@@ -2011,7 +2011,7 @@ namespace A2GPatch
                   + "8D9424340200005052E8????????83C4108D84242C0200008D4C243850516A026A5B53",
                   "B9????????8BA96C0400008B35????????56E8????????8BF08D7C243C6A0859F3A5FF35????????E8????????"
                   + "8D4C2440890C2450B9????????FFB1740400008D94243C02000052E8????????83C4105E8D84242C020000"
-                  + "50556A026A5B53" + string.Concat(Enumerable.Repeat("90", 37))),
+                  + "50556A026A5B53" + string.Concat(Enumerable.Repeat("90", 37).ToArray())),
             Place("6A025668530100006A6055E8????????8B853003000083C41403C6898530030000",   // 339
                   "6A025668530100006A6055E8????????01B5300300006A0155E88263000083C41C"),
             Place("6A02505068570100006A6055E8????????83C4186A1455E8????????83C40866B801005F5E5D5B81C460080000C3",   // 343

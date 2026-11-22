@@ -16,8 +16,12 @@ if not exist "%VCVARS%" (
 call "%VCVARS%" x86 || exit /b 1
 
 cd /d "%~dp0"
-rem No C runtime (/Zl /GS- /NODEFAULTLIB, own entry point) and subsystem 5.01, so Windows XP loads it.
+rem No C runtime (/Zl /GS- /NODEFAULTLIB, own entry point), so Windows 2000 and XP load it.
 cl /nologo /W3 /O1 /GS- /Zl /LD msvfw32.c /link /DEF:msvfw32.def /OUT:msvfw32.dll /NODEFAULTLIB /ENTRY:DllMain /SUBSYSTEM:WINDOWS,5.01 kernel32.lib
+if errorlevel 1 exit /b 1
+rem Windows 2000 refuses images whose subsystem version is above 5.0, and the linker won't write
+rem less than 5.01: set operating system and subsystem version in the optional header to 5.0.
+powershell -NoProfile -Command "$b = [IO.File]::ReadAllBytes('msvfw32.dll'); $o = [BitConverter]::ToInt32($b, 0x3C) + 24; foreach ($f in 40, 48) { $b[$o + $f] = 5; $b[$o + $f + 1] = 0; $b[$o + $f + 2] = 0; $b[$o + $f + 3] = 0 }; [IO.File]::WriteAllBytes('msvfw32.dll', $b)"
 if errorlevel 1 exit /b 1
 
 del /q msvfw32.obj msvfw32.exp msvfw32.lib 2>nul

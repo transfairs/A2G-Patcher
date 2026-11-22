@@ -72,7 +72,7 @@ namespace A2GPatch
             if (bytes == null)
                 return null;
             using (SHA256 sha = SHA256.Create())
-                return string.Concat(sha.ComputeHash(bytes).Select(b => b.ToString("x2")));
+                return string.Concat(sha.ComputeHash(bytes).Select(b => b.ToString("x2")).ToArray());
         }
     }
 
