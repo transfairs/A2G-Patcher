@@ -164,7 +164,7 @@ namespace A2GPatch.Tests
                 "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Kontostand",
                 "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs", "Fischvergiftung", "Manager-Ereignisse",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen", "Mausklicks",
-                "Euro statt DM", "Innenverteidiger", "Europapokale", "Liganamen", "Gruppen A bis H", "Vertragsbegriffe",
+                "Euro statt DM", "Innenverteidiger", "Europapokale", "Liganamen", "Gruppen A bis H", "Vertragsbegriffe", "Quizfragen", "Neue Quizfragen",
             }, Patch.All.Select(p => p.Title));
             Assert.Equal(new[]
             {
@@ -190,11 +190,13 @@ namespace A2GPatch.Tests
                 "Heutige Ligennamen: 1. und 2. Bundesliga, Regionalliga West, Championship, League One, Ligue 1 und 2",
                 "Gruppen A bis H statt 1 bis 8",
                 "Grundgehalt statt Festgehalt, Ausstiegsklausel statt Freigabeklausel und fixer Ablöse, Rekordtransfers statt Supertransfers",
+                "Quiz der Managerfortbildung auf dem Stand von 2026: Titel, Rekorde, Regeln",
+                "150 weitere Fragen für die Managerfortbildung, von 1998 bis 2026",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the file patches without a flag (0) last.
-            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog, t = PatchGroup.Texts;
-            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o, t, t, t, t, t, t }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o, t, t, t, t, t, t, t, t }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own (the typing errors, a text patch, have none); together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;

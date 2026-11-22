@@ -164,6 +164,15 @@ and 13th place of 18).
 - **Vertragsbegriffe** (Grundgehalt statt Festgehalt, Ausstiegsklausel statt Freigabeklausel und fixer
   Ablöse, Rekordtransfers statt Supertransfers): the contract dialogs, the player info, the search for
   players and the transfer records.
+- **Quizfragen** (Quiz der Managerfortbildung auf dem Stand von 2026: Titel, Rekorde, Regeln): 77 of the
+  633 questions of the manager course. Answers on the state of November 2026 (titles, records such as Lewandowski's 41
+  goals, rules such as the ball touching the referee, people in office), four that were wrong already in
+  1998 (the UEFA's seat, Rangers' colours, a city without two Bundesliga clubs, the last double), and
+  questions about a time that is over name their year ("Wer war 1998 Präsident des FC Schalke 04?").
+- **Neue Quizfragen** (150 weitere Fragen für die Managerfortbildung, von 1998 bis 2026): 46, 59 and 45
+  questions at the end of the three levels, from the World Cup 1998 to the World Cup 2026, records such as
+  Bayern's six titles in 2020/21 and the FC Gütersloh's Westfalenpokal, with wrong answers that may be jokes as in the game's own. Answers that may
+  change name their state ("Stand November 2026").
 
 "Nur für die GOG-Version", only for the GOG release and greyed out for the other releases (GOG sells the
 2007 release by Kalypso, its `run.exe` taken out of the copy protection, which leaves things the other
@@ -217,7 +226,7 @@ What happens depends on the release:
 | 2007 CD | `run.exe` (packed) | The code only exists decrypted in memory, so `msvfw32.dll` is put into the game folder. The game loads it instead of the Windows DLL; it forwards everything to the real one and patches the code at every game start. Taking all patches back deletes it. Patch 1.01's data files are changed on disk as for GOG. A `msvfw32.dll` from another version of A2G-Patch is replaced on *Übernehmen*, even with the same patches switched on. |
 
 The switches under *Texte* and the typing errors change `RESDLL.dll`, `TEXTE\EreigGld.saq`,
-`TEXTE\EreigGold.saq` and `TEXTE\tips.txt` in every release, without a backup: taken back, the files
+`TEXTE\EreigGold.saq`, `TEXTE\tips.txt` and `TEXTE\fort.saq` in every release, without a backup: taken back, the files
 are the originals to the byte.
 
 Under *Program Files*, writing needs administrator rights; A2G-Patch then offers to restart itself
@@ -779,6 +788,15 @@ lengths: "€" instead of "DM" gets a space at the end of its text; "Innenvertei
 than "Manndecker", so the message about a new main position (text 906) becomes "… hat eine neue
 Hauptposition gelernt: %s." with spaces behind it; the typing errors put the bytes they drop behind the
 stadium message (905). `TEXTE\tips.txt` is read line by line, so its length is free.
+
+**Quiz.** `TEXTE\fort.saq` (`QuizPatches.cs`, `QuizQuestions.cs`): the number of questions of each of the three levels, the
+number of texts (two per question), the length of the text block, a table of where each text starts, then
+the block, each byte inverted. A question is followed by its answers, separated by commas, the right one
+first; the game shows it and two of the next three. The game takes the counts and sizes from the header
+and makes room for them (`0x487800`), so texts may change length. The switch replaces whole questions it
+finds with their answers, keeps their place and level and writes the file anew; taken back, it is the
+original to the byte. The new questions go to the end of their level and are taken out again; both
+switches change the file independently of each other.
 
 Patch 1.01 knows GOG's event file and the GOG dialog styles know GOG's `RESDLL.dll` by SHA-256; both take
 the text changes back before they hash, and the dialog styles put the switches' texts back over the

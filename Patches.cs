@@ -43,7 +43,7 @@ namespace A2GPatch
             new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new MoneyLimit(),
             new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new FishPoisoning(), new ManagerEvents(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(), new WrapperClipping(),
-            new Currency(), new CentreBack(), new CupNames(), new LeagueNames(), new GroupLetters(), new ContractTerms(),
+            new Currency(), new CentreBack(), new CupNames(), new LeagueNames(), new GroupLetters(), new ContractTerms(), new QuizAnswers(), new QuizQuestions(),
         };
 
         /// <summary>The patch of type <typeparamref name="T"/>, a switch of its own or one of the game's bugs.</summary>
