@@ -277,5 +277,26 @@ namespace A2GPatch.Tests
                 Assert.Same(Theme.Dark, progress.Theme);
             }
         });
+
+        // Windows 2000 and XP lack dwmapi.dll (2000 also uxtheme.dll): there the window leaves its frame and lists alone.
+        [Fact]
+        public void WithoutNativeLooks_LeavesWindowsAlone() => StaThread.Run(() =>
+        {
+            bool original = Theme.NativeLooks;
+            Theme.NativeLooks = false;
+            try
+            {
+                using (Form form = new Form())
+                {
+                    Theme.StyleTitleBar(form.Handle, true);
+                    Theme.StyleNative(form.Handle, true, Theme.DarkScrollBars);
+                    Assert.True(form.IsHandleCreated);
+                }
+            }
+            finally
+            {
+                Theme.NativeLooks = original;
+            }
+        });
     }
 }

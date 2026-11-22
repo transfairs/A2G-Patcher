@@ -31,6 +31,13 @@ namespace A2GPatch
         /// <summary>Whether Windows wants apps dark; tests replace it.</summary>
         internal static Func<bool> PrefersDark = () => MeansDark(Registry.GetValue(PersonalizeKey, "AppsUseLightTheme", null));
 
+        /// <summary>
+        /// Whether dwmapi.dll and uxtheme.dll are there to ask for Windows' own dark looks: from Vista on
+        /// (Windows 2000 has neither, XP no dwmapi.dll). Windows before 10 ignores the dark requests.
+        /// Tests switch it off.
+        /// </summary>
+        internal static bool NativeLooks = Environment.OSVersion.Version.Major >= 6;
+
         /// <summary>The look on a light page: the colours the window always had.</summary>
         internal static readonly Theme Light = new Theme
         {
@@ -199,12 +206,14 @@ namespace A2GPatch
         }
 
         /// <summary>
-        /// Darkens a window's title bar, or brings the light one back. Only called once the dark theme
-        /// was asked for, i.e. on Windows 10 or later, where dwmapi.dll has the attribute: 20 from
-        /// version 2004 on, 19 before (the newer Windows rejects the old number, the older the new).
+        /// Darkens a window's title bar, or brings the light one back (see <see cref="NativeLooks"/>).
+        /// Windows 10 knows the attribute: 20 from version 2004 on, 19 before (the newer Windows
+        /// rejects the old number, the older the new).
         /// </summary>
         internal static void StyleTitleBar(IntPtr window, bool dark)
         {
+            if (!NativeLooks)
+                return;
             int on = dark ? 1 : 0;
             DwmSetWindowAttribute(window, 19, ref on, sizeof(int));
             DwmSetWindowAttribute(window, 20, ref on, sizeof(int));
@@ -217,9 +226,13 @@ namespace A2GPatch
 
         /// <summary>
         /// Gives a control Windows' own dark look (<paramref name="darkLook"/>), or the normal one back
-        /// (Windows 10 or later, as above).
+        /// (Windows 10 or later, see <see cref="NativeLooks"/>).
         /// </summary>
-        internal static void StyleNative(IntPtr window, bool dark, string darkLook) => SetWindowTheme(window, dark ? darkLook : null, null);
+        internal static void StyleNative(IntPtr window, bool dark, string darkLook)
+        {
+            if (NativeLooks)
+                SetWindowTheme(window, dark ? darkLook : null, null);
+        }
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);

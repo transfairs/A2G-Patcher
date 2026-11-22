@@ -233,6 +233,10 @@ as administrator. A `msvfw32.dll` in the game folder that isn't A2G-Patch's is n
 
 Some virus scanners flag an unsigned DLL in a game folder (DLL hijacking is a malware pattern too).
 
+Requirements: Windows XP (SP3) or later with .NET Framework 4.0 or later. For Windows 2000 (SP4) each
+release has `A2G-Patch-Win2000.exe` (also in `A2G-Patch-Latest.zip`), built against .NET Framework 2.0,
+with the same switches.
+
 ## How the patches work
 
 Each patch finds its places by the instructions around them; they must occur exactly once and hold
@@ -965,7 +969,9 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
 - On load, a thread polls the host exe's image every 250 ms for up to two minutes until each enabled
   patch's code is in memory, then rewrites it (`VirtualProtect`, `FlushInstructionCache`). Code that
   is ambiguous or not as expected is left alone; in other programs (Editor.exe) nothing turns up.
-- No C runtime (`/Zl /GS- /NODEFAULTLIB`, subsystem 5.01), so it loads on Windows XP.
+- No C runtime (`/Zl /GS- /NODEFAULTLIB`). Linked with subsystem 5.01, the lowest the linker writes;
+  `build.cmd` then sets operating system and subsystem version in the header to 5.0, so it loads on
+  Windows 2000 and XP.
 - `net.c`: network play, active only with `a2gnet.ini` (`Enabled=1`) next to the exe, which the
   *Netzwerkspiel* switch writes together with the DLL (flags 0 on the exes patched on disk). It knows the
   1999 exe and GOG's `run.exe` by signatures (see *Network play* above).
@@ -982,6 +988,12 @@ msbuild A2G-Patch.csproj /restore /t:Rebuild /p:Configuration=Release /p:Platfor
 
 `dll\msvfw32.dll` is not committed; the exe embeds it when it exists, so build it first. An exe built
 without it can patch the original and GOG exes but not the 2007 CD release, and says so.
+
+Windows 2000 build: `msbuild A2G-Patch.csproj /restore /t:Rebuild /p:Configuration=Release /p:Platform=x86 /p:Win2000=true`
+compiles the same sources against .NET Framework 2.0 into `bin\Win2000\Release\` (own `obj\Win2000\`).
+The folder `Compat\` supplies what .NET 2.0 lacks (LINQ, `Func`/`Action`, `HashSet`, the bit of `Task`
+that applying the switches uses) and is only compiled into that build. Code using further .NET 3.5/4.0
+APIs breaks it; the test and release workflows build it too. The tests run against the normal build.
 
 The logo (`A2G-Patch.ico`, `site/favicon.ico`, `site/logo.png`) is drawn by `tools/MakeIcon.cs`; the
 file's header says how to run it. It is not part of the build.

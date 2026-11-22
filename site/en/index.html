@@ -47,7 +47,7 @@
         </a>
         <a class="btn btn-ghost" href="https://github.com/transfairs/A2G-Patcher/releases">All versions</a>
       </div>
-      <p class="fine">Windows XP (SP3) to 11 · .NET Framework 4.0 or later · GPL-3.0 · user interface in German, like the game</p>
+      <p class="fine">Windows XP (SP3) to 11 · .NET Framework 4.0 or later · Windows 2000 (SP4): <code>A2G-Patch-Win2000.exe</code> with .NET Framework 2.0 · GPL-3.0 · user interface in German, like the game</p>
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
@@ -642,7 +642,7 @@ blit:   call GetClientRect(window, dest)     →  call CopyRect(dest, source)</c
       </details>
       <details class="tech-item">
         <summary><b>msvfw32.dll</b><span>A proxy for the 2007 CD</span></summary>
-        <p><code>msvfw32</code> isn’t a KnownDLL, so the copy in the game folder wins. All 47 exports jump on to the real DLL, which is loaded only on the first call. A thread waits until the unpacked code is in memory and then writes only the enabled patches. Built without the C runtime so that it loads on Windows XP too.</p>
+        <p><code>msvfw32</code> isn’t a KnownDLL, so the copy in the game folder wins. All 47 exports jump on to the real DLL, which is loaded only on the first call. A thread waits until the unpacked code is in memory and then writes only the enabled patches. Built without the C runtime so that it loads on Windows 2000 and XP too.</p>
       </details>
     </div>
     <p class="more"><a href="https://github.com/transfairs/A2G-Patcher#readme">Full description in the README →</a></p>

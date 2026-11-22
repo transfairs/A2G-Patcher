@@ -44,6 +44,11 @@ jobs:
       - name: Build tests
         run: msbuild A2G-Patch.Tests/A2G-Patch.Tests.csproj /t:Build /p:Configuration=Release
 
+      # The Windows 2000 build (.NET Framework 2.0) breaks as soon as code uses newer framework parts
+      # that Compat/ doesn't supply.
+      - name: Build for Windows 2000
+        run: msbuild A2G-Patch.csproj /restore /t:Rebuild /p:Configuration=Release /p:Platform=x86 /p:Win2000=true
+
       # Some tests answer real dialogs; if one is never answered, the hang timeout ends the run.
       - name: Run tests
         run: dotnet test A2G-Patch.Tests/A2G-Patch.Tests.csproj --configuration Release --no-build --no-restore --collect:"XPlat Code Coverage" --results-directory TestResults --blame-hang-timeout 5m

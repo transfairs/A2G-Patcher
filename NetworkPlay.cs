@@ -108,7 +108,7 @@ namespace A2GPatch
             }
             if (lines[lines.Count - 1].Length != 0)
                 lines.Add("");
-            return Encoding.Default.GetBytes(string.Join("\r\n", lines));
+            return Encoding.Default.GetBytes(string.Join("\r\n", lines.ToArray()));
         }
     }
 }
