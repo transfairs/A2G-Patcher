@@ -266,8 +266,8 @@ jobs:
             dem App-Modus von Windows).
           - Liegt das Spiel unter "Programme", fragt A2G-Patch nach Administratorrechten.
           - Voraussetzungen: Windows XP (SP3) oder neuer, .NET Framework 4.0 oder neuer.
-          - Windows 2000 (SP4): A2G-Patch-Win2000.exe starten, sie braucht .NET Framework 2.0 und
-            kann dasselbe.
+          - Windows 2000 (SP4), 98 SE und ME: A2G-Patch-Win2000.exe starten, sie braucht .NET
+            Framework 2.0 und kann dasselbe. Unter 98 SE und ME läuft nur die Spielfassung von 1999.
 
           Quellcode: https://github.com/transfairs/A2G-Patcher
           "@

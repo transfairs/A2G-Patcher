@@ -234,9 +234,11 @@ as administrator. A `msvfw32.dll` in the game folder that isn't A2G-Patch's is n
 
 Some virus scanners flag an unsigned DLL in a game folder (DLL hijacking is a malware pattern too).
 
-Requirements: Windows XP (SP3) or later with .NET Framework 4.0 or later. For Windows 2000 (SP4) each
-release has `A2G-Patch-Win2000.exe` (also in `A2G-Patch-Latest.zip`), built against .NET Framework 2.0,
-with the same switches.
+Requirements: Windows XP (SP3) or later with .NET Framework 4.0 or later. For Windows 2000 (SP4), 98 SE
+and ME each release has `A2G-Patch-Win2000.exe` (also in `A2G-Patch-Latest.zip`), built against .NET
+Framework 2.0, with the same switches. On 98 SE and ME it runs with .NET Framework 2.0 without a service
+pack, the last version for these systems; of the three versions of the game only the one from 1999 runs
+there.
 
 ## How the patches work
 
