@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="../patch.png" width="1020" height="498" alt="The A2G-Patch window: game folder selection, the groups on the left and one tile with a switch per patch on the right">
+      <img src="../patch.png" width="1020" height="513" alt="The A2G-Patch window: game folder selection, the groups on the left and one tile with a switch per patch on the right">
     </figure>
   </div>
 </section>
@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>The patches</h2>
-    <p class="intro">Groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes sixteen of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device), and the upper limit for the bank balance. <b>Balancing</b> changes how the game plays. Under <b>Texte</b> are the euro, today’s names and terms, for every release. Four more patches are for the GOG release only.</p>
+    <p class="intro">Groups in the window: under <b>Patches</b>, the “<b>Spielfehler</b>” switch fixes sixteen of the game's bugs at once; next to it are patch 1.01 and the patches against crashes and problems with current Windows (videos, audio device), the outro under VMware and the upper limit for the bank balance. <b>Balancing</b> changes how the game plays. Under <b>Texte</b> are the euro, today’s names and terms and the quiz questions, for every release. Four more patches are for the GOG release only.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -212,6 +212,14 @@
         </div>
         <h3>Sound on the Windows default audio device</h3>
         <p>The game takes the last sound device it finds instead of the one set in Windows. With monitor speakers and a headset, the sound easily ends up on the wrong one. With the patch it comes out where Windows sends it.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
+        </div>
+        <h3>The outro at the right speed under VMware</h3>
+        <p>Under Windows 98 in VMware (Sound Blaster 16), the outro shown when the game ends ran through in 40 instead of 80 seconds, its sound rushed. The game leaves DirectSound in 8-bit format; after that, the next sound through the normal Windows audio plays twice as fast. With the patch the game sets the sound to the format of its music when it starts, 16-bit stereo. The exe keeps its size, so A2G-Trainer still recognises it.</p>
       </article>
       <article class="card">
         <div class="card-head">
@@ -409,7 +417,7 @@
       </div>
       <div class="rel">
         <div class="rel-head"><b>Texts, every release</b><code>RESDLL.dll</code></div>
-        <p>The switches under “Texte” and the typing errors change <code>RESDLL.dll</code>, the event texts and the tips directly, without a backup. Switched off, the files are byte for byte as before.</p>
+        <p>The switches under “Texte” and the typing errors change <code>RESDLL.dll</code>, the event texts, the tips and the quiz directly, without a backup. Switched off, the files are byte for byte as before.</p>
       </div>
     </div>
   </div>
@@ -485,6 +493,13 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
         <summary><b>Sound device</b><span>The wrong GUID</span></summary>
         <p>While enumerating, the game remembers the device with the most 3D buffers. Since Vista all report 0 there, on a tie the last one wins, and its GUID goes to <code>DirectSoundCreate</code>. With NULL, DirectSound takes the Windows default device:</p>
 <pre><code>push &amp;guid (68 xx xx xx xx)  →  push esi / nop ×4   <i>; esi is 0 here</i></code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Outro speed</b><span>The primary buffer stays at 8&nbsp;bits</span></summary>
+        <p>The game opens DirectSound at the normal cooperative level; the primary buffer then keeps DirectSound’s default of 8&nbsp;bits. With VMware’s Sound Blaster 16, the next sound through <code>waveOut</code> then runs on a clock twice as fast, the outro among them (<code>EXTRO.AVI</code> through <code>MCIWnd</code>). The patch rewrites the 121&nbsp;bytes behind <code>DirectSoundCreate</code>: <code>GetCaps</code> fills its structure completely anyway, and a failed <code>SetCooperativeLevel</code> takes the identical way out right in front. The room this frees is enough for the primary buffer:</p>
+<pre><code>SetCooperativeLevel(hwnd, NORMAL)  →  (hwnd, PRIORITY)
+                                       CreateSoundBuffer(primary) / SetFormat(22050 Hz, 16 bits, stereo) / Release</code></pre>
+        <p>The buffer description and the format (38&nbsp;bytes) go into zeros behind the end of <code>.rdata</code> (1999) or into the import section (GOG); taking the patch back zeroes them again.</p>
       </details>
       <details class="tech-item">
         <summary><b>Disk warning</b><span>A 32-bit overflow</span></summary>
@@ -619,6 +634,10 @@ sort: selection with three copy loops       →  bubble sort, the routine in fro
       <details class="tech-item">
         <summary><b>Texts</b><span>A section of its own in RESDLL.dll</span></summary>
         <p>A longer text doesn’t fit in its place. So the changed string tables and dialogs go into a new section <code>.a2gtxt</code> at the end of <code>RESDLL.dll</code>, and the resource directory points there. The section keeps which switches are on and where each resource was before; every switch builds it anew from the originals. Only texts change, as whole words: “Gruppe&nbsp;1” leaves “Gruppe&nbsp;10” alone. Styles and positions stay, as the game tells its picture buttons by <code>WS_EX_CLIENTEDGE</code>. The game reads the event texts only at exactly their length; every switch replaces whole texts and evens out the length with spaces at the end of a text. For “Innenverteidiger” the message about a new main position gets shorter: “… hat eine neue Hauptposition gelernt: Innenverteidiger.”</p>
+      </details>
+      <details class="tech-item">
+        <summary><b>Quiz questions</b><span>The sizes are in the file’s header</span></summary>
+        <p>The manager course quiz is in <code>TEXTE\fort.saq</code>, the same in all three releases: the header holds the number of questions of each of the three levels, the number of texts and the length of the text block, then comes a table of where each text starts, then the block with inverted bytes. Each question is followed by its answers, separated by commas, the right one first. The game reads counts and sizes from the header, so texts may change length. “Quizfragen” replaces whole questions in their place, “Neue Quizfragen” adds questions at the end of their level; each writes the file anew independently of the other, and switched off it is the original to the byte again.</p>
       </details>
       <details class="tech-item">
         <summary><b>Copy protection (GOG)</b><span>Eleven CD checks, ten checksums</span></summary>

@@ -51,7 +51,7 @@
     </div>
     <figure class="shot">
       <div class="shot-glow" aria-hidden="true"></div>
-      <img src="patch.png" width="1020" height="498" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl, links die Gruppen, rechts je eine Kachel mit Schalter pro Patch">
+      <img src="patch.png" width="1020" height="513" alt="Das Fenster von A2G-Patch: Spielordner-Auswahl, links die Gruppen, rechts je eine Kachel mit Schalter pro Patch">
     </figure>
   </div>
 </section>
@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
-    <p class="intro">Im Fenster in Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ sechzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät), der Abspann unter VMware sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Unter <b>Texte</b> stehen Euro, heutige Namen und Begriffe, für jede Version. Dazu kommen vier Patches nur für die GOG-Version.</p>
+    <p class="intro">Im Fenster in Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ sechzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät), der Abspann unter VMware sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Unter <b>Texte</b> stehen Euro, heutige Namen und Begriffe sowie die Quizfragen, für jede Version. Dazu kommen vier Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -417,7 +417,7 @@
       </div>
       <div class="rel">
         <div class="rel-head"><b>Texte, alle Versionen</b><code>RESDLL.dll</code></div>
-        <p>Die Schalter unter „Texte“ und die Tippfehler ändern die <code>RESDLL.dll</code>, die Ereignistexte und die Tipps direkt, ohne Sicherung. Ausgeschaltet sind die Dateien wieder Byte für Byte wie vorher.</p>
+        <p>Die Schalter unter „Texte“ und die Tippfehler ändern die <code>RESDLL.dll</code>, die Ereignistexte, die Tipps und das Quiz direkt, ohne Sicherung. Ausgeschaltet sind die Dateien wieder Byte für Byte wie vorher.</p>
       </div>
     </div>
   </div>
@@ -493,6 +493,13 @@ brakes: jle (7E)                                  →  jmp (EB)</code></pre>
         <summary><b>Soundgerät</b><span>Die falsche GUID</span></summary>
         <p>Beim Aufzählen merkt sich das Spiel das Gerät mit den meisten 3D-Puffern. Seit Vista melden alle dort 0, bei Gleichstand gewinnt das letzte, und dessen GUID geht an <code>DirectSoundCreate</code>. Mit NULL nimmt DirectSound das Standardgerät von Windows:</p>
 <pre><code>push &amp;guid (68 xx xx xx xx)  →  push esi / nop ×4   <i>; esi ist hier 0</i></code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Abspann-Tempo</b><span>Der primäre Puffer bleibt bei 8&nbsp;Bit</span></summary>
+        <p>Das Spiel öffnet DirectSound auf der normalen Kooperationsstufe; der primäre Puffer behält dann DirectSounds Vorgabe von 8&nbsp;Bit. Mit VMwares Sound Blaster 16 läuft danach der nächste Ton über <code>waveOut</code> auf einer doppelt so schnellen Uhr, darunter der Abspann (<code>EXTRO.AVI</code> über <code>MCIWnd</code>). Der Patch schreibt die 121&nbsp;Bytes hinter <code>DirectSoundCreate</code> um: <code>GetCaps</code> füllt seine Struktur ohnehin ganz, ein gescheitertes <code>SetCooperativeLevel</code> nimmt den gleichen Ausweg direkt davor. Der gewonnene Platz reicht für den primären Puffer:</p>
+<pre><code>SetCooperativeLevel(hwnd, NORMAL)  →  (hwnd, PRIORITY)
+                                       CreateSoundBuffer(primär) / SetFormat(22050 Hz, 16 Bit, Stereo) / Release</code></pre>
+        <p>Pufferbeschreibung und Format (38&nbsp;Bytes) liegen in Nullen hinter dem Ende von <code>.rdata</code> (1999) bzw. im Importabschnitt (GOG); zurückgenommen werden sie wieder zu Nullen.</p>
       </details>
       <details class="tech-item">
         <summary><b>Platz-Warnung</b><span>Ein 32-Bit-Überlauf</span></summary>
@@ -627,6 +634,10 @@ Sortierung: Auswahl mit drei Kopierschleifen  →  Bubblesort, davor die Routine
       <details class="tech-item">
         <summary><b>Texte</b><span>Ein eigener Abschnitt in der RESDLL.dll</span></summary>
         <p>Ein längerer Text passt nicht an seinen Platz. Die geänderten String-Tabellen und Dialoge kommen deshalb in einen neuen Abschnitt <code>.a2gtxt</code> am Ende der <code>RESDLL.dll</code>, und das Ressourcenverzeichnis zeigt dorthin. Der Abschnitt merkt sich, welche Schalter an sind und wo jede Ressource vorher lag; jeder Schalter baut ihn aus den Originalen neu. Geändert werden nur Texte, als ganze Wörter: „Gruppe&nbsp;1“ lässt „Gruppe&nbsp;10“ in Ruhe. Stile und Positionen bleiben, denn das Spiel erkennt seine Bildknöpfe an <code>WS_EX_CLIENTEDGE</code>. Die Ereignistexte liest das Spiel nur in genau ihrer Länge; jeder Schalter ersetzt ganze Texte und gleicht die Länge mit Leerzeichen am Textende aus. Für „Innenverteidiger“ wird die Meldung über eine neue Hauptposition kürzer: „… hat eine neue Hauptposition gelernt: Innenverteidiger.“</p>
+      </details>
+      <details class="tech-item">
+        <summary><b>Quizfragen</b><span>Die Größen stehen im Kopf der Datei</span></summary>
+        <p>Das Quiz der Managerfortbildung steht in <code>TEXTE\fort.saq</code>, in allen drei Versionen gleich: im Kopf die Zahl der Fragen jeder der drei Stufen, die Zahl der Texte und die Länge des Textblocks, dann eine Tabelle, wo jeder Text beginnt, dann der Block mit invertierten Bytes. Auf jede Frage folgen ihre Antworten, durch Kommas getrennt, die richtige zuerst. Das Spiel liest Zahlen und Größen aus dem Kopf, Texte dürfen also ihre Länge ändern. „Quizfragen“ ersetzt ganze Fragen an ihrem Platz, „Neue Quizfragen“ hängt Fragen ans Ende ihrer Stufe; beide schreiben die Datei unabhängig voneinander neu, ausgeschaltet ist sie wieder das Original aufs Byte.</p>
       </details>
       <details class="tech-item">
         <summary><b>Kopierschutz (GOG)</b><span>Elf CD-Abfragen, zehn Prüfsummen</span></summary>

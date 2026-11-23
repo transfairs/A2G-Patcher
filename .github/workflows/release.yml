@@ -259,8 +259,8 @@ jobs:
             Originalzustand und die Sicherung verschwindet.
           - Die GOG-Patches ändern auch RESDLL.dll (Sicherung RESDLL.dll.vor-a2g-patch) und die
             Datendateien von Patch 1.01. Ausschalten stellt auch sie wieder her.
-          - Die Texte und die Tippfehler ändern in jeder Version RESDLL.dll, die Ereignistexte und
-            die Tipps, ohne Sicherung. Ausgeschaltet sind die Dateien wieder wie vorher.
+          - Die Texte und die Tippfehler ändern in jeder Version RESDLL.dll, die Ereignistexte,
+            die Tipps und das Quiz, ohne Sicherung. Ausgeschaltet sind die Dateien wieder wie vorher.
           - 2007er-CD: Deren run.exe ist gepackt. A2G-Patch legt stattdessen eine msvfw32.dll in den
             Spielordner, die beim Spielstart den Programmcode im Speicher ändert. Die Datendateien
             von Patch 1.01 ändert A2G-Patch direkt, Ausschalten stellt sie wieder her. Manche

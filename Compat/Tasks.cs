@@ -65,6 +65,7 @@ namespace System.Threading.Tasks
             return next;
         }
 
+        /// <summary>Runs <paramref name="work"/>, keeps its exception, marks the task done and starts the continuations.</summary>
         internal void Run(Action work)
         {
             try
@@ -113,6 +114,7 @@ namespace System.Threading.Tasks
             return new ContextScheduler(context);
         }
 
+        /// <summary>Hands <paramref name="work"/> to the thread this scheduler runs on.</summary>
         internal abstract void Queue(Action work);
 
         private sealed class ContextScheduler : TaskScheduler

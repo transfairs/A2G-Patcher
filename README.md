@@ -2,7 +2,8 @@
 
 Patches for **Anstoss 2 Gold**, switched on and off in one small window, one tile each in groups:
 
-"Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes and current Windows.
+"Patches": the game's bugs under one switch, patch 1.01, and fixes for crashes, current Windows and the
+outro under VMware.
 
 - **Spielfehler** (Behebt: Geldanlagen, Ereignisse, …), one switch for sixteen bug fixes; each keeps its own places
   and DLL flag, and the switch counts as on once one of them is applied (an exe patched by an older
@@ -341,6 +342,28 @@ display: mov [esi+1C8],ebx (field already 0) before ChangeDisplaySettingsA(&mode
 The sound patch rebuilds the original instruction from the patched code: the kept GUID lies 0x18
 bytes before the DirectSound pointer, which the code mentions twice. The squad check keeps its call in
 place, so the new code fits the function's 32 bytes.
+
+**Outro speed.** The game plays `EXTRO.AVI` with `MCIWnd` when it ends. Before that, it has opened
+DirectSound behind `DirectSoundCreate` (`FUN_00653440` in the original exe) at the normal cooperative
+level, which leaves the primary buffer at DirectSound's default of 8 bits. With VMware's Sound Blaster 16,
+the next sound the same process plays through `waveOut` after a DirectSound sound then runs on a clock
+twice as fast. The patch rewrites the 121 bytes between the way out of a failed `DirectSoundCreate` and
+the function's end:
+
+```
+SetCooperativeLevel(hwnd, NORMAL) / je on, else way out      ->  (hwnd, PRIORITY) / jne to the way out in front
+clear caps / [argument] / [open] = 1 / size 60 / GetCaps      ->  [open] = 1 / [argument] / size 60 / GetCaps
+no third argument: [3D buffers] = caps+2C                      ->  the same
+                                                                  CreateSoundBuffer(primary) / SetFormat / Release
+```
+
+GetCaps fills the whole structure, so clearing it first isn't needed, and the failed
+`SetCooperativeLevel` reuses the identical way out in front; that makes room for the primary buffer.
+Its description and the format (`DSBUFFERDESC` with `DSBCAPS_PRIMARYBUFFER`, then PCM, 2 channels,
+22050 Hz, 16 bits; 38 bytes) go behind the virtual end of the first section that isn't executable and
+has zero room there (`.rdata` in the 1999 release), or else in front of the room of the interview stub
+(GOG's import section). Taking the patch back zeroes them again. The DirectSound pointer, the way out's
+call and the other addresses are taken from the game; every mention of the pointer must agree.
 
 **Cup draw.** The cup draw video (`FUN_00419e10` in the original exe) draws the club names with GDI into
 `CreateCompatibleBitmap(screen, 128, 32)` and copies them out with `GetBitmapBits(bitmap, 0x2000, ...)`,
