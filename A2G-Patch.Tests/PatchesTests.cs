@@ -161,7 +161,7 @@ namespace A2GPatch.Tests
         {
             Assert.Equal(new[]
             {
-                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Kontostand",
+                "Spielfehler", "Patch 1.01", "Videos ohne Absturz", "Audiogerät", "Abspann-Tempo", "Kontostand",
                 "Verhandlungssperre", "Interviews", "Mehr Tore", "Ansprachen", "Trainer-Nachwuchs", "Fischvergiftung", "Manager-Ereignisse",
                 "Kopierschutz", "Fensterrahmen anzeigen", "Animationen", "Mausklicks",
                 "Euro statt DM", "Innenverteidiger", "Europapokale", "Liganamen", "Gruppen A bis H", "Vertragsbegriffe", "Quizfragen", "Neue Quizfragen",
@@ -172,6 +172,7 @@ namespace A2GPatch.Tests
                 "Trainingslager in der Winterpause, Zweitpositionen für neue Spieler, Eigenschaften neuer Torhüter, Schild der Pokalauslosung auf der 2007er-CD, Spielerlisten und Zähler wie in 1.01",
                 "Nicht abspielbare Videos (WM, EM, Finale) überspringen statt abzustürzen",
                 "Ton über das Standard-Audiogerät von Windows",
+                "Abspann im richtigen Tempo unter VMware (Sound Blaster 16): Ton in 16 Bit Stereo",
                 "Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen",
                 "Sperre nach drei Verhandlungsterminen mit einem Verein baut sich jeden Monat ab",
                 "Antworten in Interviews wirken sich aus (Fans, Vorstand, Moral, Strafen …)",
@@ -194,9 +195,9 @@ namespace A2GPatch.Tests
                 "150 weitere Fragen für die Managerfortbildung, von 1998 bis 2026",
             }, Patch.All.Select(p => p.Name));
             // The bugs' switch carries all their bits; the file patches without a flag (0) last.
-            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
+            Assert.Equal(new uint[] { 0x6BC8BEA, 1024, 4, 16, 134217728, 131072, 16384, 4096, 1, 8192, 65536, 4194304, 16777216, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, Patch.All.Select(p => p.Flag));
             PatchGroup f = PatchGroup.Patches, b = PatchGroup.Balancing, o = PatchGroup.Gog, t = PatchGroup.Texts;
-            Assert.Equal(new[] { f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o, t, t, t, t, t, t, t, t }, Patch.All.Select(p => p.Group));
+            Assert.Equal(new[] { f, f, f, f, f, f, b, b, b, b, b, b, b, o, o, o, o, t, t, t, t, t, t, t, t }, Patch.All.Select(p => p.Group));
 
             // The bugs, each with a bit of its own (the typing errors, a text patch, have none); together with the switches every bit once.
             Patch[] bugs = Patch.Get<GameBugs>().Members;
@@ -221,8 +222,8 @@ namespace A2GPatch.Tests
             Assert.Equal(new uint[] { 32768, 262144, 2097152, 67108864, 1048576, 524288, 33554432, 8388608, 64, 256, 2048, 512, 32, 2, 128, 8, 0 }, bugs.Select(p => p.Flag));
             Assert.All(bugs, p => Assert.Equal(PatchGroup.Patches, p.Group));
             uint[] bits = Patch.All.Where(p => !(p is GameBugs)).Concat(bugs).Select(p => p.Flag).Where(bit => bit != 0).ToArray();
-            Assert.Equal(27, bits.Length);
-            Assert.Equal(0x7FFFFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
+            Assert.Equal(28, bits.Length);
+            Assert.Equal(0xFFFFFFFu, bits.Aggregate(0u, (all, bit) => all | bit));
         }
 
         private static readonly Patch Cup = Patch.Get<CupDraw>();

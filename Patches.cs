@@ -40,7 +40,7 @@ namespace A2GPatch
         /// <summary>Every switch, in the order the window lists them; the game's bugs are one (<see cref="GameBugs"/>).</summary>
         public static readonly Patch[] All =
         {
-            new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new MoneyLimit(),
+            new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new SoundFormat(), new MoneyLimit(),
             new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new FishPoisoning(), new ManagerEvents(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(), new WrapperClipping(),
             new Currency(), new CentreBack(), new CupNames(), new LeagueNames(), new GroupLetters(), new ContractTerms(), new QuizAnswers(), new QuizQuestions(),
@@ -59,7 +59,7 @@ namespace A2GPatch
         /// <summary>The group the window shows the tile in.</summary>
         public abstract PatchGroup Group { get; }
 
-        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 67108864 taken); 0 for the GOG patches the DLL doesn't know.</summary>
+        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 134217728 taken); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract uint Flag { get; }
 
         /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
@@ -827,6 +827,129 @@ namespace A2GPatch
     }
 
     /// <summary>
+    /// Keeps the outro (EXTRO.AVI, which the game plays with MCIWnd when it ends) at its speed under
+    /// VMware's Sound Blaster 16. The game opens DirectSound at the normal cooperative level
+    /// (FUN_00653440 in the original), so the primary buffer keeps DirectSound's default format of
+    /// 8 bits. Once a sound has played through it, the next sound the same process plays with waveOut
+    /// runs on a clock twice as fast there: the outro ends after 40 instead of 80 seconds, its sound
+    /// skipped (measured in a Windows 98 VM; the sounds after it are right again, and so is everything
+    /// with the primary buffer at 16 bits from the start). The patch takes the priority level and sets
+    /// the primary buffer to the format of the game's music, 22050 Hz, 16 bits, stereo.
+    /// The code behind DirectSoundCreate is rewritten in its own 121 bytes: a failed SetCooperativeLevel
+    /// takes the way out of the failed DirectSoundCreate right in front (the same instructions), and the
+    /// capabilities only get their size instead of being cleared first (GetCaps fills all of them):
+    /// <code>
+    ///   SetCooperativeLevel(hwnd, NORMAL) / failed: way out          ->  (hwnd, PRIORITY) / failed: jne to the one in front
+    ///   clear caps / [argument] / [open] = 1 / size 60 / GetCaps    ->  [open] = 1 / [argument] / size 60 / GetCaps
+    ///   no third argument: [3D buffers] = caps+2C                   ->  the same
+    ///                                                                   CreateSoundBuffer(primary) / SetFormat / Release
+    /// </code>
+    /// The buffer description and the format (38 bytes) go behind the virtual end of the first section that
+    /// isn't executable and has room there, which must be zero (the original's .rdata), or else in front of
+    /// the room of <see cref="InterviewEffects"/>' stub (GOG's import section); taking the patch back zeroes
+    /// them again. The exe keeps its size, so A2G-Trainer still knows the build.
+    /// </summary>
+    internal sealed class SoundFormat : Patch
+    {
+        /// <summary>The room the buffer description and the format take.</summary>
+        internal const int DataRoom = 0x30;
+
+        /// <summary>DSBUFFERDESC of the primary buffer (DSBCAPS_PRIMARYBUFFER), then WAVEFORMATEX: PCM, 2 channels, 22050 Hz, 16 bits.</summary>
+        internal static readonly byte[] Data =
+        {
+            0x14, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x02, 0x00, 0x22, 0x56, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x04, 0x00, 0x10, 0x00, 0x00, 0x00,
+        };
+
+        /// <summary>The way out of the failed DirectSoundCreate in front: call (close) / mov [&amp;ds],esi / xor eax,eax / pop edi / pop esi / add esp,60 / ret C.</summary>
+        internal static readonly byte?[] Exit = Code(Op(0xE8), D(null), Op(0x89, 0x35), D(null), Op(0x33, 0xC0, 0x5F, 0x5E, 0x83, 0xC4, 0x60, 0xC2, 0x0C, 0x00));
+        /// <summary>The end of the function behind the rewritten code: pop edi / mov eax,1 / pop esi / add esp,60 / ret C.</summary>
+        internal static readonly byte[] End = { 0x5F, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x5E, 0x83, 0xC4, 0x60, 0xC2, 0x0C, 0x00 };
+
+        /// <summary>The 121 bytes as the game has them; a null value leaves its four bytes open.</summary>
+        internal static byte?[] OriginalCode(uint? ds, uint? close, uint? argument, uint? open, uint? buffers) => Code(
+            Op(0xA1), D(ds), Op(0x6A, 0x01, 0x57, 0x50, 0x8B, 0x08, 0xFF, 0x51, 0x18, 0x85, 0xC0, 0x74, 0x15),     // SetCooperativeLevel(hwnd, NORMAL) / je +15
+            Op(0xE8), D(close), Op(0x89, 0x35), D(ds), Op(0x33, 0xC0, 0x5F, 0x5E, 0x83, 0xC4, 0x60, 0xC2, 0x0C, 0x00),
+            Op(0x8B, 0x54, 0x24, 0x70, 0xB9, 0x18, 0x00, 0x00, 0x00, 0x33, 0xC0, 0x8D, 0x7C, 0x24, 0x08, 0xF3, 0xAB), // edx = argument / clear the caps
+            Op(0xA1), D(ds), Op(0x89, 0x15), D(argument), Op(0x8D, 0x54, 0x24, 0x08, 0xC7, 0x05), D(open),
+            Op(0x01, 0x00, 0x00, 0x00, 0xC7, 0x44, 0x24, 0x08, 0x60, 0x00, 0x00, 0x00),                            // [open] = 1 / caps size 60
+            Op(0x8B, 0x08, 0x52, 0x50, 0xFF, 0x51, 0x10, 0x85, 0xC0, 0x75, 0x15),                                  // GetCaps / jne end
+            Op(0x8B, 0x44, 0x24, 0x74, 0x8B, 0x4C, 0x24, 0x34, 0xF7, 0xD8, 0x1B, 0xC0, 0xF7, 0xD0, 0x23, 0xC1, 0xA3), D(buffers));
+
+        /// <summary>The 121 bytes patched; a null value leaves its four bytes open.</summary>
+        internal static byte?[] PatchedCode(uint? ds, uint? open, uint? argument, uint? buffers, uint? data) => Code(
+            Op(0xA1), D(ds), Op(0x6A, 0x02, 0x57, 0x50, 0x8B, 0x08, 0xFF, 0x51, 0x18, 0x85, 0xC0, 0x75, 0xD9),     // SetCooperativeLevel(hwnd, PRIORITY) / jne way out
+            Op(0x40, 0xA3), D(open), Op(0x8B, 0x54, 0x24, 0x70, 0x89, 0x15), D(argument),                         // inc eax / [open] = 1 / [argument]
+            Op(0xA1), D(ds), Op(0x8D, 0x54, 0x24, 0x08, 0xC7, 0x02, 0x60, 0x00, 0x00, 0x00),                       // caps size 60
+            Op(0x8B, 0x08, 0x52, 0x50, 0xFF, 0x51, 0x10, 0x85, 0xC0, 0x75, 0x10),                                  // GetCaps / jne primary
+            Op(0x83, 0x7C, 0x24, 0x74, 0x00, 0x75, 0x09, 0x8B, 0x44, 0x24, 0x34, 0xA3), D(buffers),                // no third argument: [buffers] = caps+2C
+            Op(0x56, 0x56, 0x8D, 0x4C, 0x24, 0x04, 0x51, 0x68), D(data), Op(0xA1), D(ds),                          // primary: slot, NULL, &slot, &description
+            Op(0x50, 0x8B, 0x08, 0xFF, 0x51, 0x0C, 0x5F, 0x85, 0xC0, 0x75, 0x11, 0x68), D(data + 0x14u),           // CreateSoundBuffer / pop edi / jne end
+            Op(0x57, 0x8B, 0x07, 0xFF, 0x50, 0x38, 0x57, 0x8B, 0x07, 0xFF, 0x50, 0x08));                           // SetFormat(&format) / Release
+
+        private static readonly byte?[] OriginalPattern = Code(Exit, OriginalCode(null, null, null, null, null), Exact(End));
+        private static readonly byte?[] PatchedPattern = Code(Exit, PatchedCode(null, null, null, null, null), Exact(End));
+
+        /// <inheritdoc/>
+        public override string Name => "Abspann im richtigen Tempo unter VMware (Sound Blaster 16): Ton in 16 Bit Stereo";
+        /// <inheritdoc/>
+        public override string Title => "Abspann-Tempo";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Patches;
+        /// <inheritdoc/>
+        public override uint Flag => 134217728;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => new[] { OriginalPattern, PatchedPattern };
+
+        private static byte?[] Code(params byte?[][] parts) => parts.SelectMany(p => p).ToArray();
+        private static byte?[] Op(params byte[] bytes) => Exact(bytes);
+        private static byte?[] D(uint? value) => value.HasValue ? Exact(BitConverter.GetBytes(value.Value)) : new byte?[4];
+        private static uint U32(byte[] image, long at) => BitConverter.ToUInt32(image, (int)at);
+
+        /// <summary>
+        /// Where the data goes in <paramref name="image"/>: behind the virtual end of the first section that isn't
+        /// executable, else in front of the room of <see cref="InterviewEffects"/>' stub; -1 if neither has room.
+        /// </summary>
+        internal static long DataAt(PeFile pe)
+        {
+            PeFile.Section data = pe.Sections.FirstOrDefault(s => (s.Characteristics & CupDraw.Executable) == 0 && s.VirtualSize > 0 && s.RawSize >= s.VirtualSize + DataRoom);
+            if (data != null)
+                return data.Raw + data.RawSize - DataRoom;
+            PeFile.Section last = CupDraw.LastSection(pe);
+            long at = last == null ? -1 : CupDraw.HelperAt(last) - InterviewEffects.StubSize - DataRoom;
+            return last != null && at >= last.Raw ? at : -1;
+        }
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            List<long> original = FindAll(image, OriginalPattern), patched = FindAll(image, PatchedPattern);
+            PeFile pe = PeFile.Read(image);
+            if (original.Count + patched.Count != 1 || pe == null)
+                return null;
+            bool isPatched = patched.Count == 1;
+            long exit = isPatched ? patched[0] : original[0], code = exit + Exit.Length, dataAt = DataAt(pe);
+            uint ds = U32(image, exit + 7);
+            uint close = (uint)(Target(image, exit) - (code + 23));
+            uint open = U32(image, code + (isPatched ? 20 : 73)), argument = U32(image, code + (isPatched ? 30 : 63)), buffers = U32(image, code + (isPatched ? 72 : 117));
+            if (dataAt < 0)
+                return null;
+            byte[] originalCode = OriginalCode(ds, close, argument, open, buffers).Select(b => b.Value).ToArray();
+            byte[] patchedCode = PatchedCode(ds, open, argument, buffers, (uint)pe.VaAt(dataAt)).Select(b => b.Value).ToArray();
+            // Every mention of the DirectSound pointer, the call of the way out and the data must agree.
+            if (!image.Slice(code, originalCode.Length).SequenceEqual(isPatched ? patchedCode : originalCode)
+                || !image.Slice(dataAt, Data.Length).SequenceEqual(isPatched ? Data : new byte[Data.Length]))
+                return null;
+            // The data first, so the code never reads zeros.
+            return new[]
+            {
+                new Site { Offset = dataAt, Original = new byte[Data.Length], Patched = (byte[])Data.Clone(), IsPatched = isPatched },
+                new Site { Offset = code, Original = originalCode, Patched = patchedCode, IsPatched = isPatched },
+            };
+        }
+    }
+
+    /// <summary>
     /// Makes the club names on the sign in the cup draw video readable again. The video's player
     /// (FUN_00419e10 in the original) draws the names with GDI into CreateCompatibleBitmap(screen, 128, 32)
     /// and copies them out with GetBitmapBits(bitmap, 0x2000, this+C), expecting 16 bits per pixel. On
@@ -858,7 +981,8 @@ namespace A2GPatch
         };
         private static readonly byte?[] OriginalPattern = Head.Concat(new byte?[] { 0xFF, 0x15, null, null, null, null }).ToArray();
         private static readonly byte?[] PatchedPattern = Head.Concat(new byte?[] { 0xE8, null, null, null, null, 0x90 }).ToArray();
-        private const uint Executable = 0x20000000;   // IMAGE_SCN_MEM_EXECUTE
+        /// <summary>IMAGE_SCN_MEM_EXECUTE.</summary>
+        internal const uint Executable = 0x20000000;
 
         // stdcall like GetBitmapBits(bitmap, size, bits); the three imports' addresses are left 0.
         private static readonly byte[] Helper =

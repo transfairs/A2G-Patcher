@@ -190,7 +190,7 @@ namespace A2GPatch.Tests
                     Assert.All(Patch.All, p => Assert.Equal(p.Group == group, Find<PatchTile>(form, p.GetType().Name + "Input").Visible));
                     Assert.All(TilesOf(form, group), t => Assert.True(t.Parent.Left >= groups.Right && t.Top >= 0));
                 }
-                // Five tiles in two rows.
+                // Six tiles in two rows.
                 groups.Selected = 0;
                 Assert.Equal(2, TilesOf(form, PatchGroup.Patches).Select(t => t.Top).Distinct().Count());
                 Draw(form);
@@ -210,7 +210,7 @@ namespace A2GPatch.Tests
 
                 form.Size = form.MinimumSize;
                 Application.DoEvents();
-                Assert.Equal(5, game.Select(t => t.Top).Distinct().Count());
+                Assert.Equal(6, game.Select(t => t.Top).Distinct().Count());
                 Assert.True(panel.VerticalScroll.Visible);
                 Assert.False(panel.HorizontalScroll.Visible);
                 Assert.All(game, t => Assert.True(t.Right <= panel.ClientSize.Width));

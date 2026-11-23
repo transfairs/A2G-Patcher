@@ -36,6 +36,8 @@
 // 8388608 appearances: "at the club" never cleared, list full ->  set anew from the squad before each count
 // 16777216 manager: private life built from the other kind's table -> its own (39 cases), two cases fixed
 // 33554432 grade chart: axis label text 5800 "Formpunkte/6"   ->  "Noten/6", kept behind the function
+// 67108864 referee:   the scenes' grudge test against club + 1 ->  against the club itself
+// 134217728 sound format: primary buffer left at 8 bits       ->  priority level, 22050 Hz 16-bit stereo
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -151,7 +153,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_MANAGER      16777216   // the first bit of the fourth flags byte
 #define FLAG_GRADE_CHART  33554432
 #define FLAG_REFEREE      67108864
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\xFF\x07";   // all on
+#define FLAG_SOUND_FORMAT 134217728
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\xFF\x0F";   // all on
 #define CONFIG_FLAGS ((DWORD)g_config[14] | (DWORD)g_config[15] << 8 | (DWORD)g_config[16] << 16 | (DWORD)g_config[17] << 24)
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -1491,6 +1494,72 @@ static int PatchChart(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 134217728: sound format ----------------------------------------------------------------------
+
+// As in Patches.cs (SoundFormat): the 121 bytes behind DirectSoundCreate, between the failed call's way out
+// and the function's end, rewritten: SetCooperativeLevel at the priority level (a failure takes the way out
+// in front), the capabilities only get their size, and the primary buffer is set to 22050 Hz, 16 bits,
+// stereo. The buffer description and the format are kSoundData here, in this DLL, which stays loaded.
+#define SOUND_EXIT 0xE8, ANY, ANY, ANY, ANY, 0x89, 0x35, ANY, ANY, ANY, ANY, 0x33, 0xC0, 0x5F, 0x5E, 0x83, 0xC4, 0x60, 0xC2, 0x0C, 0x00
+#define SOUND_END 0x5F, 0xB8, 0x01, 0x00, 0x00, 0x00, 0x5E, 0x83, 0xC4, 0x60, 0xC2, 0x0C, 0x00
+#define ANY4 ANY, ANY, ANY, ANY
+static const WORD kFormat[] = { SOUND_EXIT,
+    0xA1, ANY4, 0x6A, 0x01, 0x57, 0x50, 0x8B, 0x08, 0xFF, 0x51, 0x18, 0x85, 0xC0, 0x74, 0x15,
+    0xE8, ANY4, 0x89, 0x35, ANY4, 0x33, 0xC0, 0x5F, 0x5E, 0x83, 0xC4, 0x60, 0xC2, 0x0C, 0x00,
+    0x8B, 0x54, 0x24, 0x70, 0xB9, 0x18, 0x00, 0x00, 0x00, 0x33, 0xC0, 0x8D, 0x7C, 0x24, 0x08, 0xF3, 0xAB,
+    0xA1, ANY4, 0x89, 0x15, ANY4, 0x8D, 0x54, 0x24, 0x08, 0xC7, 0x05, ANY4,
+    0x01, 0x00, 0x00, 0x00, 0xC7, 0x44, 0x24, 0x08, 0x60, 0x00, 0x00, 0x00,
+    0x8B, 0x08, 0x52, 0x50, 0xFF, 0x51, 0x10, 0x85, 0xC0, 0x75, 0x15,
+    0x8B, 0x44, 0x24, 0x74, 0x8B, 0x4C, 0x24, 0x34, 0xF7, 0xD8, 0x1B, 0xC0, 0xF7, 0xD0, 0x23, 0xC1, 0xA3, ANY4,
+    SOUND_END };
+static const WORD kFormatPatched[] = { SOUND_EXIT,
+    0xA1, ANY4, 0x6A, 0x02, 0x57, 0x50, 0x8B, 0x08, 0xFF, 0x51, 0x18, 0x85, 0xC0, 0x75, 0xD9,
+    0x40, 0xA3, ANY4, 0x8B, 0x54, 0x24, 0x70, 0x89, 0x15, ANY4,
+    0xA1, ANY4, 0x8D, 0x54, 0x24, 0x08, 0xC7, 0x02, 0x60, 0x00, 0x00, 0x00,
+    0x8B, 0x08, 0x52, 0x50, 0xFF, 0x51, 0x10, 0x85, 0xC0, 0x75, 0x10,
+    0x83, 0x7C, 0x24, 0x74, 0x00, 0x75, 0x09, 0x8B, 0x44, 0x24, 0x34, 0xA3, ANY4,
+    0x56, 0x56, 0x8D, 0x4C, 0x24, 0x04, 0x51, 0x68, ANY4, 0xA1, ANY4,
+    0x50, 0x8B, 0x08, 0xFF, 0x51, 0x0C, 0x5F, 0x85, 0xC0, 0x75, 0x11, 0x68, ANY4,
+    0x57, 0x8B, 0x07, 0xFF, 0x50, 0x38, 0x57, 0x8B, 0x07, 0xFF, 0x50, 0x08,
+    SOUND_END };
+#define SOUND_CODE 21          // where the rewritten bytes start, behind the way out
+#define SOUND_LENGTH 121
+// DSBUFFERDESC of the primary buffer, then WAVEFORMATEX (PCM, 2 channels, 22050 Hz, 16 bits).
+static const BYTE kSoundData[38] = {
+    0x14, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x01, 0x00, 0x02, 0x00, 0x22, 0x56, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x04, 0x00, 0x10, 0x00, 0x00, 0x00 };
+
+// Rewrites the code if every mention of the DirectSound pointer and both calls of the way out agree.
+static int PatchSoundFormat(BYTE *base, SIZE_T size)
+{
+    BYTE *site, *patchedSite, code[SOUND_LENGTH];
+    int count = Count(base, size, kFormat, ARRAYSIZE(kFormat), &site);
+    int countPatched = Count(base, size, kFormatPatched, ARRAYSIZE(kFormatPatched), &patchedSite);
+    if (count + countPatched == 0) return NOT_YET;
+    if (count != 1 || countPatched != 0) return DONE;
+    BYTE *old = site + SOUND_CODE;
+    DWORD ds, first, second, third, open, argument, buffers;
+    Copy((BYTE *)&ds, site + 7, 4);
+    Copy((BYTE *)&first, old + 1, 4);
+    Copy((BYTE *)&second, old + 25, 4);
+    Copy((BYTE *)&third, old + 57, 4);
+    if (first != ds || second != ds || third != ds || CallTarget(old + 18) != CallTarget(site)) return DONE;
+    Copy((BYTE *)&argument, old + 63, 4);
+    Copy((BYTE *)&open, old + 73, 4);
+    Copy((BYTE *)&buffers, old + 117, 4);
+    for (int i = 0; i < SOUND_LENGTH; i++) code[i] = (BYTE)kFormatPatched[SOUND_CODE + i];
+    PutDword(code + 1, ds);
+    PutDword(code + 20, open);
+    PutDword(code + 30, argument);
+    PutDword(code + 35, ds);
+    PutDword(code + 72, buffers);
+    PutDword(code + 84, (DWORD)(ULONG_PTR)kSoundData);
+    PutDword(code + 89, ds);
+    PutDword(code + 105, (DWORD)(ULONG_PTR)(kSoundData + 20));
+    Write(old, code, sizeof code);
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 // Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
@@ -1512,8 +1581,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL coachDone = !(flags & FLAG_COACH), moneyDone = !(flags & FLAG_MONEY);
     BOOL eventsDone = !(flags & FLAG_EVENTS), gradesDone = !(flags & FLAG_GRADES), competenceDone = !(flags & FLAG_COMPETENCE);
     BOOL crashesDone = !(flags & FLAG_CRASHES), fishDone = !(flags & FLAG_FISH), appearancesDone = !(flags & FLAG_APPEARANCES), managerDone = !(flags & FLAG_MANAGER);
-    BOOL chartDone = !(flags & FLAG_GRADE_CHART), refereeDone = !(flags & FLAG_REFEREE);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone && moneyDone && eventsDone && gradesDone && competenceDone && crashesDone && fishDone && appearancesDone && managerDone && chartDone && refereeDone)
+    BOOL chartDone = !(flags & FLAG_GRADE_CHART), refereeDone = !(flags & FLAG_REFEREE), formatDone = !(flags & FLAG_SOUND_FORMAT);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone && moneyDone && eventsDone && gradesDone && competenceDone && crashesDone && fishDone && appearancesDone && managerDone && chartDone && refereeDone && formatDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -1543,6 +1612,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!managerDone) managerDone = (PatchRewrites(base, size, kManagerPlaces, ARRAYSIZE(kManagerPlaces)) == DONE) & (PatchManagerCode(base, size) == DONE);
         if (!chartDone) chartDone = PatchChart(base, size) == DONE;
         if (!refereeDone) refereeDone = PatchRewrite(base, size, kReferee, kRefereePatched, ARRAYSIZE(kReferee)) == DONE;
+        if (!formatDone) formatDone = PatchSoundFormat(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

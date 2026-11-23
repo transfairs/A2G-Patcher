@@ -59,7 +59,7 @@
 <section id="patches" class="section">
   <div class="wrap">
     <h2 class="section-title"><span>01</span>Die Patches</h2>
-    <p class="intro">Im Fenster in Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ sechzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät) sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Unter <b>Texte</b> stehen Euro, heutige Namen und Begriffe, für jede Version. Dazu kommen vier Patches nur für die GOG-Version.</p>
+    <p class="intro">Im Fenster in Gruppen: Unter <b>Patches</b> behebt der Schalter „<b>Spielfehler</b>“ sechzehn Fehler des Spiels auf einmal; daneben stehen Patch 1.01 und die Patches gegen Abstürze und Probleme mit aktuellem Windows (Videos, Audiogerät), der Abspann unter VMware sowie die Obergrenze für den Kontostand. Das <b>Balancing</b> ändert, wie das Spiel spielt. Unter <b>Texte</b> stehen Euro, heutige Namen und Begriffe, für jede Version. Dazu kommen vier Patches nur für die GOG-Version.</p>
     <div class="cards">
       <article class="card">
         <div class="card-head">
@@ -212,6 +212,14 @@
         </div>
         <h3>Ton über das Standard-Audiogerät von Windows</h3>
         <p>Das Spiel nimmt das zuletzt gefundene Soundgerät statt des eingestellten. Mit Monitor-Lautsprechern und Headset landet der Ton so leicht auf dem falschen. Mit dem Patch kommt er dort heraus, wo Windows ihn hinschickt.</p>
+      </article>
+      <article class="card">
+        <div class="card-head">
+          <span class="tag tag-fix">Patch</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/></svg>
+        </div>
+        <h3>Abspann im richtigen Tempo unter VMware</h3>
+        <p>Unter Windows 98 in VMware (Sound Blaster 16) lief der Abspann beim Beenden in 40 statt 80 Sekunden durch, der Ton gehetzt. Das Spiel lässt DirectSound im 8-Bit-Format; danach läuft der nächste Ton über das normale Windows-Audio doppelt so schnell. Mit dem Patch stellt das Spiel den Ton beim Start auf das Format seiner Musik, 16 Bit Stereo. Die exe behält ihre Größe, A2G-Trainer erkennt sie weiter.</p>
       </article>
       <article class="card">
         <div class="card-head">

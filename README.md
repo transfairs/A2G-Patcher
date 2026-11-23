@@ -88,6 +88,16 @@ Patches for **Anstoss 2 Gold**, switched on and off in one small window, one til
   codec installed they still play.
 - **Ton über das Standard-Audiogerät von Windows**: the game picks the last enumerated sound device instead
   of the default one, so with several outputs (monitor, headset) the sound may go to the wrong one.
+- **Abspann im richtigen Tempo unter VMware (Sound Blaster 16): Ton in 16 Bit Stereo** ("Abspann-Tempo"):
+  in a Windows 98 VM under VMware, the outro the game plays when it ends ran in 40 instead of 80 seconds,
+  its sound skipped. The game opens DirectSound at the normal level, so the primary buffer keeps the
+  default format of 8 bits; once a sound has played through it, the next sound the same process plays
+  with waveOut runs on a clock twice as fast with VMware's Sound Blaster 16 (the ones after it are right
+  again). With the patch the game takes the priority level and sets the primary buffer to the format of
+  its music, 22050 Hz, 16 bits, stereo. The code behind `DirectSoundCreate` is rewritten in its own 121
+  bytes; the buffer description and the format (38 bytes) go into the zero room behind the end of
+  `.rdata` (1999 release) or in front of the interview stub's room in GOG's import section. The exe
+  keeps its size, so A2G-Trainer still recognizes the build.
 - **Vereinskonto stoppt bei 2 Mrd. DM, statt ins Minus zu kippen** ("Kontostand"): the game keeps a club's
   money in a 32-bit number. Past 2,147,483,647 DM a profitable week turns it into about -2.1 billion DM,
   and the game takes the club for broke (overdraft interest, a forced loan). With the patch the weekly
@@ -935,7 +945,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
   counters, 32768 investments, 65536 trainer supply, 131072 money limit, 262144 events, 524288 grade
-  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events, 33554432 grade chart, 67108864 referee grudge; the
+  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events, 33554432 grade chart, 67108864 referee grudge, 134217728 sound format; the
   build has all on). Older versions had two or three bytes; the NUL ending their string and its padding
   follow them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the
