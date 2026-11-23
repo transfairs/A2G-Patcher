@@ -41,7 +41,7 @@ namespace A2GPatch
         public static readonly Patch[] All =
         {
             new GameBugs(), new Patch101(), new VideoCrash(), new DefaultSoundDevice(), new SoundFormat(), new MoneyLimit(),
-            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new FishPoisoning(), new ManagerEvents(),
+            new NegotiationCounter(), new InterviewEffects(), new GoalLimits(), new SpeechPenalty(), new CoachSupply(), new SecondaryPositions(), new FishPoisoning(), new ManagerEvents(),
             new CopyProtection(), new DialogStyles(), new AnimationEdge(), new WrapperClipping(),
             new Currency(), new CentreBack(), new CupNames(), new LeagueNames(), new GroupLetters(), new ContractTerms(), new QuizAnswers(), new QuizQuestions(),
         };
@@ -59,7 +59,7 @@ namespace A2GPatch
         /// <summary>The group the window shows the tile in.</summary>
         public abstract PatchGroup Group { get; }
 
-        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 134217728 taken); 0 for the GOG patches the DLL doesn't know.</summary>
+        /// <summary>Its bits in the four flags bytes of msvfw32.dll (A2GPatchFlags in dll/msvfw32.c, 1 to 268435456 taken); 0 for the GOG patches the DLL doesn't know.</summary>
         public abstract uint Flag { get; }
 
         /// <summary>Whether places found as <paramref name="sites"/> count as applied: all of them patched.</summary>
@@ -1891,6 +1891,201 @@ namespace A2GPatch
             };
             // Each place holds one of its two versions exactly (which also checks that both lists use the same group table).
             return sites.All(s => image.Slice(s.Offset, s.Original.Length).SequenceEqual(s.IsPatched ? s.Patched : s.Original)) ? sites : null;
+        }
+    }
+
+    /// <summary>
+    /// Gives new players any secondary position. Four functions create players (FUN_0059fdd0 the youth
+    /// players, FUN_005a02d0, FUN_005a0560 and FUN_005a08b0 in the original); each gives a player who isn't a
+    /// goalkeeper a secondary position (+21) in 40 of 100 cases, always the same one for the main position
+    /// (+20), from the table 0x6c2948: L -> MD, MD -> L, LV and RV -> MD, RM -> OM, LM -> DM, DM -> L,
+    /// OM -> S, S -> OM. Only the original's youth players get a second one (+22), in 20 of 100 of those
+    /// cases, from a switch of its own; GOG's build (1.00) lacks it, <see cref="Patch101"/> brings it back with
+    /// a jump from the youth players' place. The patch sends all four to added code that
+    /// draws the secondary position from the nine field positions other than the main one, and in
+    /// <see cref="SecondChance"/> of 100 cases a second one from the remaining eight:
+    /// <code>
+    ///   xor ecx,ecx / mov cl,[esi+20] / mov dl,[ecx+table] / mov [esi+21],dl   (edx and al in the fourth)
+    ///   ->  xor ecx,ecx / call helper / jmp +5 / table / nop
+    ///   helper: ebx = main / eax = rand(8) + 2, one up from the main on / [esi+21] = al /
+    ///           rand(100) &lt; 25: eax = rand(7) + 2, one up from the lower and from the higher of both on /
+    ///           [esi+22] = al / ret
+    /// </code>
+    /// The table's address stays in the place, so taking the patch back restores it. The 40 of 100 stay, the
+    /// game clears both fields before. rand is the game's own (FUN_00645ed0, the call right in front of every
+    /// place). The helper (83 bytes) goes into the youth players' switch in the original, which it replaces
+    /// (the place there becomes "call helper / jmp behind the switch", the switch's jump table address is
+    /// kept at its end), and else in front of <see cref="SoundFormat"/>'s data in the room at the end of the
+    /// last executable section (GOG's import section), which taking the patch back zeroes again.
+    /// With <see cref="Patch101"/> on, the youth players' place holds its jump (jmp / nop x9); the patch
+    /// takes the place over and gives the jump back when it goes, while <see cref="Patch101"/>'s section is
+    /// there. <see cref="Patch101"/> in turn leaves the place alone while it holds this patch's call.
+    /// </summary>
+    internal sealed class SecondaryPositions : Patch
+    {
+        /// <summary>Of 100 players with a secondary position, how many get a second one.</summary>
+        internal const int SecondChance = 25;
+        /// <summary>The room the helper takes in front of <see cref="SoundFormat"/>'s data.</summary>
+        internal const int Room = 0x60;
+        /// <summary>The length of each place.</summary>
+        internal const int PlaceLength = 14;
+        /// <summary>The length of the youth players' switch in the original, from behind its check.</summary>
+        internal const int SwitchLength = 0x74;
+        /// <summary>Where the rand calls' displacements lie in the helper.</summary>
+        internal static readonly int[] RandCalls = { 0x09, 0x20, 0x2F };
+
+        // push 64 / call rand / add esp,4 / cmp eax,28 / jae: the check in front of every place.
+        private static readonly byte?[] Check = { 0x6A, 0x64, 0xE8, null, null, null, null, 0x83, 0xC4, 0x04, 0x83, 0xF8, 0x28, 0x73 };
+
+        // The two register sets: xor r,r / mov r8,[esi+20] / mov r8,[r+table] (opcode, ModRM) / mov [esi+21],r8.
+        private static readonly byte[][] Clear = { new byte[] { 0x33, 0xC9 }, new byte[] { 0x33, 0xD2 } };
+        private static readonly byte[][] Load = { new byte[] { 0x8A, 0x4E, 0x20, 0x8A, 0x91 }, new byte[] { 0x8A, 0x56, 0x20, 0x8A, 0x82 } };
+        private static readonly byte[][] Store = { new byte[] { 0x88, 0x56, 0x21 }, new byte[] { 0x88, 0x46, 0x21 } };
+
+        private static readonly byte[] Helper =
+        {
+            0x53, 0x57, 0x0F, 0xB6, 0x5E, 0x20,                     // push ebx / push edi / movzx ebx,byte [esi+20]
+            0x6A, 0x08, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x04, // rand(8)
+            0x83, 0xC0, 0x02, 0x3B, 0xC3, 0x72, 0x01, 0x40,         // add eax,2 / cmp eax,ebx / jb +1 / inc eax
+            0x88, 0x46, 0x21, 0x8B, 0xF8,                           // mov [esi+21],al / mov edi,eax
+            0x6A, 0x64, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x04, // rand(100)
+            0x83, 0xF8, SecondChance, 0x73, 0x24,                   // cmp eax,25 / jae done
+            0x6A, 0x07, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x04, // rand(7)
+            0x83, 0xC0, 0x02, 0x8B, 0xCB, 0x8B, 0xD7,               // add eax,2 / mov ecx,ebx / mov edx,edi
+            0x3B, 0xCA, 0x72, 0x02, 0x87, 0xCA,                     // the lower in ecx, the higher in edx
+            0x3B, 0xC1, 0x72, 0x01, 0x40, 0x3B, 0xC2, 0x72, 0x01, 0x40, // one up from each on
+            0x88, 0x46, 0x22,                                       // mov [esi+22],al
+            0x5F, 0x5B, 0xC3,                                       // done: pop edi / pop ebx / ret
+        };
+
+        private static byte?[] Code(params byte?[][] parts) => parts.SelectMany(p => p).ToArray();
+        private static byte?[] D(long? value) => value.HasValue ? Exact(BitConverter.GetBytes((uint)value.Value)) : new byte?[4];
+
+        /// <summary>The helper calling rand <paramref name="rand"/> bytes behind the helper's start; null leaves the calls open.</summary>
+        internal static byte?[] HelperCode(long? rand)
+        {
+            byte?[] code = Exact(Helper);
+            foreach (int call in RandCalls)
+                D(rand - (call + 4)).CopyTo(code, call);
+            return code;
+        }
+
+        /// <summary>A place as the game has it, with register set <paramref name="registers"/> (0 ecx, 1 edx).</summary>
+        internal static byte?[] OriginalPlace(int registers, long? table) => Code(Exact(Clear[registers]), Exact(Load[registers]), D(table), Exact(Store[registers]));
+
+        /// <summary>A place patched: the call goes <paramref name="call"/> bytes behind its end.</summary>
+        internal static byte?[] PatchedPlace(int registers, long? call, long? table) =>
+            Code(Exact(Clear[registers]), Exact(0xE8), D(call), Exact(0xEB, 0x05), D(table), Exact(0x90));
+
+        /// <summary>The youth players' switch in the original, calling rand <paramref name="rand"/> bytes behind its start.</summary>
+        internal static byte?[] OriginalSwitch(long? rand, long? table, long? jumps) => Code(
+            Exact(0x33, 0xC9, 0x6A, 0x64, 0x8A, 0x4E, 0x20, 0x8A, 0x91), D(table), Exact(0x88, 0x56, 0x21, 0xE8), D(rand - 0x15),
+            Exact(0x83, 0xC4, 0x04, 0x83, 0xF8, 0x14, 0x73, 0x57, 0x33, 0xC0, 0x8A, 0x46, 0x20, 0x83, 0xC0, 0xFE, 0x83, 0xF8, 0x08, 0x77, 0x2E, 0xFF, 0x24, 0x85), D(jumps),
+            Exact(0xC6, 0x46, 0x22, 0x07, 0xEB, 0x21, 0xC6, 0x46, 0x22, 0x06, 0xEB, 0x1B, 0xC6, 0x46, 0x22, 0x05, 0xEB, 0x15, 0xC6, 0x46, 0x22, 0x04, 0xEB, 0x0F,
+                0x6A, 0x0A, 0xE8), D(rand - 0x50),
+            Exact(0x83, 0xC4, 0x04, 0xFE, 0xC0, 0x88, 0x46, 0x22, 0x8A, 0x46, 0x22, 0x8A, 0x4E, 0x20, 0x3A, 0xC1, 0x75, 0x04, 0xC6, 0x46, 0x22, 0x00,
+                0x8A, 0x4E, 0x22, 0x8A, 0x46, 0x21, 0x3A, 0xC8, 0x75, 0x04, 0xC6, 0x46, 0x22, 0x00));
+
+        /// <summary>The switch patched: call helper / jmp behind / the helper / filler / the jump table's address.</summary>
+        internal static byte?[] PatchedSwitch(long? rand, long? jumps)
+        {
+            byte?[] start = Exact(0xE8, 0x02, 0x00, 0x00, 0x00, 0xEB, SwitchLength - 7);
+            byte?[] helper = HelperCode(rand - 7);
+            return Code(start, helper, Exact(Enumerable.Repeat((byte)0xCC, SwitchLength - 4 - start.Length - helper.Length).ToArray()), D(jumps));
+        }
+
+        // The places original, patched, and the youth players' with Patch101's jump (counts as original).
+        private const int Hooked = 4;
+        private static readonly byte?[][] PlacePatterns =
+        {
+            Code(Check, Exact(0x0E), OriginalPlace(0, null)), Code(Check, Exact(0x0E), OriginalPlace(1, null)),
+            Code(Check, Exact(0x0E), PatchedPlace(0, null, null)), Code(Check, Exact(0x0E), PatchedPlace(1, null, null)),
+            Code(Check, Exact(0x0E), Exact(0xE9), D(null), Exact(Enumerable.Repeat((byte)0x90, PlaceLength - 5).ToArray())),
+        };
+
+        /// <summary>Whether a place patched (either register set) starts at <paramref name="at"/> in <paramref name="image"/>.</summary>
+        internal static bool HoldsPatchedPlace(byte[] image, long at)
+        {
+            byte?[] pattern = PatchedPlace(0, null, null);
+            pattern[1] = null;
+            return FindAll(image.Slice(at, PlaceLength), pattern).Count == 1;
+        }
+        private static readonly byte?[] OriginalSwitchPattern = Code(Check, Exact(SwitchLength), OriginalSwitch(null, null, null));
+        private static readonly byte?[] PatchedSwitchPattern = Code(Check, Exact(SwitchLength), PatchedSwitch(null, null));
+
+        /// <inheritdoc/>
+        public override string Name => "Neue Spieler: Nebenposition zufällig statt fest je Hauptposition, jeder Vierte davon mit einer zweiten";
+        /// <inheritdoc/>
+        public override string Title => "Nebenpositionen";
+        /// <inheritdoc/>
+        public override PatchGroup Group => PatchGroup.Balancing;
+        /// <inheritdoc/>
+        public override uint Flag => 268435456;
+        /// <inheritdoc/>
+        public override IEnumerable<byte?[]> Patterns => PlacePatterns.Concat(new[] { OriginalSwitchPattern, PatchedSwitchPattern });
+
+        /// <summary>Where the helper goes in the last executable section: in front of <see cref="SoundFormat"/>'s data's room; -1 if there's no room.</summary>
+        internal static long HelperAt(PeFile pe)
+        {
+            PeFile.Section last = CupDraw.LastSection(pe);
+            long at = last == null ? -1 : CupDraw.HelperAt(last) - InterviewEffects.StubSize - SoundFormat.DataRoom - Room;
+            return last != null && at >= last.Raw ? at : -1;
+        }
+
+        private static byte[] Values(byte?[] code) => code.Select(b => b.Value).ToArray();
+
+        /// <inheritdoc/>
+        public override Site[] Find(byte[] image)
+        {
+            PeFile pe = PeFile.Read(image);
+            List<long> places = new List<long>();
+            List<int> kinds = new List<int>();
+            for (int k = 0; k < PlacePatterns.Length; k++)
+            {
+                foreach (long at in FindAll(image, PlacePatterns[k]))
+                {
+                    places.Add(at + Check.Length + 1);
+                    kinds.Add(k);
+                }
+            }
+            List<long> originalSwitch = FindAll(image, OriginalSwitchPattern), patchedSwitch = FindAll(image, PatchedSwitchPattern);
+            int switches = originalSwitch.Count + patchedSwitch.Count;
+            if (pe == null || switches > 1 || places.Count != (switches == 1 ? 3 : 4) || kinds.Count(k => k == Hooked) > 1)
+                return null;
+            // The table from a place that isn't the hooked one (there's at most one of those, the others are three).
+            int plain = kinds.FindIndex(k => k != Hooked);
+            bool isPatched = switches == 1 ? patchedSwitch.Count == 1 : kinds[plain] >= 2;
+            long rand = pe.VaAt(Target(image, places[0] - 13));
+            uint table = BitConverter.ToUInt32(image, (int)places[plain] + (isPatched ? 9 : 7));
+            // With Patch101's section there, its place goes back to its jump.
+            Patch101.Hook hook = Patch101.Hooks.First(h => h.Target == V101Code.Fix5a2836);
+            bool v101 = pe.Sections.Last().Name == Patch101.SectionName;
+            long helper = switches == 1 ? (isPatched ? patchedSwitch[0] : originalSwitch[0]) + Check.Length + 1 + 7 : HelperAt(pe);
+            long helperVa = helper < 0 ? -1 : pe.VaAt(helper);
+            if (helperVa < 0)
+                return null;
+            byte[] helperCode = Values(HelperCode(rand - helperVa));
+
+            List<Site> sites = new List<Site>();
+            if (switches == 1)
+            {
+                long at = helper - 7, va = helperVa - 7;
+                uint jumps = BitConverter.ToUInt32(image, (int)at + (isPatched ? SwitchLength - 4 : 0x2D));
+                sites.Add(new Site { Offset = at, Original = Values(OriginalSwitch(rand - va, table, jumps)), Patched = Values(PatchedSwitch(rand - va, jumps)), IsPatched = isPatched });
+            }
+            else
+                sites.Add(new Site { Offset = helper, Original = new byte[helperCode.Length], Patched = helperCode, IsPatched = isPatched });
+            for (int i = 0; i < places.Count; i++)
+            {
+                int registers = kinds[i] % 2;
+                long va = pe.VaAt(places[i]), call = helperVa - (va + 7);
+                byte[] original = v101 && va == hook.Va ? hook.Patched : Values(OriginalPlace(registers, table));
+                sites.Add(new Site { Offset = places[i], Original = original, Patched = Values(PatchedPlace(registers, call, table)), IsPatched = isPatched });
+            }
+            // Every check calls the same rand, every place reads the same table, and each place holds the version it's expected to:
+            // the helper first, so a call never leads to zeros.
+            bool sameRand = places.All(p => pe.VaAt(Target(image, p - 13)) == rand);
+            return sameRand && sites.All(s => image.Slice(s.Offset, s.Original.Length).SequenceEqual(s.IsPatched ? s.Patched : s.Original)) ? sites.ToArray() : null;
         }
     }
 

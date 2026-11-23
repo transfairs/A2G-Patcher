@@ -38,6 +38,7 @@
 // 33554432 grade chart: axis label text 5800 "Formpunkte/6"   ->  "Noten/6", kept behind the function
 // 67108864 referee:   the scenes' grudge test against club + 1 ->  against the club itself
 // 134217728 sound format: primary buffer left at 8 bits       ->  priority level, 22050 Hz 16-bit stereo
+// 268435456 positions: a new player's secondary position from a table  ->  drawn, sometimes a second one
 // A2G-Patch writes the data files of patch 1.01 itself; its other GOG patches are not offered here.
 // If a patch's places are ambiguous or not as expected (an unknown build), that patch is left out;
 // if they never show up (another program, e.g. Editor.exe), nothing is changed. Remove the patches by
@@ -154,7 +155,8 @@ MSVFW_FUNCS(DEFINE_STUB)
 #define FLAG_GRADE_CHART  33554432
 #define FLAG_REFEREE      67108864
 #define FLAG_SOUND_FORMAT 134217728
-static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\xFF\x0F";   // all on
+#define FLAG_POSITIONS    268435456
+static volatile unsigned char g_config[] = "A2GPatchFlags\0\xFF\xFF\xFF\x1F";   // all on
 #define CONFIG_FLAGS ((DWORD)g_config[14] | (DWORD)g_config[15] << 8 | (DWORD)g_config[16] << 16 | (DWORD)g_config[17] << 24)
 
 // ---- finding and writing code ---------------------------------------------------------------------
@@ -683,7 +685,12 @@ static BOOL ReadableAt(const BYTE *p, SIZE_T n)
     return p + n <= (const BYTE *)mbi.BaseAddress + mbi.RegionSize;
 }
 
-// Copies the 1.01 code into fresh memory and writes its places, once every place holds its original bytes.
+// The place of the second positions as the secondary positions (268435456) leave it: xor r,r / call helper /
+// jmp +5. It stays as it is.
+static const WORD kV101Taken[] = { 0x33, ANY, 0xE8, ANY, ANY, ANY, ANY, 0xEB, 0x05 };
+
+// Copies the 1.01 code into fresh memory and writes its places, once every place holds its original bytes
+// (or is taken, see kV101Taken).
 static int PatchV101(BYTE *base, SIZE_T size)
 {
     if (base != (BYTE *)IMAGE_BASE) return DONE;
@@ -692,7 +699,7 @@ static int PatchV101(BYTE *base, SIZE_T size)
         const V101Place *place = &kV101Places[i];
         BYTE *at = base + (place->va - IMAGE_BASE);
         if (place->va - IMAGE_BASE + place->length > size || !ReadableAt(at, place->length)) return NOT_YET;
-        if (!Equal(at, place->original, place->length)) return NOT_YET;
+        if (!Equal(at, place->original, place->length) && !Matches(at, kV101Taken, ARRAYSIZE(kV101Taken))) return NOT_YET;
     }
 
     BYTE *code = (BYTE *)VirtualAlloc(NULL, sizeof kV101Code, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
@@ -707,6 +714,7 @@ static int PatchV101(BYTE *base, SIZE_T size)
     {
         const V101Place *place = &kV101Places[i];
         BYTE *at = base + (place->va - IMAGE_BASE), bytes[14];
+        if (!Equal(at, place->original, place->length)) continue;
         if (place->target == V101_CHANGE)
             Copy(bytes, place->changed, place->length);
         else
@@ -1560,6 +1568,97 @@ static int PatchSoundFormat(BYTE *base, SIZE_T size)
     return DONE;
 }
 
+// ---- 268435456: secondary positions ---------------------------------------------------------------
+
+// As in Patches.cs (SecondaryPositions): the four functions that create players take a new player's
+// secondary position from a table, one per main position. Each place goes to the helper, which draws it
+// from the nine field positions other than the main one, and in 25 of 100 cases a second one. In the
+// original's youth players the switch for that second one is skipped: call helper / jmp behind it. Where
+// patch 1.01 (1024) already jumps from the youth players' place to its own switch, the call replaces the
+// jump; the other way round PatchV101 leaves the place alone. Either order gives the same.
+// push 64 / call rand / add esp,4 / cmp eax,28 / jae: the check in front of every place.
+#define POSITION_CHECK 0x6A, 0x64, 0xE8, ANY, ANY, ANY, ANY, 0x83, 0xC4, 0x04, 0x83, 0xF8, 0x28, 0x73
+#define POSITION_PLACE 15      // the place behind the check
+#define POSITION_LENGTH 14
+#define POSITION_SWITCH 0x74   // the jae's distance in front of the original's youth switch
+static const WORD kPositionEcx[] = { POSITION_CHECK, 0x0E, 0x33, 0xC9, 0x8A, 0x4E, 0x20, 0x8A, 0x91, ANY, ANY, ANY, ANY, 0x88, 0x56, 0x21 };
+static const WORD kPositionEdx[] = { POSITION_CHECK, 0x0E, 0x33, 0xD2, 0x8A, 0x56, 0x20, 0x8A, 0x82, ANY, ANY, ANY, ANY, 0x88, 0x46, 0x21 };
+static const WORD kPositionPatched[] = { POSITION_CHECK, 0x0E, 0x33, ANY, 0xE8, ANY, ANY, ANY, ANY, 0xEB, 0x05 };
+static const WORD kPositionSwitch[] = { POSITION_CHECK, POSITION_SWITCH, 0x33, 0xC9, 0x6A, 0x64, 0x8A, 0x4E, 0x20, 0x8A, 0x91 };
+// The youth players' place with the jump of patch 1.01 (which brings back the second position there): taken over.
+static const WORD kPositionHooked[] = { POSITION_CHECK, 0x0E, 0xE9, ANY, ANY, ANY, ANY, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+// The helper as in Patches.cs; its three calls of rand (displacements at 0x09, 0x20, 0x2F) are left 0.
+static const BYTE kPositionHelper[83] = {
+    0x53, 0x57, 0x0F, 0xB6, 0x5E, 0x20, 0x6A, 0x08, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x04,
+    0x83, 0xC0, 0x02, 0x3B, 0xC3, 0x72, 0x01, 0x40, 0x88, 0x46, 0x21, 0x8B, 0xF8, 0x6A, 0x64, 0xE8,
+    0x00, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x04, 0x83, 0xF8, 0x19, 0x73, 0x24, 0x6A, 0x07, 0xE8, 0x00,
+    0x00, 0x00, 0x00, 0x83, 0xC4, 0x04, 0x83, 0xC0, 0x02, 0x8B, 0xCB, 0x8B, 0xD7, 0x3B, 0xCA, 0x72,
+    0x02, 0x87, 0xCA, 0x3B, 0xC1, 0x72, 0x01, 0x40, 0x3B, 0xC2, 0x72, 0x01, 0x40, 0x88, 0x46, 0x22,
+    0x5F, 0x5B, 0xC3 };
+static const SIZE_T kPositionRand[3] = { 0x08, 0x1F, 0x2E };    // the calls
+
+// Collects the pattern's occurrences (up to max) into found; returns how many there are.
+static int CountAll(BYTE *base, SIZE_T size, const WORD *pattern, SIZE_T n, BYTE **found, int max)
+{
+    int count = 0;
+    BYTE *at, *end = base + size;
+    for (BYTE *from = base; from < end && Count(from, (SIZE_T)(end - from), pattern, n, &at) > 0; from = at + 1)
+    {
+        if (count < max) found[count] = at;
+        count++;
+    }
+    return count;
+}
+
+// Copies the helper into fresh memory and points the places at it, if all four checks call the same rand.
+static int PatchPositions(BYTE *base, SIZE_T size)
+{
+    BYTE *places[6], *youth, *patched;
+    int ecx = CountAll(base, size, kPositionEcx, ARRAYSIZE(kPositionEcx), places, 4);
+    int edx = CountAll(base, size, kPositionEdx, ARRAYSIZE(kPositionEdx), places + (ecx < 4 ? ecx : 4), 1);
+    int hooked = CountAll(base, size, kPositionHooked, ARRAYSIZE(kPositionHooked), places + (ecx + edx < 5 ? ecx + edx : 5), 1);
+    int switches = Count(base, size, kPositionSwitch, ARRAYSIZE(kPositionSwitch), &youth);
+    int done = Count(base, size, kPositionPatched, ARRAYSIZE(kPositionPatched), &patched);
+    int expected = switches == 1 ? 3 : 4;
+    if (done != 0 || switches > 1 || ecx + edx + hooked > expected || edx > 1 || hooked > 1) return DONE;
+    if (ecx + edx + hooked < expected) return NOT_YET;
+    BYTE *rand = CallTarget(places[0] + 2);
+    DWORD table;
+    Copy((BYTE *)&table, places[0] + POSITION_PLACE + 7, 4);     // the first place is never the hooked one
+    for (int i = 0; i < expected; i++)
+        if (CallTarget(places[i] + 2) != rand) return DONE;
+    if (switches == 1 && CallTarget(youth + 2) != rand) return DONE;
+
+    BYTE *helper = (BYTE *)VirtualAlloc(NULL, sizeof kPositionHelper, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!helper) return DONE;
+    Copy(helper, kPositionHelper, sizeof kPositionHelper);
+    for (int i = 0; i < 3; i++)
+        PutDword(helper + kPositionRand[i] + 1, (DWORD)(rand - (helper + kPositionRand[i] + 5)));
+    FlushInstructionCache(GetCurrentProcess(), helper, sizeof kPositionHelper);
+
+    // xor r,r / call helper / jmp +5 / table / nop, as on disk.
+    for (int i = 0; i < expected; i++)
+    {
+        BYTE *place = places[i] + POSITION_PLACE, code[POSITION_LENGTH];
+        code[0] = 0x33;
+        code[1] = place[0] == 0x33 ? place[1] : 0xC9;                   // the hooked place is one with ecx
+        code[2] = 0xE8;
+        PutDword(code + 3, (DWORD)(helper - (place + 7)));
+        code[7] = 0xEB;
+        code[8] = 0x05;
+        PutDword(code + 9, table);
+        code[13] = 0x90;
+        Write(place, code, sizeof code);
+    }
+    if (switches == 1)
+    {
+        BYTE *place = youth + POSITION_PLACE, code[7] = { 0xE8, 0, 0, 0, 0, 0xEB, POSITION_SWITCH - 7 };
+        PutDword(code + 1, (DWORD)(helper - (place + 5)));
+        Write(place, code, sizeof code);
+    }
+    return DONE;
+}
+
 // ---- the patch thread -----------------------------------------------------------------------------
 
 // Tries every patch switched on in g_config every POLL_MS until each is done or POLL_COUNT runs out.
@@ -1582,7 +1681,8 @@ static DWORD WINAPI PatchThread(LPVOID param)
     BOOL eventsDone = !(flags & FLAG_EVENTS), gradesDone = !(flags & FLAG_GRADES), competenceDone = !(flags & FLAG_COMPETENCE);
     BOOL crashesDone = !(flags & FLAG_CRASHES), fishDone = !(flags & FLAG_FISH), appearancesDone = !(flags & FLAG_APPEARANCES), managerDone = !(flags & FLAG_MANAGER);
     BOOL chartDone = !(flags & FLAG_GRADE_CHART), refereeDone = !(flags & FLAG_REFEREE), formatDone = !(flags & FLAG_SOUND_FORMAT);
-    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone && moneyDone && eventsDone && gradesDone && competenceDone && crashesDone && fishDone && appearancesDone && managerDone && chartDone && refereeDone && formatDone)
+    BOOL positionsDone = !(flags & FLAG_POSITIONS);
+    #define ALL_DONE (goalsDone && arrowDone && videoDone && sleepDone && soundDone && diskDone && squadDone && displayDone && cupDone && calcDone && v101Done && buttonDone && interviewDone && speechDone && negotiationDone && investmentDone && coachDone && moneyDone && eventsDone && gradesDone && competenceDone && crashesDone && fishDone && appearancesDone && managerDone && chartDone && refereeDone && formatDone && positionsDone)
     for (int i = 0; i < POLL_COUNT && !ALL_DONE; i++)
     {
         if (!goalsDone) goalsDone = PatchGoalLimits(base, size) == DONE;
@@ -1613,6 +1713,7 @@ static DWORD WINAPI PatchThread(LPVOID param)
         if (!chartDone) chartDone = PatchChart(base, size) == DONE;
         if (!refereeDone) refereeDone = PatchRewrite(base, size, kReferee, kRefereePatched, ARRAYSIZE(kReferee)) == DONE;
         if (!formatDone) formatDone = PatchSoundFormat(base, size) == DONE;
+        if (!positionsDone) positionsDone = PatchPositions(base, size) == DONE;
         if (!ALL_DONE) Sleep(POLL_MS);
     }
     #undef ALL_DONE

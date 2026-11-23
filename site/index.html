@@ -278,6 +278,14 @@
       <article class="card card-alt">
         <div class="card-head">
           <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/></svg>
+        </div>
+        <h3>Nebenpositionen</h3>
+        <p>Neue Spieler, aus der Jugend wie die übrigen, die das Spiel anlegt, bekommen in 40&nbsp;% der Fälle eine Nebenposition, aber immer dieselbe zu ihrer Hauptposition: Ein Stürmer wird nur OM, ein linker Mittelfeldspieler nur DM, Außenverteidiger nur MD. Mit dem Patch wird die Nebenposition aus allen neun Feldpositionen außer der Hauptposition gelost, und jeder Vierte davon bekommt eine zweite dazu. Torhüter bleiben ohne; Spieler, die schon im Spiel sind, behalten ihre.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12c3-4 7-5 11-5 3 0 5 2 7 5-2 3-4 5-7 5-4 0-8-1-11-5z"/><path d="M16 11h.01"/></svg>
         </div>
         <h3>Fischvergiftung: drei Wochen wie gemeldet</h3>
@@ -567,6 +575,13 @@ Wochenergebnis: 20 Felder einzeln (208 B)  →  Buchungssumme + Steuer − Feld 
         <p>Trainer und Manager teilen sich einen Pool (Trainer- und Managerlevel, das höhere ist der Beruf); auch Co-Trainer kommen daher, Torwarttrainer haben eine eigene Tabelle. Zum Saisonwechsel geht in Rente, wer ohne Vertrag älter als 65 bis 67 ist, und sein Platz geht an den nächsten Ex-Spieler einer Warteliste je Ländergruppe (20 Plätze, Torwarttrainer 10). Auf die Liste kommt ein Spieler nur, wenn er mit 36 oder später aufhört; meist hören Spieler erst auf, wenn ihre Stärke auf 0 gefallen ist. Ist die Liste leer, bekommt der Rentner seinen Platz zurück: 30 Jahre, Kompetenz 2 (Torwarttrainer 35 und 2). Bis 44 wächst die Kompetenz je Saison mit 20&nbsp;% um 1 (Torwarttrainer 50&nbsp;%), von 2 aus kommt also niemand weit. Der Patch senkt das Alter auf 33 und schreibt beide Funktionen in ihren eigenen Bytes kürzer neu, sodass ein Wurf hineinpasst. Über 60 Spielzeiten simuliert, hält das eine Glocke um 7 bis 8 mit 1 bis 2&nbsp;% auf Kompetenz 15; ohne Patch steht am Ende niemand mehr über 12.</p>
 <pre><code>cmp dl,23 / jbe (nicht auf die Liste)       →  cmp dl,20
 Platz zurück ohne Eintrag: Kompetenz 2      →  3 + 4 × Zufall(3): 3 bis 11, meist 7</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Nebenpositionen</b><span>Eine Tabelle mit einem Eintrag je Position</span></summary>
+        <p>Vier Funktionen legen neue Spieler an, eine davon die Jugendspieler. Jede löscht beide Nebenpositionen und setzt bei Feldspielern mit Zufall(100)&nbsp;&lt;&nbsp;40 die erste aus einer Tabelle mit einem Eintrag je Hauptposition: LI&nbsp;→&nbsp;MD, MD&nbsp;→&nbsp;LI, LV und RV&nbsp;→&nbsp;MD, RM&nbsp;→&nbsp;OM, LM&nbsp;→&nbsp;DM, DM&nbsp;→&nbsp;LI, OM&nbsp;→&nbsp;ST, ST&nbsp;→&nbsp;OM. Eine zweite bekommen nur die Jugendspieler der 1999er-Fassung, in 20&nbsp;% dieser Fälle; GOGs Fassung fehlt das, Patch&nbsp;1.01 bringt es zurück. Der Patch schickt alle vier Stellen in eine Routine von 83&nbsp;Bytes, die den Zufall des Spiels benutzt. Sie liegt in der 1999er-Fassung im ersetzten Zweig der Jugendspieler, bei GOG am Ende des Importabschnitts, in der DLL in eigenem Speicher. Im Emulator kam für jede Hauptposition jede der acht übrigen Feldpositionen als erste Nebenposition vor, jede der sieben restlichen als zweite. Mit Patch&nbsp;1.01 übernimmt die Routine dessen Sprung an der Stelle der Jugendspieler; beide lassen sich in beliebiger Reihenfolge ein- und ausschalten.</p>
+<pre><code>mov dl,[ecx+Tabelle] / mov [esi+21],dl  →  call Routine
+Routine: [esi+21] = Zufall(8): eine der Feldpositionen ohne die Hauptposition
+         Zufall(100) &lt; 25: [esi+22] = Zufall(7): eine der übrigen</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Manager-Ereignisse</b><span>Die Tabelle daneben</span></summary>

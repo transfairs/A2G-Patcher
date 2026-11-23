@@ -278,6 +278,14 @@
       <article class="card card-alt">
         <div class="card-head">
           <span class="tag tag-opt">Balancing</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/></svg>
+        </div>
+        <h3>Secondary positions</h3>
+        <p>New players, youth players as well as the others the game creates, get a secondary position in 40&nbsp;% of the cases, but always the same one for their main position: a striker only ever gets OM, a left midfielder DM, full-backs MD. With the patch the secondary position is drawn from all nine field positions other than the main one, and a quarter of those players get a second one as well. Goalkeepers stay without; players already in the game keep theirs.</p>
+      </article>
+      <article class="card card-alt">
+        <div class="card-head">
+          <span class="tag tag-opt">Balancing</span>
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12c3-4 7-5 11-5 3 0 5 2 7 5-2 3-4 5-7 5-4 0-8-1-11-5z"/><path d="M16 11h.01"/></svg>
         </div>
         <h3>Fish poisoning: three weeks as reported</h3>
@@ -567,6 +575,13 @@ week’s result: 20 fields one by one (208 B) →  bookings sum + tax − field 
         <p>Trainers and managers share one pool (trainer and manager level, the higher one is the trade); co-trainers come from it too, goalkeeper trainers have their own table. At the season change whoever is out of contract and older than 65 to 67 retires, and his place goes to the next former player on a waiting list per country group (20 places, goalkeeper trainers 10). A player only gets on it if he ends his career at 36 or later; players mostly end it only once their strength has dropped to 0. With the list empty, the retired one gets his place back: aged 30, competence 2 (goalkeeper trainers 35 and 2). Up to 44 competence grows by 1 with 20&nbsp;% a season (goalkeeper trainers 50&nbsp;%), so from 2 nobody gets far. The patch lowers the age to 33 and rewrites both functions shorter in their own bytes, so a roll fits. Simulated over 60 seasons, this keeps a bell around 7 to 8 with 1 to 2&nbsp;% at 15; without the patch nobody is above 12 in the end.</p>
 <pre><code>cmp dl,23 / jbe (not on the list)           →  cmp dl,20
 place back without an entry: competence 2   →  3 + 4 × random(3): 3 to 11, most often 7</code></pre>
+      </details>
+      <details class="tech-item">
+        <summary><b>Secondary positions</b><span>A table with one entry per position</span></summary>
+        <p>Four functions create new players, one of them the youth players. Each clears both secondary positions and, for field players with random(100)&nbsp;&lt;&nbsp;40, sets the first from a table with one entry per main position: LI&nbsp;→&nbsp;MD, MD&nbsp;→&nbsp;LI, LV and RV&nbsp;→&nbsp;MD, RM&nbsp;→&nbsp;OM, LM&nbsp;→&nbsp;DM, DM&nbsp;→&nbsp;LI, OM&nbsp;→&nbsp;ST, ST&nbsp;→&nbsp;OM. Only the 1999 release's youth players get a second one, in 20&nbsp;% of those cases; GOG's build lacks it, Patch&nbsp;1.01 brings it back. The patch sends all four places to a routine of 83&nbsp;bytes that uses the game's random function. It lies in the replaced youth player branch in the 1999 release, at the end of the import section in GOG's, in memory of its own in the DLL. In an emulator, each of the eight other field positions came up as the first secondary position for every main position, each of the remaining seven as the second. With Patch&nbsp;1.01 the routine takes over its jump at the youth players' place; both can be switched on and off in any order.</p>
+<pre><code>mov dl,[ecx+table] / mov [esi+21],dl  →  call routine
+routine: [esi+21] = random(8): one of the field positions other than the main one
+         random(100) &lt; 25: [esi+22] = random(7): one of the others</code></pre>
       </details>
       <details class="tech-item">
         <summary><b>Manager events</b><span>The table next door</span></summary>

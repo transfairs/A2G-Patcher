@@ -353,10 +353,13 @@ namespace A2GPatch
                 return FileState.On;
             // The code is linked to where the image ends, and the next section header must fit before the first section's data.
             bool fits = pe.ImageBase + pe.SizeOfImage == V101Code.Address && pe.HasRoomForSection;
-            return fits && Hooks.All(h => Holds(image, pe.FileOffset(h.Va), h.Original)) ? FileState.Off : FileState.Unknown;
+            return fits && Hooks.All(h => Holds(image, pe.FileOffset(h.Va), h.Original) || Taken(image, pe.FileOffset(h.Va))) ? FileState.Off : FileState.Unknown;
         }
 
         private static bool Holds(byte[] image, long at, byte[] bytes) => at >= 0 && image.Slice(at, bytes.Length).SequenceEqual(bytes);
+
+        // Whether SecondaryPositions has the place (that of the second positions): it stays as it is either way.
+        private static bool Taken(byte[] image, long at) => at >= 0 && SecondaryPositions.HoldsPatchedPlace(image, at);
 
         /// <summary>
         /// <paramref name="image"/> with the section added (see <see cref="PeFile.AddSection"/>) and the places changed.
@@ -365,7 +368,7 @@ namespace A2GPatch
         {
             PeFile pe = PeFile.Read(image);
             byte[] result = PeFile.AddSection(image, SectionName, Convert.FromBase64String(V101Code.Code));
-            foreach (Hook hook in Hooks)
+            foreach (Hook hook in Hooks.Where(h => !Taken(image, pe.FileOffset(h.Va))))
                 hook.Patched.CopyTo(result, pe.FileOffset(hook.Va));
             return result;
         }
@@ -375,7 +378,7 @@ namespace A2GPatch
         {
             PeFile pe = PeFile.Read(image);
             byte[] result = PeFile.RemoveLastSection(image);
-            foreach (Hook hook in Hooks)
+            foreach (Hook hook in Hooks.Where(h => !Taken(image, pe.FileOffset(h.Va))))
                 hook.Original.CopyTo(result, pe.FileOffset(hook.Va));
             return result;
         }

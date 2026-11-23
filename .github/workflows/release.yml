@@ -194,6 +194,11 @@ jobs:
             also bleibt sie meist leer, und der Rentner kehrt als 30-Jähriger mit Kompetenz 2 zurück.
             Mit dem Patch kommen Ex-Spieler ab 33 Jahren auf die Liste, und ohne einen startet der Nachfolger
             mit Kompetenz 3 bis 11, meist um 7. Gilt auch für Co- und Torwarttrainer.
+          - Neue Spieler: Nebenposition zufällig statt fest je Hauptposition, jeder Vierte davon mit
+            einer zweiten: Bisher bekommt jede Hauptposition immer dieselbe Nebenposition (ein Stürmer
+            nur OM, Außenverteidiger nur MD). Mit dem Patch wird sie aus allen neun Feldpositionen
+            außer der Hauptposition gelost, und jeder Vierte davon bekommt eine zweite dazu.
+            Torhüter bleiben ohne; Spieler, die schon im Spiel sind, behalten ihre.
           - Fischvergiftung nach der Thunfischpizza: drei Wochen Ausfall wie in der Meldung statt
             einer: Die Meldung spricht von drei Wochen, eingetragen wird eine Fischvergiftung mit den
             üblichen 7 Tagen. Mit dem Patch fehlt der Spieler die drei Wochen.

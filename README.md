@@ -131,6 +131,13 @@ outro under VMware.
   name, aged 30 with competence 2 (goalkeeper trainers aged 35 with 2). They hardly grow, and in the long
   run the strong trainers die out. With the patch former players get on the list from age 33, and a place
   without one comes back with competence 3 to 11, most often around 7, so that trainers with competence 15 keep coming.
+- **Neue Spieler: Nebenposition zufällig statt fest je Hauptposition, jeder Vierte davon mit einer zweiten**
+  ("Nebenpositionen"): new players (youth players and the ones the game makes up) get a secondary
+  position in 40 % of the cases, but always the same one for their main position: a striker only ever
+  gets OM, a right midfielder OM, a left midfielder DM, full-backs MD, and so on. With the patch the
+  secondary position is drawn from all nine field positions other than the main one, and a quarter of
+  those players also get a second one. Goalkeepers stay without, as before; players already in the game
+  keep theirs.
 - **Fischvergiftung nach der Thunfischpizza: drei Wochen Ausfall wie in der Meldung statt einer**
   ("Fischvergiftung"): the message of this random event says the player is out for three weeks, but the
   game enters a fish poisoning with its usual 7 days. With the patch he misses the three weeks.
@@ -555,6 +562,42 @@ nobody above 12. A goalkeeper trainer coming back reaches 15 with about 9 %. The
 original code; the places are `0x5a1355`, `0x5a1500` and `0x5a15c0` (GOG `0x5a3b65`, `0x5a3d10`,
 `0x5a3dd0`, the 2007 release the same in memory, outside its CRC stretches).
 
+**Secondary positions** (Balancing). Four functions create players: `0x59fdd0` (youth players),
+`0x5a02d0`, `0x5a0560` and `0x5a08b0`. Each clears `+0x21` and `+0x22` (secondary positions), and for a
+field player (main position `+0x20` not 1) sets `+0x21` from the table `0x6c2948` (GOG `0x6c5a58`) when
+`random(100) < 40`:
+
+| main | L | MD | LV | RV | RM | LM | DM | OM | S |
+|---|---|---|---|---|---|---|---|---|---|
+| secondary | MD | L | MD | MD | OM | DM | L | S | OM |
+
+(positions 1 TW, 2 L, 3 MD, 4 LV, 5 RV, 6 RM, 7 LM, 8 DM, 9 OM, 10 S). Only the 1999 release's youth
+players get a second one, in 20 % of those cases, from a switch behind it (LV -> LM, RV -> RM, RM -> RV,
+LM -> LV, the others `random(10) + 1`, which can even be TW); GOG's build lacks it, Patch 1.01 brings it
+back. The patch sends all four places (`0x59ff79`, `0x5a0386`, `0x5a063b`, `0x5a094e`; GOG and 2007 CD
+`0x5a2836`, `0x5a2bb6`, `0x5a2e6b`, `0x5a315e`) to a helper of 83 bytes:
+
+```
+xor ecx,ecx / mov cl,[esi+20] / mov dl,[ecx+table] / mov [esi+21],dl     (the fourth with edx and al)
+->  xor ecx,ecx / call helper / jmp +5 / table / nop
+helper: ebx = main / eax = random(8) + 2, one up from the main on / [esi+21] = al /
+        random(100) < 25: eax = random(7) + 2, one up from the lower and from the higher of both on /
+        [esi+22] = al / ret
+```
+
+The 40 % stay. The random function (`0x645ed0`) is the one the check right in front of each place calls,
+the table's address stays in the place, so taking the patch back restores it. The helper keeps `ebx`,
+`esi`, `edi` and the stack; `eax`, `ecx` and `edx` were already used by the check's call. In the 1999
+release it goes into the youth players' switch, which it replaces (that place becomes `call helper / jmp`
+behind the switch, the switch's jump table address stays at its end); in GOG's `run.exe` in front of the
+outro speed's data at the end of the import section, zero there; in the DLL into memory of its own. It
+was run in an emulator for every main position and every outcome of the three draws: each of the eight
+other field positions comes up as the first secondary position, each of the remaining seven as the
+second, and nothing else. With Patch 1.01 on, the youth players' place holds 1.01's jump; the patch
+takes it over (and gives it back when it goes while 1.01's section is there), and Patch 1.01 leaves the
+place alone while the patch holds it, so both can be switched in any order. All places lie outside the
+2007 release's CRC stretches.
+
 **Events.** The random events of `0x556900` (texts from `TEXTE\EreigGld.saq`) book a club's expenses at
 `+0x38c` and its income at `+0x390`; the hundred money events of the table at `0x6bcd80` are pairs of text
 and amount, negative for expenses. Wrong are:
@@ -881,7 +924,8 @@ makes 13 places jump there or change in place:
 - a block of counters is cleared, and a counter grows by one instead of by another value (`0x557e30`)
 - five counters of an entry stay below 1,000,000, negative amounts are ignored (`0x568ca0`)
 - a dialog returns its result into the team data (`0x5a0b70`)
-- new players get a second position in 20 % of the cases (`0x5a2690`)
+- new players get a second position in 20 % of the cases (`0x5a2690`); with "Nebenpositionen" on, its
+  helper takes this place instead (see "Secondary positions")
 - traits of new goalkeepers as in 1.01 (`0x5a2fc0`)
 - when the human managers are reordered, a data block of 0x160 bytes per manager is reordered with them
   (`0x5bd540`)
@@ -968,7 +1012,7 @@ comes from SysWOW64). `dsound.dll` would work too, but A2G-Scaler uses that name
   16 sound device, 32 disk warning, 64 squad limit, 128 display mode, 256 cup draw, 512 preseason
   calculation, 1024 patch 1.01, 2048 picture buttons, 4096 interviews, 8192 speeches, 16384 negotiation
   counters, 32768 investments, 65536 trainer supply, 131072 money limit, 262144 events, 524288 grade
-  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events, 33554432 grade chart, 67108864 referee grudge, 134217728 sound format; the
+  average, 1048576 competence balance, 2097152 event crashes, 4194304 fish poisoning, 8388608 appearances list, 16777216 manager events, 33554432 grade chart, 67108864 referee grudge, 134217728 sound format, 268435456 secondary positions; the
   build has all on). Older versions had two or three bytes; the NUL ending their string and its padding
   follow them, so they read as the same flags. The other GOG patches have no flag: they change files on disk, which
   the DLL doesn't. An installed copy that differs from the
