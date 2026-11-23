@@ -82,8 +82,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist/bundle | Out-Null
           Copy-Item "bin\x86\Release\A2G-Patch.exe" "dist\A2G-Patch-$tag.exe"
           Copy-Item "bin\x86\Release\A2G-Patch.exe" "dist\bundle\A2G-Patch.exe"
-          Copy-Item "bin\Win2000\Release\A2G-Patch.exe" "dist\A2G-Patch-$tag-Win2000.exe"
-          Copy-Item "bin\Win2000\Release\A2G-Patch.exe" "dist\bundle\A2G-Patch-Win2000.exe"
+          Copy-Item "bin\Win2000\Release\A2G-Patch.exe" "dist\A2G-Patch-$tag-Win98-2000.exe"
+          Copy-Item "bin\Win2000\Release\A2G-Patch.exe" "dist\bundle\A2G-Patch-Win98-2000.exe"
           # German on purpose: it is read by players, like the program's UI. utf8BOM so Notepad on
           # older Windows shows the umlauts correctly.
           $readme = @"
@@ -269,7 +269,7 @@ jobs:
             dem App-Modus von Windows).
           - Liegt das Spiel unter "Programme", fragt A2G-Patch nach Administratorrechten.
           - Voraussetzungen: Windows XP (SP3) oder neuer, .NET Framework 4.0 oder neuer.
-          - Windows 2000 (SP4), 98 SE und ME: A2G-Patch-Win2000.exe starten, sie braucht .NET
+          - Windows 2000 (SP4), 98 SE und ME: A2G-Patch-Win98-2000.exe starten, sie braucht .NET
             Framework 2.0 und kann dasselbe. Unter 98 SE und ME läuft nur die Spielfassung von 1999.
 
           Quellcode: https://github.com/transfairs/A2G-Patcher
@@ -301,7 +301,7 @@ jobs:
         with:
           files: |
             dist/A2G-Patch-${{ github.ref_name }}.exe
-            dist/A2G-Patch-${{ github.ref_name }}-Win2000.exe
+            dist/A2G-Patch-${{ github.ref_name }}-Win98-2000.exe
             dist/A2G-Patch-Latest.zip
             dist/A2G-Patch-Latest.zip.sha256
           body_path: dist/notes.md
